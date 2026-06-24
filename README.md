@@ -33,6 +33,36 @@ npm run build:win  # package a Windows installer (electron-builder)
 > On first launch GhostWire seeds a curated set of OSINT tools and creates its SQLite
 > database under your Electron `userData` directory (`%APPDATA%/ghostwire` on Windows).
 
+## Install & auto-updates
+
+Pre-built Windows installers are published on the
+[Releases](https://github.com/AsleepCoffee/Ghostwire/releases) page
+(`GhostWire Setup x.y.z.exe`). The app checks GitHub for a newer release on
+launch, downloads it in the background, and offers to restart & install — you
+can also trigger a check from **Settings → Updates**.
+
+> Auto-update reads release metadata over GitHub's public API, so it requires
+> the repository (and its releases) to be **public**. While the repo is
+> private the in-app check simply reports it couldn't find an update.
+>
+> The installer is **not code-signed**, so Windows SmartScreen will show a
+> "more info → run anyway" prompt on first launch.
+
+## Cutting a release
+
+Releases are built and published by GitHub Actions when a version tag is pushed:
+
+```bash
+# bump "version" in package.json first, then:
+git tag -a v0.2.0 -m "GhostWire v0.2.0"
+git push origin v0.2.0
+```
+
+The [`Release` workflow](.github/workflows/release.yml) builds the Windows
+installer on a runner and uploads it (plus `latest.yml`, which auto-update
+reads) to a GitHub Release for that tag. To build an installer locally without
+publishing: `npm run build:win` (output in `dist/`).
+
 ## Project structure
 
 ```

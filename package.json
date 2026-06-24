@@ -44,7 +44,8 @@
       {
         "provider": "github",
         "owner": "AsleepCoffee",
-        "repo": "Ghostwire"
+        "repo": "Ghostwire",
+        "releaseType": "release"
       }
     ]
   },
