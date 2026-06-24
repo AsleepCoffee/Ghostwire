@@ -19,7 +19,7 @@ import { PivotModal } from '../components/PivotModal'
 import { useOpenInBrowser } from '../lib/browserBus'
 import { useConfirm } from '../lib/confirm'
 import { useSettings } from '../lib/settings'
-import { INTEGRATION_SERVICES } from '../lib/apiServices'
+import { INTEGRATION_SERVICES, type ApiService } from '../lib/apiServices'
 import type { PivotSubject } from '../lib/pivot'
 
 const CATEGORY_ICON: Record<string, string> = {
@@ -40,6 +40,33 @@ const HEALTH: Record<ToolHealth, { color: string; label: string }> = {
   login: { color: '#f59e0b', label: 'Login required' },
   blocked: { color: '#f43f5e', label: 'Blocked / failed' },
   error: { color: '#f43f5e', label: 'Error / timeout' }
+}
+
+function renderIntegration(s: ApiService, unlocked: boolean, onLaunch: (s: ApiService) => void): JSX.Element {
+  return (
+    <div
+      key={s.id}
+      onClick={() => onLaunch(s)}
+      className={`card p-3.5 relative transition-all cursor-pointer ${
+        unlocked ? 'hover:border-accent/40 hover:shadow-glow' : 'opacity-60 hover:opacity-100'
+      }`}
+      title={unlocked ? `Launch ${s.name}` : `Locked — add your ${s.name} API key in Settings`}
+    >
+      <div className="flex items-start gap-3">
+        <div className="w-10 h-10 rounded-lg bg-ink-800 border border-ink-700 flex items-center justify-center shrink-0">
+          {unlocked ? (
+            <Icon name={CATEGORY_ICON[s.tool!.category] ?? 'Wrench'} size={18} className="text-accent" />
+          ) : (
+            <Lock size={16} className="text-slate-500" />
+          )}
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="font-semibold text-slate-100 truncate">{s.name}</div>
+          <div className="text-xs text-slate-500 truncate">{unlocked ? s.unlocks : 'Locked — needs API key'}</div>
+        </div>
+      </div>
+    </div>
+  )
 }
 
 export function Tools(): JSX.Element {
@@ -203,41 +230,18 @@ export function Tools(): JSX.Element {
             <p className="text-xs text-slate-500 mb-3">
               Unlocked by adding the matching API key in Settings. Locked tools open Settings so you can paste a key.
             </p>
+
+            <div className="text-[10px] font-semibold uppercase tracking-widest text-slate-500 mb-2">Free tier</div>
             <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3">
-              {INTEGRATION_SERVICES.map((s) => {
-                const unlocked = !!apiKeys[s.id]
-                return (
-                  <div
-                    key={s.id}
-                    onClick={() => launchIntegration(s)}
-                    className={`card p-3.5 relative transition-all cursor-pointer ${
-                      unlocked ? 'hover:border-accent/40 hover:shadow-glow' : 'opacity-60 hover:opacity-100'
-                    }`}
-                    title={unlocked ? `Launch ${s.name}` : `Locked — add your ${s.name} API key in Settings`}
-                  >
-                    <div className="flex items-start gap-3">
-                      <div className="w-10 h-10 rounded-lg bg-ink-800 border border-ink-700 flex items-center justify-center shrink-0">
-                        {unlocked ? (
-                          <Icon name={CATEGORY_ICON[s.tool!.category] ?? 'Wrench'} size={18} className="text-accent" />
-                        ) : (
-                          <Lock size={16} className="text-slate-500" />
-                        )}
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <div className="font-semibold text-slate-100 truncate flex items-center gap-1.5">
-                          {s.name}
-                          {s.tier === 'paid' && (
-                            <span className="text-[9px] text-warn border border-warn/40 rounded px-1">PAID</span>
-                          )}
-                        </div>
-                        <div className="text-xs text-slate-500 truncate">
-                          {unlocked ? s.unlocks : 'Locked — needs API key'}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                )
-              })}
+              {INTEGRATION_SERVICES.filter((s) => s.tier === 'free').map((s) => renderIntegration(s, !!apiKeys[s.id], launchIntegration))}
+            </div>
+
+            <div className="text-[10px] font-semibold uppercase tracking-widest text-slate-500 mt-4 mb-2 flex items-center gap-2">
+              Subscription required
+              <span className="px-1.5 py-0.5 rounded bg-warn/15 text-warn text-[9px] normal-case tracking-normal">paid plans</span>
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3">
+              {INTEGRATION_SERVICES.filter((s) => s.tier === 'paid').map((s) => renderIntegration(s, !!apiKeys[s.id], launchIntegration))}
             </div>
           </section>
         )}
