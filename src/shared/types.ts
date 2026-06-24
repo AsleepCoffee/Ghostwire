@@ -140,6 +140,12 @@ export interface ToolTestResult {
 
 export interface AppSettings {
   vaultPath?: string
+  /** Theme preset id (see THEMES in the renderer). */
+  theme?: string
+  /** Show the Training & Course Notes section. */
+  showTraining?: boolean
+  /** API keys keyed by service id. */
+  apiKeys?: Record<string, string>
 }
 
 export interface UpdateStatus {
@@ -198,6 +204,9 @@ export interface OsintApi {
   }
   shell: {
     openExternal(url: string): Promise<void>
+  }
+  net: {
+    fetchJson(url: string, headers?: Record<string, string>): Promise<unknown>
   }
   app: {
     version(): Promise<string>

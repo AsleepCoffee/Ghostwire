@@ -1,5 +1,7 @@
 import { NavLink } from 'react-router-dom'
 import { Icon } from './ui'
+import { useSettings } from '../lib/settings'
+import iconUrl from '../assets/icon.png'
 
 interface NavItem {
   to: string
@@ -34,13 +36,13 @@ const GROUPS: { heading?: string; items: NavItem[] }[] = [
 ]
 
 export function Sidebar(): JSX.Element {
+  const { settings } = useSettings()
+  const groups = GROUPS.filter((g) => g.heading !== 'Training' || settings.showTraining !== false)
   return (
     <aside className="w-60 shrink-0 bg-ink-900 border-r border-ink-700 flex flex-col">
       {/* Brand */}
       <div className="flex items-center gap-3 px-4 h-16 border-b border-ink-700">
-        <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-brand to-accent flex items-center justify-center shadow-glow">
-          <Icon name="Radar" size={20} className="text-white" />
-        </div>
+        <img src={iconUrl} alt="GhostWire" className="w-9 h-9 rounded-xl object-cover shadow-glow" />
         <div className="leading-tight">
           <div className="font-bold text-slate-100 tracking-tight">GhostWire</div>
           <div className="text-[10px] text-slate-500 uppercase tracking-widest">OSINT Workbench</div>
@@ -49,7 +51,7 @@ export function Sidebar(): JSX.Element {
 
       {/* Nav */}
       <nav className="flex-1 overflow-y-auto py-3 px-2 space-y-4">
-        {GROUPS.map((g, i) => (
+        {groups.map((g, i) => (
           <div key={i}>
             {g.heading && (
               <div className="px-3 mb-1.5 text-[10px] font-semibold uppercase tracking-widest text-slate-600">

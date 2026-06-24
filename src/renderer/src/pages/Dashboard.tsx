@@ -10,12 +10,17 @@ import {
   Fingerprint,
   Save,
   FileDown,
-  ExternalLink
+  Crosshair,
+  Workflow,
+  Binoculars,
+  Globe
 } from 'lucide-react'
 import { api, type Persona, type Note, type ToolLink, type Project } from '../lib/api'
 import { personaColor, PROJECT_TYPES } from '../lib/constants'
 import { Icon, StatusBadge, Panel } from '../components/ui'
 import { useOpenInBrowser } from '../lib/browserBus'
+import { PivotModal } from '../components/PivotModal'
+import { SUBJECT_LABELS, type PivotSubject } from '../lib/pivot'
 
 const CATEGORY_ICON: Record<string, string> = {
   Search: 'Search',
@@ -221,7 +226,7 @@ export function Dashboard(): JSX.Element {
         {/* Workspace + quick capture */}
         <div className="grid grid-cols-12 gap-5">
           <div className="col-span-12 xl:col-span-8">
-            <MiniBrowser onOpenFull={() => nav('/browser')} />
+            <QuickStart />
           </div>
           <div className="col-span-12 xl:col-span-4">
             <QuickCapture onFull={() => nav('/notes')} />
@@ -232,27 +237,71 @@ export function Dashboard(): JSX.Element {
   )
 }
 
-function MiniBrowser({ onOpenFull }: { onOpenFull: () => void }): JSX.Element {
+function QuickStart(): JSX.Element {
+  const nav = useNavigate()
+  const openInBrowser = useOpenInBrowser()
+  const [value, setValue] = useState('')
+  const [subject, setSubject] = useState<PivotSubject>('generic')
+  const [pivotOpen, setPivotOpen] = useState(false)
+
+  const actions = [
+    { label: 'New investigation', icon: FolderSearch, onClick: () => nav('/projects') },
+    { label: 'New sock puppet', icon: Drama, onClick: () => nav('/sock-puppets') },
+    { label: 'New link chart', icon: Workflow, onClick: () => nav('/graph') },
+    { label: 'Dork & pivot', icon: Binoculars, onClick: () => nav('/dork') },
+    { label: 'Open browser', icon: Globe, onClick: () => openInBrowser(['https://duckduckgo.com/']) },
+    { label: 'Tools & resources', icon: Wrench, onClick: () => nav('/tools') }
+  ]
+
   return (
     <Panel
       title={
         <span className="flex items-center gap-2">
-          <Icon name="MonitorPlay" size={16} className="text-brand-glow" /> Tool Workspace
+          <Crosshair size={16} className="text-brand-glow" /> Quick start
         </span>
       }
-      action={
-        <button className="btn-ghost !py-1 text-xs" onClick={onOpenFull}>
-          <ExternalLink size={14} /> Open full browser
-        </button>
-      }
       className="h-[460px]"
-      bodyClassName="bg-white rounded-b-xl overflow-hidden"
     >
-      <webview
-        src="https://osintframework.com/"
-        partition="persist:default-browser"
-        style={{ width: '100%', height: '100%', display: 'inline-flex' }}
-      />
+      <div className="p-4 flex flex-col h-full">
+        <div className="text-xs text-slate-500 mb-2">
+          Drop in something you found — open every relevant lookup at once.
+        </div>
+        <div className="flex gap-2">
+          <input
+            className="input"
+            placeholder="email, username, domain, name, IP, phone…"
+            value={value}
+            onChange={(e) => setValue(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && value.trim() && setPivotOpen(true)}
+          />
+          <select className="input !w-auto" value={subject} onChange={(e) => setSubject(e.target.value as PivotSubject)}>
+            {Object.entries(SUBJECT_LABELS).map(([k, label]) => (
+              <option key={k} value={k}>
+                {label}
+              </option>
+            ))}
+          </select>
+          <button className="btn-primary shrink-0" disabled={!value.trim()} onClick={() => setPivotOpen(true)}>
+            <Crosshair size={15} /> Pivot
+          </button>
+        </div>
+
+        <div className="text-xs text-slate-500 mt-5 mb-2">Jump to</div>
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 flex-1 content-start">
+          {actions.map((a) => (
+            <button
+              key={a.label}
+              onClick={a.onClick}
+              className="flex flex-col items-start gap-2 p-3 rounded-xl bg-ink-800/60 border border-ink-700 hover:border-brand/40 hover:shadow-glow transition-all text-left"
+            >
+              <a.icon size={20} className="text-brand-glow" />
+              <span className="text-sm font-medium text-slate-200">{a.label}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <PivotModal open={pivotOpen} onClose={() => setPivotOpen(false)} subject={subject} value={value} />
     </Panel>
   )
 }

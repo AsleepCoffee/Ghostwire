@@ -131,13 +131,30 @@ function mapTool(r: Record<string, unknown>): ToolLink {
 }
 
 // ---------- settings ----------
+function parseSetting(v: string): unknown {
+  try {
+    return JSON.parse(v)
+  } catch {
+    return v // legacy plain-string values (e.g. an older vaultPath)
+  }
+}
+
 function getSettings(): AppSettings {
   const rows = all<{ key: string; value: string }>('SELECT key, value FROM settings')
-  const out: AppSettings = {}
-  for (const row of rows) {
-    if (row.key === 'vaultPath') out.vaultPath = row.value
-  }
-  return out
+  const out: Record<string, unknown> = {}
+  for (const row of rows) out[row.key] = parseSetting(row.value)
+  // Defaults
+  if (out.showTraining === undefined) out.showTraining = true
+  if (!out.theme) out.theme = 'cyan'
+  if (!out.apiKeys || typeof out.apiKeys !== 'object') out.apiKeys = {}
+  return out as AppSettings
+}
+
+function putSetting(key: string, value: unknown): void {
+  run('INSERT INTO settings (key,value) VALUES (?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value', [
+    key,
+    JSON.stringify(value)
+  ])
 }
 
 export function registerHandlers(): void {
@@ -432,15 +449,20 @@ export function registerHandlers(): void {
     if (/^https?:\/\//i.test(url)) await shell.openExternal(url)
   })
 
+  // ===== Network (for graph transforms / free APIs; bypasses renderer CORS) =====
+  ipcMain.handle('net:fetchJson', async (_e, url: string, headers?: Record<string, string>) => {
+    if (!/^https:\/\//i.test(url)) throw new Error('Only https URLs are allowed')
+    const res = await fetch(url, {
+      headers: { 'User-Agent': 'GhostWire-OSINT', Accept: 'application/json', ...(headers ?? {}) }
+    })
+    if (!res.ok) throw new Error(`HTTP ${res.status}`)
+    return res.json()
+  })
+
   // ===== Settings =====
   ipcMain.handle('settings:get', () => getSettings())
   ipcMain.handle('settings:set', (_e, s: Partial<AppSettings>) => {
-    for (const [key, value] of Object.entries(s)) {
-      run('INSERT INTO settings (key,value) VALUES (?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value', [
-        key,
-        String(value)
-      ])
-    }
+    for (const [key, value] of Object.entries(s)) putSetting(key, value)
     return getSettings()
   })
   ipcMain.handle('settings:pickVault', async () => {
@@ -450,11 +472,7 @@ export function registerHandlers(): void {
       properties: ['openDirectory', 'createDirectory']
     })
     if (res.canceled || !res.filePaths[0]) return null
-    const dir = res.filePaths[0]
-    run('INSERT INTO settings (key,value) VALUES (?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value', [
-      'vaultPath',
-      dir
-    ])
-    return dir
+    putSetting('vaultPath', res.filePaths[0])
+    return res.filePaths[0]
   })
 }

@@ -53,6 +53,9 @@ const api: OsintApi = {
   shell: {
     openExternal: (url) => ipcRenderer.invoke('shell:openExternal', url)
   },
+  net: {
+    fetchJson: (url, headers) => ipcRenderer.invoke('net:fetchJson', url, headers)
+  },
   app: {
     version: () => ipcRenderer.invoke('app:version')
   },

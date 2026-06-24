@@ -5,6 +5,11 @@
 @layer base {
   :root {
     color-scheme: dark;
+    /* Theme accent variables (overridden by the theme picker). */
+    --brand: 59 130 246;
+    --brand-glow: 96 165 250;
+    --accent: 34 211 238;
+    --accent-glow: 103 232 249;
   }
   html,
   body,

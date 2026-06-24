@@ -1,129 +1,254 @@
 import { useEffect, useState } from 'react'
-import { FolderOpen, FolderUp, Check, RefreshCw, DownloadCloud } from 'lucide-react'
-import { api, type AppSettings, type UpdateStatus } from '../lib/api'
+import {
+  FolderOpen,
+  FolderUp,
+  Check,
+  RefreshCw,
+  DownloadCloud,
+  ExternalLink,
+  KeyRound,
+  Eye,
+  EyeOff
+} from 'lucide-react'
+import { api, type UpdateStatus } from '../lib/api'
 import { Icon } from '../components/ui'
+import { useSettings, THEMES } from '../lib/settings'
+import { API_SERVICES } from '../lib/apiServices'
 
 export function Settings(): JSX.Element {
-  const [settings, setSettings] = useState<AppSettings>({})
+  const { settings, update } = useSettings()
+  const [vaultPath, setVaultPath] = useState<string | undefined>(undefined)
   const [msg, setMsg] = useState('')
   const [version, setVersion] = useState('')
-  const [update, setUpdate] = useState<UpdateStatus | null>(null)
+  const [upd, setUpd] = useState<UpdateStatus | null>(null)
+  const [revealed, setRevealed] = useState<Record<string, boolean>>({})
 
   useEffect(() => {
-    api.settings.get().then(setSettings)
+    api.settings.get().then((s) => setVaultPath(s.vaultPath))
     api.app.version().then(setVersion)
-    const unsub = api.updates.onStatus(setUpdate)
-    return unsub
+    return api.updates.onStatus(setUpd)
   }, [])
 
-  const updateLabel = (): string => {
-    switch (update?.state) {
-      case 'checking':
-        return 'Checking for updates…'
-      case 'available':
-        return `Update ${update.version} found — downloading…`
-      case 'downloading':
-        return `Downloading update… ${update.percent ?? 0}%`
-      case 'ready':
-        return `Update ${update.version} ready to install.`
-      case 'none':
-        return "You're on the latest version."
-      case 'dev':
-        return 'Updates only run in the installed (packaged) app.'
-      case 'error':
-        return `Update check failed: ${update.message ?? 'unknown error'}`
-      default:
-        return ''
-    }
+  const flash = (m: string): void => {
+    setMsg(m)
+    setTimeout(() => setMsg(''), 2500)
   }
 
   const pickVault = async (): Promise<void> => {
     const dir = await api.settings.pickVault()
     if (dir) {
-      setSettings((s) => ({ ...s, vaultPath: dir }))
-      setMsg('Vault folder set.')
-      setTimeout(() => setMsg(''), 2000)
+      setVaultPath(dir)
+      flash('Vault folder set.')
     }
   }
 
-  const exportAll = async (): Promise<void> => {
-    const res = await api.notes.exportAll()
-    if (res) setMsg(`Exported ${res.exported} notes to ${res.dir}`)
-    setTimeout(() => setMsg(''), 3000)
+  const setKey = (id: string, value: string): void => {
+    update({ apiKeys: { ...(settings.apiKeys ?? {}), [id]: value } })
+  }
+
+  const updateLabel = (): string => {
+    switch (upd?.state) {
+      case 'checking':
+        return 'Checking for updates…'
+      case 'available':
+        return `Update ${upd.version} found — downloading…`
+      case 'downloading':
+        return `Downloading… ${upd.percent ?? 0}%`
+      case 'ready':
+        return `Update ${upd.version} ready to install.`
+      case 'none':
+        return "You're on the latest version."
+      case 'dev':
+        return 'Updates only run in the installed app.'
+      case 'error':
+        return `Update check failed: ${upd.message ?? 'unknown error'}`
+      default:
+        return ''
+    }
   }
 
   return (
     <div className="h-full overflow-y-auto">
-      <div className="max-w-2xl mx-auto p-8 space-y-6">
+      <div className="max-w-3xl mx-auto p-8 space-y-6">
         <div>
           <h1 className="text-2xl font-bold text-slate-100 flex items-center gap-2">
             <Icon name="Settings" size={22} className="text-brand-glow" /> Settings
           </h1>
-          <p className="text-sm text-slate-500 mt-1">Configure GhostWire and your Obsidian export.</p>
+          <p className="text-sm text-slate-500 mt-1">Personalize GhostWire and manage integrations.</p>
         </div>
 
+        {/* Appearance */}
+        <section className="card p-5">
+          <h2 className="font-semibold text-slate-100 mb-1">Appearance</h2>
+          <p className="text-sm text-slate-500 mb-4">Pick an accent theme. Applies instantly.</p>
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2">
+            {THEMES.map((t) => {
+              const active = (settings.theme ?? 'cyan') === t.id
+              return (
+                <button
+                  key={t.id}
+                  onClick={() => update({ theme: t.id })}
+                  className={`flex items-center gap-2 px-3 py-2 rounded-lg border text-sm transition-colors ${
+                    active ? 'border-brand/60 bg-brand/10 text-slate-100' : 'border-ink-700 text-slate-400 hover:bg-ink-800'
+                  }`}
+                >
+                  <span className="flex -space-x-1">
+                    <span className="w-3.5 h-3.5 rounded-full border border-ink-900" style={{ background: `rgb(${t.brand})` }} />
+                    <span className="w-3.5 h-3.5 rounded-full border border-ink-900" style={{ background: `rgb(${t.accent})` }} />
+                  </span>
+                  {t.label}
+                  {active && <Check size={13} className="ml-auto text-brand-glow" />}
+                </button>
+              )
+            })}
+          </div>
+        </section>
+
+        {/* Features */}
+        <section className="card p-5">
+          <h2 className="font-semibold text-slate-100 mb-1">Features</h2>
+          <p className="text-sm text-slate-500 mb-4">Turn sections on or off.</p>
+          <label className="flex items-center justify-between py-2">
+            <div>
+              <div className="text-sm text-slate-200 font-medium">Training & Course Notes</div>
+              <div className="text-xs text-slate-500">Show the Training section (course notes, resources) in the sidebar.</div>
+            </div>
+            <Toggle
+              on={settings.showTraining !== false}
+              onChange={(v) => update({ showTraining: v })}
+            />
+          </label>
+        </section>
+
+        {/* API keys */}
+        <section className="card p-5">
+          <h2 className="font-semibold text-slate-100 mb-1 flex items-center gap-2">
+            <KeyRound size={16} className="text-brand-glow" /> API keys
+          </h2>
+          <p className="text-sm text-slate-500 mb-4">
+            Optional. Stored locally only. Several power graph transforms and richer lookups — all have a free tier.
+          </p>
+          <div className="space-y-2.5">
+            {API_SERVICES.map((s) => {
+              const val = (settings.apiKeys ?? {})[s.id] ?? ''
+              const show = revealed[s.id]
+              return (
+                <div key={s.id} className="flex items-center gap-3">
+                  <div className="w-40 shrink-0">
+                    <div className="text-sm text-slate-200 font-medium flex items-center gap-1">
+                      {s.name}
+                      {val && <span className="w-1.5 h-1.5 rounded-full bg-ok" />}
+                    </div>
+                    <button
+                      className="text-[11px] text-brand-glow hover:underline flex items-center gap-0.5"
+                      onClick={() => api.shell.openExternal(s.signup)}
+                      title={s.free}
+                    >
+                      get free key <ExternalLink size={9} />
+                    </button>
+                  </div>
+                  <div className="relative flex-1">
+                    <input
+                      className="input pr-9 font-mono text-xs"
+                      type={show ? 'text' : 'password'}
+                      placeholder={s.description}
+                      value={val}
+                      onChange={(e) => setKey(s.id, e.target.value)}
+                    />
+                    <button
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300"
+                      onClick={() => setRevealed((r) => ({ ...r, [s.id]: !r[s.id] }))}
+                    >
+                      {show ? <EyeOff size={15} /> : <Eye size={15} />}
+                    </button>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </section>
+
+        {/* Obsidian vault */}
         <section className="card p-5">
           <h2 className="font-semibold text-slate-100 mb-1">Obsidian vault</h2>
           <p className="text-sm text-slate-500 mb-4">
-            Notes export as Markdown with YAML frontmatter into a <code className="text-accent">GhostWire</code>{' '}
-            subfolder of this vault.
+            Notes export as Markdown into a <code className="text-accent">GhostWire</code> subfolder of this vault.
           </p>
           <div className="flex items-center gap-3">
             <div className="flex-1 input flex items-center gap-2 font-mono text-xs">
               <FolderOpen size={15} className="text-slate-500" />
-              <span className="truncate">{settings.vaultPath || 'No vault selected'}</span>
+              <span className="truncate">{vaultPath || 'No vault selected'}</span>
             </div>
             <button className="btn-primary" onClick={pickVault}>
               <FolderOpen size={16} /> Choose folder
             </button>
           </div>
-          <button className="btn-ghost border border-ink-600 mt-3" onClick={exportAll} disabled={!settings.vaultPath}>
+          <button
+            className="btn-ghost border border-ink-600 mt-3"
+            onClick={async () => {
+              const res = await api.notes.exportAll()
+              if (res) flash(`Exported ${res.exported} notes to ${res.dir}`)
+            }}
+            disabled={!vaultPath}
+          >
             <FolderUp size={16} /> Export all notes now
           </button>
         </section>
 
-        <section className="card p-5">
-          <h2 className="font-semibold text-slate-100 mb-1">Data & privacy</h2>
-          <ul className="text-sm text-slate-400 space-y-2 mt-3">
-            <li className="flex gap-2">
-              <Check size={16} className="text-ok shrink-0 mt-0.5" /> All data is stored locally in a SQLite
-              database in your app data folder. Nothing is sent to any server.
-            </li>
-            <li className="flex gap-2">
-              <Check size={16} className="text-ok shrink-0 mt-0.5" /> Each sock puppet has its own isolated
-              browser session (cookies, storage) so identities never cross-contaminate.
-            </li>
-            <li className="flex gap-2">
-              <Icon name="TriangleAlert" size={16} className="text-warn shrink-0 mt-0.5" /> Persona credentials
-              are stored in plaintext — keep your device encrypted and secured.
-            </li>
-          </ul>
-        </section>
-
+        {/* Updates */}
         <section className="card p-5">
           <h2 className="font-semibold text-slate-100 mb-1">Updates</h2>
           <p className="text-sm text-slate-500 mb-4">
-            GhostWire checks for new releases on GitHub at launch and installs them automatically.
+            GhostWire checks GitHub for new releases at launch and installs them automatically.
           </p>
           <div className="flex items-center gap-3">
             <button className="btn-primary" onClick={() => api.updates.check()}>
               <RefreshCw size={16} /> Check for updates
             </button>
-            {update?.state === 'ready' && (
+            {upd?.state === 'ready' && (
               <button className="btn-ghost border border-ok/40 text-ok" onClick={() => api.updates.install()}>
                 <DownloadCloud size={16} /> Restart & install
               </button>
             )}
-            {update && updateLabel() && <span className="text-sm text-slate-400">{updateLabel()}</span>}
+            {upd && updateLabel() && <span className="text-sm text-slate-400">{updateLabel()}</span>}
           </div>
         </section>
 
-        {msg && <div className="text-sm text-ok">{msg}</div>}
+        {/* Data & privacy */}
+        <section className="card p-5">
+          <h2 className="font-semibold text-slate-100 mb-1">Data & privacy</h2>
+          <ul className="text-sm text-slate-400 space-y-2 mt-3">
+            <li className="flex gap-2">
+              <Check size={16} className="text-ok shrink-0 mt-0.5" /> All data is stored locally in a SQLite
+              database in your app data folder. Nothing is sent to any server (except tools/APIs you invoke).
+            </li>
+            <li className="flex gap-2">
+              <Check size={16} className="text-ok shrink-0 mt-0.5" /> Each sock puppet has its own isolated
+              browser session so identities never cross-contaminate.
+            </li>
+            <li className="flex gap-2">
+              <Icon name="TriangleAlert" size={16} className="text-warn shrink-0 mt-0.5" /> Persona credentials
+              and API keys are stored in plaintext — keep your device encrypted and secured.
+            </li>
+          </ul>
+        </section>
 
-        <div className="text-center text-xs text-slate-600 pt-4">
-          GhostWire · OSINT Workbench · v{version || '…'}
-        </div>
+        {msg && <div className="text-sm text-ok">{msg}</div>}
+        <div className="text-center text-xs text-slate-600 pt-2">GhostWire · OSINT Workbench · v{version || '…'}</div>
       </div>
     </div>
+  )
+}
+
+function Toggle({ on, onChange }: { on: boolean; onChange: (v: boolean) => void }): JSX.Element {
+  return (
+    <button
+      onClick={() => onChange(!on)}
+      className={`w-11 h-6 rounded-full transition-colors relative shrink-0 ${on ? 'bg-brand' : 'bg-ink-600'}`}
+    >
+      <span
+        className={`absolute top-0.5 w-5 h-5 rounded-full bg-white transition-all ${on ? 'left-[22px]' : 'left-0.5'}`}
+      />
+    </button>
   )
 }

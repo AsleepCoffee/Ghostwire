@@ -17,12 +17,15 @@ import {
   type NodeProps
 } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
-import { Plus, Trash2, X, ImagePlus, Crosshair } from 'lucide-react'
-import { api, type Board, type EntityNode, type EntityType } from '../lib/api'
+import { Plus, Trash2, X, ImagePlus, Crosshair, Sparkles, Loader2 } from 'lucide-react'
+import { api, type Board, type EntityNode, type EntityType, type Project } from '../lib/api'
 import { ENTITY_TYPES } from '../lib/constants'
-import { Icon, EmptyState } from '../components/ui'
+import { Icon, EmptyState, Modal } from '../components/ui'
 import { PivotModal } from '../components/PivotModal'
 import { subjectForEntity, type PivotSubject } from '../lib/pivot'
+import { transformsFor, type Transform } from '../lib/transforms'
+import { useOpenInBrowser } from '../lib/browserBus'
+import { useSettings } from '../lib/settings'
 
 type RFNode = Node<{ entity: EntityNode }>
 
@@ -81,9 +84,21 @@ function GraphInner(): JSX.Element {
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([])
   const [selected, setSelected] = useState<EntityNode | null>(null)
   const [pivot, setPivot] = useState<{ value: string; subject: PivotSubject } | null>(null)
+  const [creatingBoard, setCreatingBoard] = useState(false)
+  const [newBoardName, setNewBoardName] = useState('')
+  const [newBoardProject, setNewBoardProject] = useState('')
+  const [projects, setProjects] = useState<Project[]>([])
+  const [toast, setToast] = useState('')
+  const [busyTransform, setBusyTransform] = useState<string | null>(null)
   const seq = useRef(0)
+  const openInBrowser = useOpenInBrowser()
+  const { settings } = useSettings()
 
   const board = boards.find((b) => b.id === boardId)
+  const flash = (m: string): void => {
+    setToast(m)
+    setTimeout(() => setToast(''), 2600)
+  }
 
   const loadBoards = async (): Promise<void> => {
     const list = await api.boards.list()
@@ -121,10 +136,18 @@ function GraphInner(): JSX.Element {
     if (boardId) loadGraph(boardId)
   }, [boardId, loadGraph])
 
+  const openCreateBoard = (): void => {
+    setNewBoardName('New Investigation')
+    setNewBoardProject('')
+    api.projects.list().then(setProjects)
+    setCreatingBoard(true)
+  }
+
   const createBoard = async (): Promise<void> => {
-    const name = prompt('Name this investigation board:', 'New Investigation')
+    const name = newBoardName.trim()
     if (!name) return
-    const b = await api.boards.save({ name })
+    const b = await api.boards.save({ name, projectId: newBoardProject || null })
+    setCreatingBoard(false)
     await loadBoards()
     setBoardId(b.id)
   }
@@ -193,20 +216,99 @@ function GraphInner(): JSX.Element {
     setSelected(null)
   }
 
+  const runTransform = async (entity: EntityNode, t: Transform): Promise<void> => {
+    if (t.needsKey && !(settings.apiKeys ?? {})[t.needsKey]) {
+      flash(`Add your ${t.needsKey} API key in Settings to use this transform.`)
+      return
+    }
+    setBusyTransform(t.id)
+    try {
+      const out = await t.run(entity.label, entity.props ?? {}, { apiKeys: settings.apiKeys ?? {} })
+      let i = 0
+      for (const ne of out.entities) {
+        const saved = await api.boards.saveNode({
+          boardId,
+          type: ne.type,
+          label: ne.label,
+          props: ne.props ?? {},
+          x: entity.x + 240,
+          y: entity.y + (i - (out.entities.length - 1) / 2) * 70
+        })
+        setNodes((nds) => [
+          ...nds,
+          { id: saved.id, type: 'entity', position: { x: saved.x, y: saved.y }, data: { entity: saved } }
+        ])
+        const edge = await api.boards.saveEdge({ boardId, source: entity.id, target: saved.id, label: t.label })
+        setEdges((eds) =>
+          addEdge({ id: edge.id, source: entity.id, target: saved.id, animated: true, style: { stroke: '#3a4456' } }, eds)
+        )
+        i++
+      }
+      if (out.updateSource && Object.keys(out.updateSource).length) {
+        updateSelected({ props: { ...(entity.props ?? {}), ...out.updateSource } })
+      }
+      if (out.urls.length) openInBrowser(out.urls)
+      flash(out.note || `${t.label} done`)
+    } catch (e) {
+      flash(`Transform failed: ${String((e as Error)?.message ?? e)}`)
+    } finally {
+      setBusyTransform(null)
+    }
+  }
+
   const entityTypeList = useMemo(() => Object.entries(ENTITY_TYPES) as [EntityType, typeof ENTITY_TYPES[EntityType]][], [])
+
+  const boardModal = (
+    <Modal open={creatingBoard} onClose={() => setCreatingBoard(false)} title="New investigation board">
+      <div className="space-y-4">
+        <div>
+          <label className="label">Board name</label>
+          <input
+            className="input"
+            value={newBoardName}
+            onChange={(e) => setNewBoardName(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && createBoard()}
+            autoFocus
+          />
+        </div>
+        <div>
+          <label className="label">Investigation (optional)</label>
+          <select className="input" value={newBoardProject} onChange={(e) => setNewBoardProject(e.target.value)}>
+            <option value="">— none —</option>
+            {projects.map((pr) => (
+              <option key={pr.id} value={pr.id}>
+                {pr.name}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+      <div className="flex justify-end gap-2 mt-5">
+        <button className="btn-ghost" onClick={() => setCreatingBoard(false)}>
+          Cancel
+        </button>
+        <button className="btn-primary" onClick={createBoard} disabled={!newBoardName.trim()}>
+          Create board
+        </button>
+      </div>
+    </Modal>
+  )
 
   if (boards.length === 0) {
     return (
-      <EmptyState
-        icon="Workflow"
-        title="No investigation boards yet"
-        subtitle="Create a board to map out entities — people, emails, usernames, domains — and the links between them."
-        action={
-          <button className="btn-primary" onClick={createBoard}>
-            <Plus size={16} /> New board
-          </button>
-        }
-      />
+      <>
+        <EmptyState
+          icon="Workflow"
+          title="No investigation boards yet"
+          subtitle="Create a board to map out entities — people, emails, usernames, domains — and the links between them."
+          action={
+            <button className="btn-primary" onClick={openCreateBoard}>
+              <Plus size={16} /> New board
+            </button>
+          }
+        />
+        {boardModal}
+      </>
     )
   }
 
@@ -226,7 +328,7 @@ function GraphInner(): JSX.Element {
             </option>
           ))}
         </select>
-        <button className="btn-ghost" onClick={createBoard}>
+        <button className="btn-ghost" onClick={openCreateBoard}>
           <Plus size={15} /> New board
         </button>
         {board && (
@@ -294,9 +396,15 @@ function GraphInner(): JSX.Element {
                 subject: subjectForEntity(selected.type)
               })
             }
+            transforms={transformsFor(selected.type)}
+            busyTransform={busyTransform}
+            apiKeys={settings.apiKeys ?? {}}
+            onTransform={(t) => runTransform(selected, t)}
           />
         )}
       </div>
+
+      {boardModal}
 
       <PivotModal
         open={!!pivot}
@@ -304,6 +412,12 @@ function GraphInner(): JSX.Element {
         subject={pivot?.subject ?? 'generic'}
         value={pivot?.value ?? ''}
       />
+
+      {toast && (
+        <div className="fixed bottom-5 right-5 z-50 card px-4 py-2.5 text-sm text-slate-200 border-brand/30 shadow-xl max-w-sm">
+          {toast}
+        </div>
+      )}
     </div>
   )
 }
@@ -313,13 +427,21 @@ function EntityInspector({
   onChange,
   onDelete,
   onClose,
-  onPivot
+  onPivot,
+  transforms,
+  busyTransform,
+  apiKeys,
+  onTransform
 }: {
   entity: EntityNode
   onChange: (p: Partial<EntityNode>) => void
   onDelete: () => void
   onClose: () => void
   onPivot: () => void
+  transforms: Transform[]
+  busyTransform: string | null
+  apiKeys: Record<string, string>
+  onTransform: (t: Transform) => void
 }): JSX.Element {
   const [propKey, setPropKey] = useState('')
   const [propVal, setPropVal] = useState('')
@@ -366,6 +488,44 @@ function EntityInspector({
         <button className="btn-primary w-full justify-center" disabled={!entity.label.trim()} onClick={onPivot}>
           <Crosshair size={15} /> Search everywhere
         </button>
+
+        {/* Transforms (Maltego-style automations) */}
+        <div>
+          <div className="flex items-center gap-1.5 mb-1">
+            <Sparkles size={14} className="text-accent" />
+            <label className="label !mb-0">Transforms</label>
+          </div>
+          <p className="text-[11px] text-slate-500 mb-2">
+            Expand this entity into related entities or open the right lookups — one click.
+          </p>
+          <div className="space-y-1.5">
+            {transforms.map((t) => {
+              const locked = !!t.needsKey && !apiKeys[t.needsKey]
+              const busy = busyTransform === t.id
+              return (
+                <button
+                  key={t.id}
+                  disabled={busy || !entity.label.trim()}
+                  onClick={() => onTransform(t)}
+                  title={t.description + (locked ? ` (needs ${t.needsKey} API key)` : '')}
+                  className="w-full text-left px-2.5 py-2 rounded-lg border border-ink-700 hover:border-accent/40 hover:bg-ink-800 disabled:opacity-50 transition-colors"
+                >
+                  <div className="flex items-center gap-2">
+                    {busy ? (
+                      <Loader2 size={14} className="animate-spin text-accent shrink-0" />
+                    ) : (
+                      <Sparkles size={14} className="text-accent shrink-0" />
+                    )}
+                    <span className="text-sm font-medium text-slate-200 flex-1">{t.label}</span>
+                    {t.network && <span className="text-[9px] text-slate-500 border border-ink-600 rounded px-1">NET</span>}
+                    {locked && <span className="text-[9px] text-warn border border-warn/40 rounded px-1">KEY</span>}
+                  </div>
+                  <div className="text-[11px] text-slate-500 mt-0.5">{t.description}</div>
+                </button>
+              )
+            })}
+          </div>
+        </div>
 
         <div>
           <label className="label">Image</label>

@@ -15,21 +15,19 @@ export default {
           500: '#3a4456'
         },
         brand: {
-          DEFAULT: '#3b82f6',
-          soft: '#1e3a8a',
-          glow: '#60a5fa'
+          DEFAULT: 'rgb(var(--brand) / <alpha-value>)',
+          glow: 'rgb(var(--brand-glow) / <alpha-value>)'
         },
         accent: {
-          DEFAULT: '#22d3ee',
-          soft: '#0e7490',
-          glow: '#67e8f9'
+          DEFAULT: 'rgb(var(--accent) / <alpha-value>)',
+          glow: 'rgb(var(--accent-glow) / <alpha-value>)'
         },
         danger: '#f43f5e',
         warn: '#f59e0b',
         ok: '#34d399'
       },
       boxShadow: {
-        glow: '0 0 0 1px rgba(59,130,246,0.25), 0 8px 30px -10px rgba(59,130,246,0.35)'
+        glow: '0 0 0 1px rgb(var(--brand) / 0.25), 0 8px 30px -10px rgb(var(--brand) / 0.35)'
       },
       fontFamily: {
         mono: ['"JetBrains Mono"', 'ui-monospace', 'SFMono-Regular', 'Menlo', 'monospace'],
