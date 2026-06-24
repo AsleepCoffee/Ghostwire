@@ -2,6 +2,30 @@
 
 export type PersonaStatus = 'draft' | 'active' | 'burned'
 
+export type ProjectType = 'person' | 'company' | 'other'
+export type ProjectStatus = 'active' | 'paused' | 'closed'
+
+export interface Project {
+  id: string
+  name: string
+  type: ProjectType
+  /** The target of the investigation (a person's name, a company, a domain…). */
+  subject: string
+  status: ProjectStatus
+  /** What we already know. */
+  known: string
+  /** What we're trying to find out. */
+  objectives: string
+  createdAt: number
+  updatedAt: number
+}
+
+export interface ProjectCounts {
+  personas: number
+  notes: number
+  boards: number
+}
+
 export interface PersonaAccount {
   platform: string
   url?: string
@@ -15,6 +39,7 @@ export interface Persona {
   name: string
   handle: string
   status: PersonaStatus
+  projectId?: string | null
   avatarPath?: string | null
   bio?: string
   gender?: string
@@ -38,6 +63,7 @@ export interface Note {
   title: string
   body: string
   folder: string
+  projectId?: string | null
   tags: string[]
   pinned: boolean
   createdAt: number
@@ -63,6 +89,7 @@ export interface Board {
   id: string
   name: string
   description?: string
+  projectId?: string | null
   createdAt: number
   updatedAt: number
 }
@@ -117,6 +144,14 @@ export interface AppSettings {
 
 /** The API surface exposed on `window.api` via the preload bridge. */
 export interface OsintApi {
+  projects: {
+    list(): Promise<Project[]>
+    get(id: string): Promise<Project | null>
+    save(p: Partial<Project>): Promise<Project>
+    remove(id: string): Promise<void>
+    counts(): Promise<Record<string, ProjectCounts>>
+    contents(id: string): Promise<{ personas: Persona[]; notes: Note[]; boards: Board[] }>
+  }
   personas: {
     list(): Promise<Persona[]>
     get(id: string): Promise<Persona | null>

@@ -23,11 +23,24 @@ function wasmPath(): string {
 }
 
 const SCHEMA = `
+CREATE TABLE IF NOT EXISTS projects (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  type TEXT DEFAULT 'person',
+  subject TEXT,
+  status TEXT DEFAULT 'active',
+  known TEXT DEFAULT '',
+  objectives TEXT DEFAULT '',
+  createdAt INTEGER,
+  updatedAt INTEGER
+);
+
 CREATE TABLE IF NOT EXISTS personas (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
   handle TEXT,
   status TEXT DEFAULT 'draft',
+  projectId TEXT,
   avatarPath TEXT,
   bio TEXT,
   gender TEXT,
@@ -50,6 +63,7 @@ CREATE TABLE IF NOT EXISTS notes (
   title TEXT NOT NULL,
   body TEXT DEFAULT '',
   folder TEXT DEFAULT 'Inbox',
+  projectId TEXT,
   tags TEXT DEFAULT '[]',
   pinned INTEGER DEFAULT 0,
   createdAt INTEGER,
@@ -60,6 +74,7 @@ CREATE TABLE IF NOT EXISTS boards (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
   description TEXT,
+  projectId TEXT,
   createdAt INTEGER,
   updatedAt INTEGER
 );
@@ -127,7 +142,10 @@ function migrate(): void {
   const adds = [
     "ALTER TABLE tools ADD COLUMN openMode TEXT DEFAULT 'embed'",
     'ALTER TABLE tools ADD COLUMN health TEXT',
-    'ALTER TABLE tools ADD COLUMN checkedAt INTEGER'
+    'ALTER TABLE tools ADD COLUMN checkedAt INTEGER',
+    'ALTER TABLE personas ADD COLUMN projectId TEXT',
+    'ALTER TABLE notes ADD COLUMN projectId TEXT',
+    'ALTER TABLE boards ADD COLUMN projectId TEXT'
   ]
   for (const sql of adds) {
     try {

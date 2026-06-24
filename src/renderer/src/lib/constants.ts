@@ -1,4 +1,10 @@
-import type { EntityType } from './api'
+import type { EntityType, ProjectType } from './api'
+
+export const PROJECT_TYPES: Record<ProjectType, { label: string; icon: string; color: string }> = {
+  person: { label: 'Person', icon: 'UserSearch', color: '#60a5fa' },
+  company: { label: 'Company', icon: 'Building2', color: '#fb923c' },
+  other: { label: 'Other', icon: 'FolderSearch', color: '#a78bfa' }
+}
 
 export const ENTITY_TYPES: Record<
   EntityType,
@@ -61,6 +67,72 @@ export interface GeneratedIdentity {
   occupation: string
   email: string
   backstory: string
+}
+
+export function generatePassword(len = 16): string {
+  const upper = 'ABCDEFGHJKLMNPQRSTUVWXYZ'
+  const lower = 'abcdefghijkmnpqrstuvwxyz'
+  const nums = '23456789'
+  const syms = '!@#$%&*?'
+  const all = upper + lower + nums + syms
+  const arr = new Uint32Array(len)
+  crypto.getRandomValues(arr)
+  // Guarantee one of each class, then fill the rest.
+  const out = [
+    upper[arr[0] % upper.length],
+    lower[arr[1] % lower.length],
+    nums[arr[2] % nums.length],
+    syms[arr[3] % syms.length]
+  ]
+  for (let i = 4; i < len; i++) out.push(all[arr[i] % all.length])
+  // Shuffle
+  for (let i = out.length - 1; i > 0; i--) {
+    const j = arr[i] % (i + 1)
+    ;[out[i], out[j]] = [out[j], out[i]]
+  }
+  return out.join('')
+}
+
+/** Login pages for common platforms, used by the "Open & login" action. */
+export const PLATFORM_LOGIN: Record<string, string> = {
+  email: 'https://mail.proton.me/login',
+  proton: 'https://mail.proton.me/login',
+  protonmail: 'https://mail.proton.me/login',
+  gmail: 'https://accounts.google.com/signin',
+  google: 'https://accounts.google.com/signin',
+  outlook: 'https://login.live.com/',
+  facebook: 'https://www.facebook.com/login',
+  instagram: 'https://www.instagram.com/accounts/login/',
+  'x / twitter': 'https://twitter.com/i/flow/login',
+  twitter: 'https://twitter.com/i/flow/login',
+  x: 'https://twitter.com/i/flow/login',
+  reddit: 'https://www.reddit.com/login/',
+  linkedin: 'https://www.linkedin.com/login',
+  tiktok: 'https://www.tiktok.com/login',
+  discord: 'https://discord.com/login',
+  telegram: 'https://web.telegram.org/',
+  youtube: 'https://accounts.google.com/signin',
+  github: 'https://github.com/login',
+  pinterest: 'https://www.pinterest.com/login/',
+  snapchat: 'https://accounts.snapchat.com/accounts/login',
+  quora: 'https://www.quora.com/'
+}
+
+export function loginUrlFor(platform: string, fallbackUrl?: string): string {
+  const key = platform.trim().toLowerCase()
+  return PLATFORM_LOGIN[key] || fallbackUrl || `https://www.google.com/search?q=${encodeURIComponent(platform + ' login')}`
+}
+
+/** Build a starter set of accounts (with generated passwords) for a new persona. */
+export function buildStarterAccounts(handle: string, email: string): import('./api').PersonaAccount[] {
+  const platforms = ['Email', 'Facebook', 'Instagram', 'Reddit', 'X / Twitter']
+  return platforms.map((platform) => ({
+    platform,
+    username: platform === 'Email' ? email : handle,
+    password: generatePassword(),
+    url: loginUrlFor(platform),
+    notes: ''
+  }))
 }
 
 export function generateIdentity(): GeneratedIdentity {

@@ -16,7 +16,7 @@ import {
   Tag,
   ImagePlus
 } from 'lucide-react'
-import { api, type Note } from '../lib/api'
+import { api, type Note, type Project } from '../lib/api'
 import { EmptyState } from '../components/ui'
 
 export function Notes(): JSX.Element {
@@ -227,7 +227,12 @@ function NoteEditor({
   onExport: () => void
 }): JSX.Element {
   const [tagInput, setTagInput] = useState('')
+  const [projects, setProjects] = useState<Project[]>([])
   const bodyRef = useRef<HTMLTextAreaElement | null>(null)
+
+  useEffect(() => {
+    api.projects.list().then(setProjects)
+  }, [])
   const addTag = (): void => {
     const t = tagInput.trim()
     if (t && !note.tags.includes(t)) onPatch({ tags: [...note.tags, t] })
@@ -300,6 +305,21 @@ function NoteEditor({
               value={note.folder}
               onChange={(e) => onPatch({ folder: e.target.value })}
             />
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className="text-xs text-slate-500">Investigation</span>
+            <select
+              className="input !w-44 py-1 text-sm"
+              value={note.projectId ?? ''}
+              onChange={(e) => onPatch({ projectId: e.target.value || null })}
+            >
+              <option value="">— none —</option>
+              {projects.map((pr) => (
+                <option key={pr.id} value={pr.id}>
+                  {pr.name}
+                </option>
+              ))}
+            </select>
           </div>
           <div className="flex items-center gap-1.5 flex-wrap">
             <Tag size={13} className="text-slate-500" />

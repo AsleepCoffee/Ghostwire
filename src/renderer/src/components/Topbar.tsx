@@ -1,15 +1,15 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { Search, Plus } from 'lucide-react'
+import { useOpenInBrowser } from '../lib/browserBus'
 
 export function Topbar({ onQuickAdd }: { onQuickAdd?: () => void }): JSX.Element {
   const [q, setQ] = useState('')
-  const nav = useNavigate()
+  const openInBrowser = useOpenInBrowser()
 
   const submit = (e: React.FormEvent): void => {
     e.preventDefault()
     if (!q.trim()) return
-    nav(`/browser?q=${encodeURIComponent(q.trim())}`)
+    openInBrowser([`https://duckduckgo.com/?q=${encodeURIComponent(q.trim())}`])
     setQ('')
   }
 

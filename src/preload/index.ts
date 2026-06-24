@@ -2,6 +2,14 @@ import { contextBridge, ipcRenderer } from 'electron'
 import type { OsintApi } from '../shared/types'
 
 const api: OsintApi = {
+  projects: {
+    list: () => ipcRenderer.invoke('projects:list'),
+    get: (id) => ipcRenderer.invoke('projects:get', id),
+    save: (p) => ipcRenderer.invoke('projects:save', p),
+    remove: (id) => ipcRenderer.invoke('projects:remove', id),
+    counts: () => ipcRenderer.invoke('projects:counts'),
+    contents: (id) => ipcRenderer.invoke('projects:contents', id)
+  },
   personas: {
     list: () => ipcRenderer.invoke('personas:list'),
     get: (id) => ipcRenderer.invoke('personas:get', id),

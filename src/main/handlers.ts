@@ -11,6 +11,7 @@ import type {
   EntityNode,
   Note,
   Persona,
+  Project,
   ToolLink
 } from '../shared/types'
 
@@ -31,6 +32,7 @@ function mapPersona(r: Record<string, unknown>): Persona {
     name: String(r.name ?? ''),
     handle: String(r.handle ?? ''),
     status: (r.status as Persona['status']) ?? 'draft',
+    projectId: (r.projectId as string) ?? null,
     avatarPath: (r.avatarPath as string) ?? null,
     bio: (r.bio as string) ?? '',
     gender: (r.gender as string) ?? '',
@@ -55,6 +57,7 @@ function mapNote(r: Record<string, unknown>): Note {
     title: String(r.title ?? ''),
     body: String(r.body ?? ''),
     folder: String(r.folder ?? 'Inbox'),
+    projectId: (r.projectId as string) ?? null,
     tags: pj(r.tags, []),
     pinned: Number(r.pinned) === 1,
     createdAt: Number(r.createdAt),
@@ -67,6 +70,21 @@ function mapBoard(r: Record<string, unknown>): Board {
     id: String(r.id),
     name: String(r.name ?? ''),
     description: (r.description as string) ?? '',
+    projectId: (r.projectId as string) ?? null,
+    createdAt: Number(r.createdAt),
+    updatedAt: Number(r.updatedAt)
+  }
+}
+
+function mapProject(r: Record<string, unknown>): Project {
+  return {
+    id: String(r.id),
+    name: String(r.name ?? ''),
+    type: (r.type as Project['type']) ?? 'person',
+    subject: String(r.subject ?? ''),
+    status: (r.status as Project['status']) ?? 'active',
+    known: String(r.known ?? ''),
+    objectives: String(r.objectives ?? ''),
     createdAt: Number(r.createdAt),
     updatedAt: Number(r.updatedAt)
   }
@@ -123,6 +141,76 @@ function getSettings(): AppSettings {
 }
 
 export function registerHandlers(): void {
+  // ===== Projects / Investigations =====
+  ipcMain.handle('projects:list', () =>
+    all('SELECT * FROM projects ORDER BY updatedAt DESC').map(mapProject)
+  )
+  ipcMain.handle('projects:get', (_e, id: string) => {
+    const r = get('SELECT * FROM projects WHERE id = ?', [id])
+    return r ? mapProject(r) : null
+  })
+  ipcMain.handle('projects:save', (_e, p: Partial<Project>) => {
+    const t = now()
+    const existing = p.id ? get('SELECT * FROM projects WHERE id = ?', [p.id]) : null
+    const id = p.id ?? randomUUID()
+    run(
+      `INSERT INTO projects (id,name,type,subject,status,known,objectives,createdAt,updatedAt)
+       VALUES (?,?,?,?,?,?,?,?,?)
+       ON CONFLICT(id) DO UPDATE SET
+         name=excluded.name, type=excluded.type, subject=excluded.subject, status=excluded.status,
+         known=excluded.known, objectives=excluded.objectives, updatedAt=excluded.updatedAt`,
+      [
+        id,
+        p.name ?? 'Untitled investigation',
+        p.type ?? 'person',
+        p.subject ?? '',
+        p.status ?? 'active',
+        p.known ?? '',
+        p.objectives ?? '',
+        existing ? Number((existing as Record<string, unknown>).createdAt) : t,
+        t
+      ]
+    )
+    return mapProject(get('SELECT * FROM projects WHERE id = ?', [id])!)
+  })
+  ipcMain.handle('projects:remove', (_e, id: string) => {
+    // Unlink children rather than deleting the user's data.
+    run('UPDATE personas SET projectId = NULL WHERE projectId = ?', [id])
+    run('UPDATE notes SET projectId = NULL WHERE projectId = ?', [id])
+    run('UPDATE boards SET projectId = NULL WHERE projectId = ?', [id])
+    run('DELETE FROM projects WHERE id = ?', [id])
+  })
+  ipcMain.handle('projects:counts', () => {
+    const out: Record<string, { personas: number; notes: number; boards: number }> = {}
+    const ensure = (pid: string): void => {
+      if (!out[pid]) out[pid] = { personas: 0, notes: 0, boards: 0 }
+    }
+    for (const r of all<{ projectId: string; c: number }>(
+      'SELECT projectId, COUNT(*) AS c FROM personas WHERE projectId IS NOT NULL GROUP BY projectId'
+    )) {
+      ensure(r.projectId)
+      out[r.projectId].personas = Number(r.c)
+    }
+    for (const r of all<{ projectId: string; c: number }>(
+      'SELECT projectId, COUNT(*) AS c FROM notes WHERE projectId IS NOT NULL GROUP BY projectId'
+    )) {
+      ensure(r.projectId)
+      out[r.projectId].notes = Number(r.c)
+    }
+    for (const r of all<{ projectId: string; c: number }>(
+      'SELECT projectId, COUNT(*) AS c FROM boards WHERE projectId IS NOT NULL GROUP BY projectId'
+    )) {
+      ensure(r.projectId)
+      out[r.projectId].boards = Number(r.c)
+    }
+    return out
+  })
+  ipcMain.handle('projects:contents', (_e, id: string) => ({
+    personas: all('SELECT * FROM personas WHERE projectId = ? ORDER BY updatedAt DESC', [id]).map(mapPersona),
+    notes: all('SELECT * FROM notes WHERE projectId = ? ORDER BY updatedAt DESC', [id]).map(mapNote),
+    boards: all('SELECT * FROM boards WHERE projectId = ? ORDER BY updatedAt DESC', [id]).map(mapBoard)
+  }))
+
   // ===== Personas =====
   ipcMain.handle('personas:list', () =>
     all('SELECT * FROM personas ORDER BY updatedAt DESC').map(mapPersona)
@@ -139,10 +227,10 @@ export function registerHandlers(): void {
       ? String((existing as Record<string, unknown>).partition)
       : `persist:persona_${id}`
     run(
-      `INSERT INTO personas (id,name,handle,status,avatarPath,bio,gender,birthdate,location,nationality,email,phone,occupation,backstory,accounts,tags,partition,createdAt,updatedAt)
-       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+      `INSERT INTO personas (id,name,handle,status,projectId,avatarPath,bio,gender,birthdate,location,nationality,email,phone,occupation,backstory,accounts,tags,partition,createdAt,updatedAt)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
        ON CONFLICT(id) DO UPDATE SET
-         name=excluded.name, handle=excluded.handle, status=excluded.status, avatarPath=excluded.avatarPath,
+         name=excluded.name, handle=excluded.handle, status=excluded.status, projectId=excluded.projectId, avatarPath=excluded.avatarPath,
          bio=excluded.bio, gender=excluded.gender, birthdate=excluded.birthdate, location=excluded.location,
          nationality=excluded.nationality, email=excluded.email, phone=excluded.phone, occupation=excluded.occupation,
          backstory=excluded.backstory, accounts=excluded.accounts, tags=excluded.tags, updatedAt=excluded.updatedAt`,
@@ -151,6 +239,7 @@ export function registerHandlers(): void {
         p.name ?? 'Unnamed persona',
         p.handle ?? '',
         p.status ?? 'draft',
+        p.projectId ?? null,
         p.avatarPath ?? null,
         p.bio ?? '',
         p.gender ?? '',
@@ -187,16 +276,17 @@ export function registerHandlers(): void {
     const existing = n.id ? get('SELECT * FROM notes WHERE id = ?', [n.id]) : null
     const id = n.id ?? randomUUID()
     run(
-      `INSERT INTO notes (id,title,body,folder,tags,pinned,createdAt,updatedAt)
-       VALUES (?,?,?,?,?,?,?,?)
+      `INSERT INTO notes (id,title,body,folder,projectId,tags,pinned,createdAt,updatedAt)
+       VALUES (?,?,?,?,?,?,?,?,?)
        ON CONFLICT(id) DO UPDATE SET
-         title=excluded.title, body=excluded.body, folder=excluded.folder,
+         title=excluded.title, body=excluded.body, folder=excluded.folder, projectId=excluded.projectId,
          tags=excluded.tags, pinned=excluded.pinned, updatedAt=excluded.updatedAt`,
       [
         id,
         n.title ?? 'Untitled',
         n.body ?? '',
         n.folder ?? 'Inbox',
+        n.projectId ?? null,
         j(n.tags ?? []),
         n.pinned ? 1 : 0,
         existing ? Number((existing as Record<string, unknown>).createdAt) : t,
@@ -231,13 +321,14 @@ export function registerHandlers(): void {
     const existing = b.id ? get('SELECT * FROM boards WHERE id = ?', [b.id]) : null
     const id = b.id ?? randomUUID()
     run(
-      `INSERT INTO boards (id,name,description,createdAt,updatedAt)
-       VALUES (?,?,?,?,?)
-       ON CONFLICT(id) DO UPDATE SET name=excluded.name, description=excluded.description, updatedAt=excluded.updatedAt`,
+      `INSERT INTO boards (id,name,description,projectId,createdAt,updatedAt)
+       VALUES (?,?,?,?,?,?)
+       ON CONFLICT(id) DO UPDATE SET name=excluded.name, description=excluded.description, projectId=excluded.projectId, updatedAt=excluded.updatedAt`,
       [
         id,
         b.name ?? 'Untitled board',
         b.description ?? '',
+        b.projectId ?? null,
         existing ? Number((existing as Record<string, unknown>).createdAt) : t,
         t
       ]

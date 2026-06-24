@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 import {
   Plus,
   Search,
@@ -11,12 +10,23 @@ import {
   X,
   Pencil,
   Crosshair,
-  ImagePlus
+  ImagePlus,
+  LogIn,
+  Zap,
+  KeyRound,
+  RefreshCw
 } from 'lucide-react'
-import { api, type Persona, type PersonaAccount, type PersonaStatus } from '../lib/api'
-import { generateIdentity, personaColor } from '../lib/constants'
+import { api, type Persona, type PersonaAccount, type PersonaStatus, type Project } from '../lib/api'
+import {
+  generateIdentity,
+  personaColor,
+  buildStarterAccounts,
+  generatePassword,
+  loginUrlFor
+} from '../lib/constants'
 import { Modal, StatusBadge, EmptyState } from '../components/ui'
 import { PivotModal } from '../components/PivotModal'
+import { useOpenInBrowser, useOpenTabs } from '../lib/browserBus'
 import type { PivotSubject } from '../lib/pivot'
 
 const EMPTY: Partial<Persona> = {
@@ -32,12 +42,43 @@ export function SockPuppets(): JSX.Element {
   const [query, setQuery] = useState('')
   const [editing, setEditing] = useState<Partial<Persona> | null>(null)
   const [pivot, setPivot] = useState<{ value: string; subject: PivotSubject } | null>(null)
-  const nav = useNavigate()
+  const openInBrowser = useOpenInBrowser()
+  const openTabs = useOpenTabs()
 
   const load = async (): Promise<void> => setPersonas(await api.personas.list())
   useEffect(() => {
     load()
   }, [])
+
+  const browseAs = (p: Persona): void => openInBrowser(['https://duckduckgo.com/'], p.id)
+
+  const loginToAccount = (p: Persona, a: PersonaAccount): void =>
+    openTabs([
+      {
+        url: loginUrlFor(a.platform, a.url),
+        personaId: p.id,
+        autofill: { username: a.username, password: a.password }
+      }
+    ])
+
+  const quickCreate = async (): Promise<void> => {
+    const g = generateIdentity()
+    const saved = await api.personas.save({
+      name: g.name,
+      handle: g.handle,
+      status: 'active',
+      gender: g.gender,
+      birthdate: g.birthdate,
+      location: g.location,
+      occupation: g.occupation,
+      email: g.email,
+      backstory: g.backstory,
+      accounts: buildStarterAccounts(g.handle, g.email),
+      tags: ['generated']
+    })
+    await load()
+    setEditing(saved)
+  }
 
   const filtered = useMemo(() => {
     const q = query.toLowerCase()
@@ -67,9 +108,14 @@ export function SockPuppets(): JSX.Element {
             Manage personas with fully isolated browser sessions — log into the same site as many identities at once.
           </p>
         </div>
-        <button className="btn-primary" onClick={() => setEditing({ ...EMPTY })}>
-          <Plus size={16} /> New Persona
-        </button>
+        <div className="flex gap-2">
+          <button className="btn-ghost border border-ink-600" onClick={quickCreate} title="Generate a full persona with accounts & passwords">
+            <Zap size={16} /> Quick create
+          </button>
+          <button className="btn-primary" onClick={() => setEditing({ ...EMPTY })}>
+            <Plus size={16} /> New Persona
+          </button>
+        </div>
       </div>
 
       <div className="px-6 py-3 border-b border-ink-700">
@@ -104,7 +150,8 @@ export function SockPuppets(): JSX.Element {
                 p={p}
                 onEdit={() => setEditing(p)}
                 onDelete={() => remove(p)}
-                onBrowse={() => nav(`/browser?persona=${p.id}`)}
+                onBrowse={() => browseAs(p)}
+                onLogin={(a) => loginToAccount(p, a)}
                 onPivot={() =>
                   setPivot({ value: p.handle || p.name, subject: p.handle ? 'username' : 'name' })
                 }
@@ -122,6 +169,7 @@ export function SockPuppets(): JSX.Element {
             setEditing(null)
             load()
           }}
+          onLogin={editing.id ? (a) => loginToAccount(editing as Persona, a) : undefined}
         />
       )}
 
@@ -140,12 +188,14 @@ function PersonaCard({
   onEdit,
   onDelete,
   onBrowse,
+  onLogin,
   onPivot
 }: {
   p: Persona
   onEdit: () => void
   onDelete: () => void
   onBrowse: () => void
+  onLogin: (a: PersonaAccount) => void
   onPivot: () => void
 }): JSX.Element {
   const color = personaColor(p.id)
@@ -184,13 +234,20 @@ function PersonaCard({
       )}
 
       {p.accounts.length > 0 && (
-        <div className="mt-3 flex flex-wrap gap-1">
-          {p.accounts.slice(0, 5).map((a, i) => (
-            <span key={i} className="chip uppercase text-[10px]">
-              {a.platform}
-            </span>
-          ))}
-          {p.accounts.length > 5 && <span className="chip">+{p.accounts.length - 5}</span>}
+        <div className="mt-3">
+          <div className="text-[10px] uppercase tracking-wider text-slate-600 mb-1">Click to log in as this persona</div>
+          <div className="flex flex-wrap gap-1">
+            {p.accounts.map((a, i) => (
+              <button
+                key={i}
+                onClick={() => onLogin(a)}
+                title={`Open ${a.platform} & autofill${a.username ? ` (${a.username})` : ''}`}
+                className="chip hover:bg-brand/20 hover:text-brand-glow transition-colors"
+              >
+                <LogIn size={11} /> {a.platform}
+              </button>
+            ))}
+          </div>
         </div>
       )}
 
@@ -215,15 +272,22 @@ function PersonaCard({
 function PersonaEditor({
   initial,
   onClose,
-  onSaved
+  onSaved,
+  onLogin
 }: {
   initial: Partial<Persona>
   onClose: () => void
   onSaved: () => void
+  onLogin?: (a: PersonaAccount) => void
 }): JSX.Element {
   const [p, setP] = useState<Partial<Persona>>({ ...initial })
   const [tagInput, setTagInput] = useState('')
+  const [projects, setProjects] = useState<Project[]>([])
   const set = (patch: Partial<Persona>): void => setP((prev) => ({ ...prev, ...patch }))
+
+  useEffect(() => {
+    api.projects.list().then(setProjects)
+  }, [])
 
   const fillRandom = (): void => {
     const g = generateIdentity()
@@ -318,6 +382,21 @@ function PersonaEditor({
             </select>
           </div>
           <div>
+            <label className="label">Investigation</label>
+            <select
+              className="input"
+              value={p.projectId ?? ''}
+              onChange={(e) => set({ projectId: e.target.value || null })}
+            >
+              <option value="">— none —</option>
+              {projects.map((pr) => (
+                <option key={pr.id} value={pr.id}>
+                  {pr.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
             <label className="label">Gender</label>
             <input className="input" value={p.gender ?? ''} onChange={(e) => set({ gender: e.target.value })} />
           </div>
@@ -381,23 +460,32 @@ function PersonaEditor({
         {/* Accounts */}
         <div>
           <div className="flex items-center justify-between mb-2">
-            <label className="label !mb-0">Linked accounts</label>
-            <button className="btn-ghost text-xs" onClick={addAccount}>
-              <Plus size={14} /> Add account
-            </button>
+            <label className="label !mb-0">Linked accounts & credentials</label>
+            <div className="flex gap-2">
+              <button
+                className="btn-ghost text-xs"
+                onClick={() => set({ accounts: buildStarterAccounts(p.handle ?? 'user', p.email ?? '') })}
+                title="Generate a starter set of accounts with passwords"
+              >
+                <Zap size={14} /> Generate set
+              </button>
+              <button className="btn-ghost text-xs" onClick={addAccount}>
+                <Plus size={14} /> Add account
+              </button>
+            </div>
           </div>
           <div className="space-y-2">
             {(p.accounts ?? []).map((a, i) => (
               <div key={i} className="grid grid-cols-12 gap-2 items-center">
                 <input
-                  className="input col-span-3"
+                  className="input col-span-2"
                   placeholder="Platform"
                   value={a.platform}
                   onChange={(e) => updateAccount(i, { platform: e.target.value })}
                 />
                 <input
                   className="input col-span-3"
-                  placeholder="Username"
+                  placeholder="Username / email"
                   value={a.username ?? ''}
                   onChange={(e) => updateAccount(i, { username: e.target.value })}
                 />
@@ -409,13 +497,30 @@ function PersonaEditor({
                 />
                 <input
                   className="input col-span-2"
-                  placeholder="URL"
+                  placeholder="URL (optional)"
                   value={a.url ?? ''}
                   onChange={(e) => updateAccount(i, { url: e.target.value })}
                 />
-                <button className="btn-danger !px-2 col-span-1 justify-center" onClick={() => removeAccount(i)}>
-                  <Trash2 size={15} />
-                </button>
+                <div className="col-span-2 flex items-center gap-1 justify-end">
+                  <button
+                    className="btn-ghost !px-1.5"
+                    title="Generate password"
+                    onClick={() => updateAccount(i, { password: generatePassword() })}
+                  >
+                    <RefreshCw size={14} />
+                  </button>
+                  <button
+                    className="btn-ghost !px-1.5 text-accent disabled:opacity-30"
+                    title={onLogin ? 'Open & log in as this persona' : 'Save persona first to log in'}
+                    disabled={!onLogin}
+                    onClick={() => onLogin?.(a)}
+                  >
+                    <LogIn size={15} />
+                  </button>
+                  <button className="btn-danger !px-1.5" onClick={() => removeAccount(i)}>
+                    <Trash2 size={15} />
+                  </button>
+                </div>
               </div>
             ))}
             {(p.accounts ?? []).length === 0 && (

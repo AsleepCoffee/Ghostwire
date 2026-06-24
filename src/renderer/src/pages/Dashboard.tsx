@@ -1,20 +1,19 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
-  FolderKanban,
+  FolderSearch,
   Drama,
   Wrench,
   NotebookPen,
   ChevronRight,
   Plus,
   Fingerprint,
-  ExternalLink,
   Save,
   FileDown,
-  ArrowUpRight
+  ExternalLink
 } from 'lucide-react'
-import { api, type Persona, type Note, type ToolLink, type Board } from '../lib/api'
-import { personaColor } from '../lib/constants'
+import { api, type Persona, type Note, type ToolLink, type Project } from '../lib/api'
+import { personaColor, PROJECT_TYPES } from '../lib/constants'
 import { Icon, StatusBadge, Panel } from '../components/ui'
 import { useOpenInBrowser } from '../lib/browserBus'
 
@@ -36,7 +35,7 @@ export function Dashboard(): JSX.Element {
   const [personas, setPersonas] = useState<Persona[]>([])
   const [notes, setNotes] = useState<Note[]>([])
   const [tools, setTools] = useState<ToolLink[]>([])
-  const [boards, setBoards] = useState<Board[]>([])
+  const [projects, setProjects] = useState<Project[]>([])
   const openInBrowser = useOpenInBrowser()
 
   const launchTool = (t: ToolLink): void => {
@@ -49,11 +48,11 @@ export function Dashboard(): JSX.Element {
     api.personas.list().then(setPersonas)
     api.notes.list().then(setNotes)
     api.tools.list().then(setTools)
-    api.boards.list().then(setBoards)
+    api.projects.list().then(setProjects)
   }, [])
 
   const stats = [
-    { label: 'Boards', value: boards.length, icon: FolderKanban, to: '/graph', color: '#60a5fa' },
+    { label: 'Investigations', value: projects.length, icon: FolderSearch, to: '/projects', color: '#60a5fa' },
     { label: 'Sock Puppets', value: personas.length, icon: Drama, to: '/sock-puppets', color: '#a78bfa' },
     { label: 'Tools', value: tools.length, icon: Wrench, to: '/tools', color: '#22d3ee' },
     { label: 'Notes', value: notes.length, icon: NotebookPen, to: '/notes', color: '#f59e0b' }
@@ -98,45 +97,53 @@ export function Dashboard(): JSX.Element {
             </div>
           </div>
 
-          {/* Recent notes */}
+          {/* Recent investigations */}
           <div className="col-span-12 md:col-span-7 xl:col-span-4">
             <Panel
-              title="Recent Notes"
+              title="Recent Investigations"
               className="h-full"
               action={
-                <button className="text-xs text-brand-glow hover:underline" onClick={() => nav('/notes')}>
+                <button className="text-xs text-brand-glow hover:underline" onClick={() => nav('/projects')}>
                   View all
                 </button>
               }
               bodyClassName="overflow-y-auto"
             >
-              {notes.length === 0 ? (
+              {projects.length === 0 ? (
                 <div className="p-6 text-center text-sm text-slate-500">
-                  No notes yet.{' '}
-                  <button className="text-brand-glow hover:underline" onClick={() => nav('/notes')}>
-                    Create one
+                  No investigations yet.{' '}
+                  <button className="text-brand-glow hover:underline" onClick={() => nav('/projects')}>
+                    Start one
                   </button>
                 </div>
               ) : (
                 <div className="divide-y divide-ink-800">
-                  {notes.slice(0, 6).map((n) => (
-                    <button
-                      key={n.id}
-                      onClick={() => nav('/notes')}
-                      className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-ink-800 text-left"
-                    >
-                      <div className="w-8 h-8 rounded-lg bg-ink-800 border border-ink-700 flex items-center justify-center shrink-0">
-                        <NotebookPen size={15} className="text-slate-400" />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <div className="text-sm font-medium text-slate-200 truncate">{n.title}</div>
-                        <div className="text-xs text-slate-500">
-                          {n.folder} · {new Date(n.updatedAt).toLocaleDateString()}
+                  {projects.slice(0, 6).map((pr) => {
+                    const cfg = PROJECT_TYPES[pr.type]
+                    return (
+                      <button
+                        key={pr.id}
+                        onClick={() => nav(`/projects/${pr.id}`)}
+                        className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-ink-800 text-left"
+                      >
+                        <div
+                          className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
+                          style={{ background: `${cfg.color}1f` }}
+                        >
+                          <Icon name={cfg.icon} size={15} style={{ color: cfg.color }} />
                         </div>
-                      </div>
-                      <ChevronRight size={15} className="text-slate-600" />
-                    </button>
-                  ))}
+                        <div className="min-w-0 flex-1">
+                          <div className="text-sm font-medium text-slate-200 truncate">{pr.name}</div>
+                          <div className="text-xs text-slate-500 truncate">
+                            {cfg.label}
+                            {pr.subject ? ` · ${pr.subject}` : ''}
+                          </div>
+                        </div>
+                        <StatusBadge status={pr.status} />
+                        <ChevronRight size={15} className="text-slate-600" />
+                      </button>
+                    )
+                  })}
                 </div>
               )}
             </Panel>
@@ -161,7 +168,7 @@ export function Dashboard(): JSX.Element {
                   {personas.slice(0, 6).map((p) => (
                     <button
                       key={p.id}
-                      onClick={() => nav(`/browser?persona=${p.id}`)}
+                      onClick={() => openInBrowser(['https://duckduckgo.com/'], p.id)}
                       className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-ink-800 text-left"
                     >
                       <div

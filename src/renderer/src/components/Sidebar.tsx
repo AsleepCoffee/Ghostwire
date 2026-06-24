@@ -11,6 +11,7 @@ const GROUPS: { heading?: string; items: NavItem[] }[] = [
   {
     items: [
       { to: '/', label: 'Dashboard', icon: 'LayoutDashboard' },
+      { to: '/projects', label: 'Investigations', icon: 'FolderSearch' },
       { to: '/graph', label: 'Graph Workspace', icon: 'Workflow' },
       { to: '/tools', label: 'Tools & Resources', icon: 'Wrench' },
       { to: '/dork', label: 'Dork & Pivot', icon: 'Binoculars' },

@@ -6,14 +6,16 @@ import { X } from 'lucide-react'
 export function Icon({
   name,
   size = 18,
-  className
+  className,
+  style
 }: {
   name: string
   size?: number
   className?: string
+  style?: React.CSSProperties
 }): JSX.Element {
   const Cmp = (Lucide as unknown as Record<string, Lucide.LucideIcon>)[name] ?? Lucide.Circle
-  return <Cmp size={size} className={className} />
+  return <Cmp size={size} className={className} style={style} />
 }
 
 export function StatusDot({ color }: { color: string }): JSX.Element {

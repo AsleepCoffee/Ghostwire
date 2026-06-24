@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
 import {
   ArrowLeft,
   ArrowRight,
@@ -13,11 +12,12 @@ import {
   X,
   ExternalLink,
   Loader2,
-  AlertTriangle
+  AlertTriangle,
+  KeyRound
 } from 'lucide-react'
 import { api, type Persona } from '../lib/api'
 import { personaColor } from '../lib/constants'
-import { consumePending, subscribeOpen, type OpenRequest } from '../lib/browserBus'
+import { consumePending, subscribeOpen, type OpenRequest, type Autofill } from '../lib/browserBus'
 
 const HOME = 'https://duckduckgo.com/'
 
@@ -28,6 +28,7 @@ interface WebviewEl extends HTMLElement {
   stop(): void
   loadURL(url: string): Promise<void>
   getURL(): string
+  executeJavaScript(code: string): Promise<unknown>
 }
 
 interface Tab {
@@ -37,6 +38,7 @@ interface Tab {
   loading: boolean
   failed: boolean
   personaId?: string
+  autofill?: Autofill
 }
 
 function toUrl(input: string): string {
@@ -47,11 +49,34 @@ function toUrl(input: string): string {
   return `https://duckduckgo.com/?q=${encodeURIComponent(s)}`
 }
 
+/** A page script that fills login fields with the persona's stored credentials. */
+function fillScript(a: Autofill): string {
+  const u = JSON.stringify(a.username ?? '')
+  const p = JSON.stringify(a.password ?? '')
+  return `(function(){
+    try {
+      function setVal(el, val){
+        if(!el || !val || el.value) return false;
+        el.focus();
+        const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype,'value').set;
+        setter.call(el, val);
+        el.dispatchEvent(new Event('input',{bubbles:true}));
+        el.dispatchEvent(new Event('change',{bubbles:true}));
+        return true;
+      }
+      var u=${u}, p=${p};
+      var userEl=document.querySelector('input[autocomplete="username"], input[type="email"], input[name*="email" i], input[name*="user" i], input[id*="user" i], input[id*="email" i], input[name="login"]');
+      var passEl=document.querySelector('input[type="password"]');
+      if(u) setVal(userEl,u);
+      if(p) setVal(passEl,p);
+    } catch(e){}
+  })();`
+}
+
 let tabSeq = 0
 const newId = (): string => `tab_${Date.now()}_${tabSeq++}`
 
 export function Browser(): JSX.Element {
-  const [params] = useSearchParams()
   const [personas, setPersonas] = useState<Persona[]>([])
   const [tabs, setTabs] = useState<Tab[]>([])
   const [activeId, setActiveId] = useState<string>('')
@@ -60,46 +85,40 @@ export function Browser(): JSX.Element {
 
   const active = tabs.find((t) => t.id === activeId) ?? null
 
-  useEffect(() => {
+  const reloadPersonas = (): void => {
     api.personas.list().then(setPersonas)
+  }
+  useEffect(() => {
+    reloadPersonas()
   }, [])
 
-  const openTabs = useCallback((urls: string[], personaId?: string): void => {
-    setTabs((prev) => {
-      const created = urls.map((u) => ({
-        id: newId(),
-        url: toUrl(u),
-        title: 'Loading…',
-        loading: true,
-        failed: false,
-        personaId
-      }))
-      if (created.length) setActiveId(created[0].id)
-      return [...prev, ...created]
-    })
-  }, [])
+  const openTabs = useCallback(
+    (req: OpenRequest): void => {
+      setTabs((prev) => {
+        const created: Tab[] = req.tabs.map((t) => ({
+          id: newId(),
+          url: toUrl(t.url),
+          title: 'Loading…',
+          loading: true,
+          failed: false,
+          personaId: t.personaId,
+          autofill: t.autofill
+        }))
+        if (created.length) setActiveId(created[0].id)
+        return [...prev, ...created]
+      })
+    },
+    []
+  )
 
-  // Initial: consume any pending open request, query params, or open a blank home tab.
+  // Deliver queued open-requests and subscribe for new ones. No default tab.
   useEffect(() => {
     const pending = consumePending()
-    const pid = params.get('persona') ?? undefined
-    const q = params.get('q')
-    const url = params.get('url')
-    if (pending) {
-      openTabs(pending.urls, pending.personaId)
-    } else if (url) {
-      openTabs([url], pid)
-    } else if (q) {
-      openTabs([`https://duckduckgo.com/?q=${encodeURIComponent(q)}`], pid)
-    } else {
-      openTabs([HOME], pid)
-    }
-    const unsub = subscribeOpen((r: OpenRequest) => openTabs(r.urls, r.personaId))
+    if (pending) openTabs(pending)
+    const unsub = subscribeOpen(openTabs)
     return unsub
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [openTabs])
 
-  // Keep the address bar in sync with the active tab.
   useEffect(() => {
     if (active) setAddress(active.url)
   }, [activeId, active?.url]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -113,9 +132,7 @@ export function Browser(): JSX.Element {
     setTabs((prev) => {
       const idx = prev.findIndex((t) => t.id === id)
       const next = prev.filter((t) => t.id !== id)
-      if (id === activeId && next.length) {
-        setActiveId(next[Math.max(0, idx - 1)].id)
-      }
+      if (id === activeId && next.length) setActiveId(next[Math.max(0, idx - 1)].id)
       return next
     })
   }
@@ -129,7 +146,6 @@ export function Browser(): JSX.Element {
 
   const setPersona = (personaId: string): void => {
     if (!active) return
-    // Changing identity remounts this tab's webview (key includes persona) → reload from current url.
     updateTab(active.id, { personaId: personaId || undefined })
   }
 
@@ -174,7 +190,7 @@ export function Browser(): JSX.Element {
           )
         })}
         <button
-          onClick={() => openTabs([HOME])}
+          onClick={() => openTabs({ tabs: [{ url: HOME }] })}
           className="ml-1 mb-1 p-1.5 rounded-lg text-slate-400 hover:bg-ink-800 shrink-0"
           title="New tab"
         >
@@ -208,13 +224,25 @@ export function Browser(): JSX.Element {
             onChange={(e) => setAddress(e.target.value)}
             placeholder="Search or enter address"
             spellCheck={false}
+            disabled={!active}
           />
         </form>
+
+        {active?.autofill && (
+          <button
+            className="btn-ghost !px-2 text-accent"
+            title="Re-fill stored credentials"
+            onClick={() => active && refs.current.get(active.id)?.executeJavaScript(fillScript(active.autofill!))}
+          >
+            <KeyRound size={16} />
+          </button>
+        )}
 
         <button
           className="btn-ghost !px-2"
           title="Open in system browser"
           onClick={() => active && api.shell.openExternal(active.url)}
+          disabled={!active}
         >
           <ExternalLink size={17} />
         </button>
@@ -225,6 +253,7 @@ export function Browser(): JSX.Element {
             value={active?.personaId ?? ''}
             onChange={(e) => setPersona(e.target.value)}
             title="Session identity for this tab"
+            disabled={!active}
           >
             <option value="">Default session</option>
             {personas.map((p) => (
@@ -254,14 +283,19 @@ export function Browser(): JSX.Element {
             This tab browses as <b style={{ color: personaColor(persona.id) }}>{persona.name}</b> — isolated
             cookies & storage.
           </span>
+          {active?.autofill && <span className="ml-auto text-slate-500">credentials auto-filled 🔑</span>}
         </div>
       )}
 
-      {/* Webviews (all mounted; only active is visible so background tabs keep loading) */}
+      {/* Webviews — all mounted; only active visible so background tabs keep loading */}
       <div className="flex-1 min-h-0 relative bg-white">
         {tabs.length === 0 && (
-          <div className="absolute inset-0 flex items-center justify-center bg-ink-950 text-slate-500">
-            No tabs open.
+          <div className="absolute inset-0 flex flex-col items-center justify-center bg-ink-950 text-slate-500 gap-3">
+            <Globe size={32} className="text-slate-600" />
+            <div>No tabs open.</div>
+            <button className="btn-primary" onClick={() => openTabs({ tabs: [{ url: HOME }] })}>
+              <Plus size={16} /> New tab
+            </button>
           </div>
         )}
         {tabs.map((t) => (
@@ -320,6 +354,10 @@ function BrowserView({
     const onStart = (): void => onState({ loading: true })
     const onStop = (): void => onState({ loading: false })
     const onTitle = (e: Event): void => onState({ title: (e as unknown as { title: string }).title })
+    const onFinish = (): void => {
+      // Idempotent autofill (only fills empty fields) — handles single & two-step logins.
+      if (tab.autofill) wv.executeJavaScript(fillScript(tab.autofill)).catch(() => {})
+    }
     const onFail = (e: Event): void => {
       const ev = e as unknown as { errorCode: number; isMainFrame: boolean }
       if (ev.isMainFrame && ev.errorCode !== -3) onState({ loading: false, failed: true })
@@ -328,6 +366,7 @@ function BrowserView({
     wv.addEventListener('did-navigate-in-page', onNav as EventListener)
     wv.addEventListener('did-start-loading', onStart)
     wv.addEventListener('did-stop-loading', onStop)
+    wv.addEventListener('did-finish-load', onFinish)
     wv.addEventListener('page-title-updated', onTitle as EventListener)
     wv.addEventListener('did-fail-load', onFail as EventListener)
     return () => {
@@ -335,11 +374,12 @@ function BrowserView({
       wv.removeEventListener('did-navigate-in-page', onNav as EventListener)
       wv.removeEventListener('did-start-loading', onStart)
       wv.removeEventListener('did-stop-loading', onStop)
+      wv.removeEventListener('did-finish-load', onFinish)
       wv.removeEventListener('page-title-updated', onTitle as EventListener)
       wv.removeEventListener('did-fail-load', onFail as EventListener)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [partition])
+  }, [partition, tab.autofill])
 
   return (
     <div className="absolute inset-0" style={{ display: active ? 'block' : 'none' }}>
