@@ -1,95 +1,90 @@
+<div align="center">
+
+<img src="icon.png" alt="GhostWire" width="128" height="128" />
+
 # GhostWire
 
-An OSINT workbench desktop app — built while working through TCM Security's **Practical OSINT Research Professional** course.
+**An all-in-one OSINT workbench for your desktop.**
 
-GhostWire brings the core of an OSINT workflow into one dark "command center":
+Sock puppets with isolated browser sessions · a Maltego-style link graph · investigations · a built-in browser · curated tools & API integrations · Markdown notes that export to Obsidian.
 
-- **Sock Puppet Manager** — create and manage personas with full identity details, linked accounts, tags, and a built-in identity generator. Each persona gets a **fully isolated browser session** (separate cookies/storage), so you can be logged into the same site as multiple identities at once with zero cross-contamination.
-- **Embedded Browser** — a Chromium webview with an address bar and a persona session switcher. Browse as any sock puppet; logins persist per-persona.
-- **Tools & Resources** — a launcher of curated OSINT tools (search, username enumeration, breach lookup, infrastructure, geo, image/face, social, toolkits). Inject a search term into `{QUERY}` tools and open them in the embedded browser. Add your own.
-- **Graph Workspace** — a Maltego-style canvas to map entities (people, emails, usernames, domains, IPs, orgs, locations, wallets…) and the links between them, with a per-entity property inspector.
-- **Notes** — Markdown note-taking with live preview, folders, tags, and **one-click export to your Obsidian vault** (YAML frontmatter included).
+[![Latest release](https://img.shields.io/github/v/release/AsleepCoffee/Ghostwire?label=download&style=flat-square)](https://github.com/AsleepCoffee/Ghostwire/releases/latest)
+[![Downloads](https://img.shields.io/github/downloads/AsleepCoffee/Ghostwire/total?style=flat-square)](https://github.com/AsleepCoffee/Ghostwire/releases)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue?style=flat-square)](LICENSE)
+![Platform](https://img.shields.io/badge/platform-Windows-0a0c10?style=flat-square)
+![Built with Electron](https://img.shields.io/badge/built%20with-Electron%20%2B%20React-22d3ee?style=flat-square)
 
-All data is stored **locally** in a SQLite database in your app-data folder. Nothing leaves your machine.
+</div>
 
-## Tech stack
+---
 
-- **Electron** + **React** + **TypeScript**, bundled with **electron-vite**
-- **Tailwind CSS** for the UI
-- **sql.js** (SQLite compiled to WebAssembly — no native build step required)
-- **@xyflow/react** (React Flow) for the entity graph
-- **react-markdown** + **remark-gfm** for note rendering
+## ⬇️ Download
 
-## Getting started
+Grab the latest Windows installer from the **[Releases page](https://github.com/AsleepCoffee/Ghostwire/releases/latest)** (`GhostWire-Setup-x.y.z.exe`), run it, and you're set. The app keeps itself up to date automatically — when a new version is published it offers to **install now** or **skip for now**, and you can check manually under **Settings → Updates**.
+
+> The installer isn't code-signed, so Windows SmartScreen may show a “more info → run anyway” prompt on first launch. That's normal for indie apps without a paid signing certificate.
+
+## ✨ Features
+
+- **🎭 Sock Puppet Manager** — build personas with full identity details, avatars, linked accounts, and a one-click identity + password generator. Each persona gets a **fully isolated browser session**, so you can be logged into the same site as several identities at once with zero cross-contamination. Click an account to open that site and auto-fill its credentials.
+- **🌐 Embedded Browser** — a real tabbed Chromium browser with a per-tab persona switcher. Open many tools at once; sites that block embedding fall back to your system browser in one click.
+- **🕵️ Investigations** — a workspace per target (person or company). Capture structured **known information** (emails, usernames, domains, IPs…), pivot on any of it, and drop findings straight onto a link chart. Group personas, notes, and boards under each case.
+- **🕸️ Graph Workspace** — a Maltego-style canvas to map entities and relationships, with **transforms** that expand an entity into related ones (free crt.sh subdomains, IPinfo enrichment, profile expansion, and more).
+- **🎯 Dork & Pivot** — a Google-dork builder plus a pivot engine that generates the right lookups for any value (email, username, domain, IP, name…) and opens them as tabs.
+- **🧰 Tools & API Integrations** — a curated launcher of OSINT tools, plus integrations that unlock when you add a free or paid API key (VirusTotal, Shodan, AbuseIPDB, urlscan, IPinfo, Hunter, Censys, and more). Test any key from Settings.
+- **📝 Notes** — Markdown notes with live preview, folders, tags, and image paste — **one-click export to your Obsidian vault** with YAML frontmatter.
+- **🎨 10 themes** that reskin the whole app, light-touch animations, and a clean dark “command center” UI.
+
+All data is stored **locally** in a SQLite database in your app-data folder. Nothing leaves your machine unless you explicitly use a tool or API.
+
+## 🔒 Privacy & security
+
+- Everything lives locally (SQLite + Markdown). GhostWire has no backend and phones home only to GitHub to check for updates.
+- Persona credentials and API keys are stored **in plaintext** in your local database — keep your device encrypted and secured.
+
+## ⚖️ Responsible use
+
+GhostWire is for **authorized, lawful OSINT** — security research, investigations you're permitted to run, CTFs, journalism, and education. You are responsible for complying with the terms of service of any site you access and with the laws of your jurisdiction. Don't use it to harass, stalk, or harm.
+
+## 🛠️ Development
+
+Requires Node.js 20+.
 
 ```bash
 npm install        # install dependencies
-npm run dev        # launch in development (hot reload)
+npm run dev        # launch with hot reload
 npm run build      # production build into ./out
 npm run start      # preview the production build
-npm run build:win  # package a Windows installer (electron-builder)
+npm run build:win  # build a Windows installer into ./dist
 ```
 
-> On first launch GhostWire seeds a curated set of OSINT tools and creates its SQLite
-> database under your Electron `userData` directory (`%APPDATA%/ghostwire` on Windows).
+GhostWire is **Electron + React + TypeScript** (electron-vite), styled with **Tailwind CSS**, using **sql.js** (WebAssembly SQLite — no native build step), **@xyflow/react** for the graph, and **react-markdown** for notes.
 
-## Install & auto-updates
+```
+src/
+  main/        Electron main — window, SQLite DB, IPC, media, updater, API tests, export
+  preload/     contextBridge API exposed to the renderer as window.api
+  renderer/    React app
+    src/
+      pages/       Dashboard, Investigations, Graph, Tools, Dork, Browser, Notes, Settings
+      components/  Sidebar, Topbar, dialogs, shared UI
+      lib/         API wrapper, pivot/transform engines, themes, constants
+  shared/      Types shared between main and renderer
+```
 
-Pre-built Windows installers are published on the
-[Releases](https://github.com/AsleepCoffee/Ghostwire/releases) page
-(`GhostWire Setup x.y.z.exe`). The app checks GitHub for a newer release on
-launch, downloads it in the background, and offers to restart & install — you
-can also trigger a check from **Settings → Updates**.
+## 📦 Releases
 
-> Auto-update reads release metadata over GitHub's public API, so it requires
-> the repository (and its releases) to be **public**. While the repo is
-> private the in-app check simply reports it couldn't find an update.
->
-> The installer is **not code-signed**, so Windows SmartScreen will show a
-> "more info → run anyway" prompt on first launch.
-
-## Cutting a release
-
-Releases are built and published by GitHub Actions when a version tag is pushed:
+Releases are built and published automatically by GitHub Actions when a version tag is pushed:
 
 ```bash
-# bump "version" in package.json first, then:
+# bump "version" in package.json, then:
 git tag -a v0.2.0 -m "GhostWire v0.2.0"
 git push origin v0.2.0
 ```
 
-The [`Release` workflow](.github/workflows/release.yml) builds the Windows
-installer on a runner and uploads it (plus `latest.yml`, which auto-update
-reads) to a GitHub Release for that tag. To build an installer locally without
-publishing: `npm run build:win` (output in `dist/`).
+The workflow builds the Windows installer and attaches it (plus `latest.yml` for auto-update) to a GitHub Release, with notes pulled from [`CHANGELOG.md`](CHANGELOG.md).
 
-## Project structure
+## 📄 License
 
-```
-src/
-  main/        Electron main process — window, SQLite (sql.js) DB, IPC handlers, MD export
-  preload/     contextBridge API exposed to the renderer as window.api
-  renderer/    React app (Vite)
-    src/
-      pages/       Dashboard, SockPuppets, Browser, Notes, Tools, Graph, Settings
-      components/  Sidebar, Topbar, shared UI primitives
-      lib/         API wrapper, constants, identity generator
-  shared/      Types shared between main and renderer
-```
+[MIT](LICENSE) © GhostWire contributors
 
-## Notes on sock puppet isolation
-
-Each persona is assigned a unique Electron session partition (`persist:persona_<id>`).
-The embedded browser mounts a `<webview>` with that partition, giving every identity its
-own cookie jar and local storage. Switching identities in the browser remounts the webview
-against the selected partition.
-
-## Security
-
-- Persona credentials are stored in plaintext in the local SQLite DB. Keep your device
-  encrypted and secured.
-- Use this tool only for authorized research, education, and lawful OSINT work.
-
----
-
-Built with [Claude Code](https://claude.com/claude-code).
