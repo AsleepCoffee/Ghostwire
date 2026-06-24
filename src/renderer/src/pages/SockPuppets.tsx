@@ -9,11 +9,15 @@ import {
   Copy,
   Fingerprint,
   X,
-  Pencil
+  Pencil,
+  Crosshair,
+  ImagePlus
 } from 'lucide-react'
 import { api, type Persona, type PersonaAccount, type PersonaStatus } from '../lib/api'
 import { generateIdentity, personaColor } from '../lib/constants'
 import { Modal, StatusBadge, EmptyState } from '../components/ui'
+import { PivotModal } from '../components/PivotModal'
+import type { PivotSubject } from '../lib/pivot'
 
 const EMPTY: Partial<Persona> = {
   name: '',
@@ -27,6 +31,7 @@ export function SockPuppets(): JSX.Element {
   const [personas, setPersonas] = useState<Persona[]>([])
   const [query, setQuery] = useState('')
   const [editing, setEditing] = useState<Partial<Persona> | null>(null)
+  const [pivot, setPivot] = useState<{ value: string; subject: PivotSubject } | null>(null)
   const nav = useNavigate()
 
   const load = async (): Promise<void> => setPersonas(await api.personas.list())
@@ -100,6 +105,9 @@ export function SockPuppets(): JSX.Element {
                 onEdit={() => setEditing(p)}
                 onDelete={() => remove(p)}
                 onBrowse={() => nav(`/browser?persona=${p.id}`)}
+                onPivot={() =>
+                  setPivot({ value: p.handle || p.name, subject: p.handle ? 'username' : 'name' })
+                }
               />
             ))}
           </div>
@@ -116,6 +124,13 @@ export function SockPuppets(): JSX.Element {
           }}
         />
       )}
+
+      <PivotModal
+        open={!!pivot}
+        onClose={() => setPivot(null)}
+        subject={pivot?.subject ?? 'username'}
+        value={pivot?.value ?? ''}
+      />
     </div>
   )
 }
@@ -124,23 +139,34 @@ function PersonaCard({
   p,
   onEdit,
   onDelete,
-  onBrowse
+  onBrowse,
+  onPivot
 }: {
   p: Persona
   onEdit: () => void
   onDelete: () => void
   onBrowse: () => void
+  onPivot: () => void
 }): JSX.Element {
   const color = personaColor(p.id)
   return (
     <div className="card p-4 hover:border-ink-600 transition-colors group">
       <div className="flex items-start gap-3">
-        <div
-          className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0"
-          style={{ background: `${color}22`, border: `1px solid ${color}55` }}
-        >
-          <Fingerprint size={22} style={{ color }} />
-        </div>
+        {p.avatarPath ? (
+          <img
+            src={p.avatarPath}
+            alt={p.name}
+            className="w-11 h-11 rounded-xl object-cover shrink-0"
+            style={{ border: `1px solid ${color}55` }}
+          />
+        ) : (
+          <div
+            className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0"
+            style={{ background: `${color}22`, border: `1px solid ${color}55` }}
+          >
+            <Fingerprint size={22} style={{ color }} />
+          </div>
+        )}
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             <h3 className="font-semibold text-slate-100 truncate">{p.name || 'Unnamed'}</h3>
@@ -171,6 +197,9 @@ function PersonaCard({
       <div className="mt-4 flex items-center gap-1.5 pt-3 border-t border-ink-700">
         <button className="btn-primary flex-1 justify-center" onClick={onBrowse}>
           <Globe size={15} /> Browse as
+        </button>
+        <button className="btn-ghost !px-2" onClick={onPivot} title="Search this persona everywhere">
+          <Crosshair size={16} />
         </button>
         <button className="btn-ghost !px-2" onClick={onEdit} title="Edit">
           <Pencil size={16} />
@@ -236,7 +265,32 @@ function PersonaEditor({
   return (
     <Modal open onClose={onClose} title={initial.id ? 'Edit persona' : 'New persona'} wide>
       <div className="space-y-5 max-h-[70vh] overflow-y-auto pr-1">
-        <div className="flex justify-end">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            {p.avatarPath ? (
+              <img src={p.avatarPath} alt="avatar" className="w-14 h-14 rounded-xl object-cover border border-ink-600" />
+            ) : (
+              <div className="w-14 h-14 rounded-xl bg-ink-800 border border-ink-700 flex items-center justify-center">
+                <Fingerprint size={24} className="text-slate-500" />
+              </div>
+            )}
+            <div className="flex gap-2">
+              <button
+                className="btn-ghost border border-ink-600"
+                onClick={async () => {
+                  const url = await api.files.pickImage('avatars')
+                  if (url) set({ avatarPath: url })
+                }}
+              >
+                <ImagePlus size={15} /> {p.avatarPath ? 'Change' : 'Upload'} avatar
+              </button>
+              {p.avatarPath && (
+                <button className="btn-ghost text-slate-500" onClick={() => set({ avatarPath: null })}>
+                  Remove
+                </button>
+              )}
+            </div>
+          </div>
           <button className="btn-ghost border border-ink-600" onClick={fillRandom}>
             <Wand2 size={15} /> Generate identity
           </button>

@@ -17,10 +17,12 @@ import {
   type NodeProps
 } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
-import { Plus, Trash2, X, Save } from 'lucide-react'
+import { Plus, Trash2, X, ImagePlus, Crosshair } from 'lucide-react'
 import { api, type Board, type EntityNode, type EntityType } from '../lib/api'
 import { ENTITY_TYPES } from '../lib/constants'
 import { Icon, EmptyState } from '../components/ui'
+import { PivotModal } from '../components/PivotModal'
+import { subjectForEntity, type PivotSubject } from '../lib/pivot'
 
 type RFNode = Node<{ entity: EntityNode }>
 
@@ -38,12 +40,16 @@ function EntityNodeView({ data, selected }: NodeProps<RFNode>): JSX.Element {
     >
       <Handle type="target" position={Position.Left} style={{ background: cfg.color }} />
       <div className="flex items-center gap-2">
-        <div
-          className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
-          style={{ background: `${cfg.color}22` }}
-        >
-          <Icon name={cfg.icon} size={16} className="text-slate-100" />
-        </div>
+        {e.props.image ? (
+          <img src={e.props.image} alt="" className="w-8 h-8 rounded-lg object-cover shrink-0" />
+        ) : (
+          <div
+            className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
+            style={{ background: `${cfg.color}22` }}
+          >
+            <Icon name={cfg.icon} size={16} className="text-slate-100" />
+          </div>
+        )}
         <div className="min-w-0">
           <div className="text-[10px] uppercase tracking-wide" style={{ color: cfg.color }}>
             {cfg.label}
@@ -74,6 +80,7 @@ function GraphInner(): JSX.Element {
   const [nodes, setNodes, onNodesChange] = useNodesState<RFNode>([])
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([])
   const [selected, setSelected] = useState<EntityNode | null>(null)
+  const [pivot, setPivot] = useState<{ value: string; subject: PivotSubject } | null>(null)
   const seq = useRef(0)
 
   const board = boards.find((b) => b.id === boardId)
@@ -281,9 +288,22 @@ function GraphInner(): JSX.Element {
             onChange={updateSelected}
             onDelete={deleteSelected}
             onClose={() => setSelected(null)}
+            onPivot={() =>
+              setPivot({
+                value: selected.label,
+                subject: subjectForEntity(selected.type)
+              })
+            }
           />
         )}
       </div>
+
+      <PivotModal
+        open={!!pivot}
+        onClose={() => setPivot(null)}
+        subject={pivot?.subject ?? 'generic'}
+        value={pivot?.value ?? ''}
+      />
     </div>
   )
 }
@@ -292,12 +312,14 @@ function EntityInspector({
   entity,
   onChange,
   onDelete,
-  onClose
+  onClose,
+  onPivot
 }: {
   entity: EntityNode
   onChange: (p: Partial<EntityNode>) => void
   onDelete: () => void
   onClose: () => void
+  onPivot: () => void
 }): JSX.Element {
   const [propKey, setPropKey] = useState('')
   const [propVal, setPropVal] = useState('')
@@ -340,6 +362,47 @@ function EntityInspector({
           <label className="label">Label</label>
           <input className="input" value={entity.label} onChange={(e) => onChange({ label: e.target.value })} />
         </div>
+
+        <button className="btn-primary w-full justify-center" disabled={!entity.label.trim()} onClick={onPivot}>
+          <Crosshair size={15} /> Search everywhere
+        </button>
+
+        <div>
+          <label className="label">Image</label>
+          <div className="flex items-center gap-3">
+            {entity.props.image ? (
+              <img src={entity.props.image} alt="" className="w-16 h-16 rounded-lg object-cover border border-ink-600" />
+            ) : (
+              <div className="w-16 h-16 rounded-lg bg-ink-800 border border-ink-700 flex items-center justify-center">
+                <Icon name="Image" size={20} className="text-slate-600" />
+              </div>
+            )}
+            <div className="flex flex-col gap-1.5">
+              <button
+                className="btn-ghost border border-ink-600 text-xs"
+                onClick={async () => {
+                  const url = await api.files.pickImage('entities')
+                  if (url) onChange({ props: { ...entity.props, image: url } })
+                }}
+              >
+                <ImagePlus size={14} /> {entity.props.image ? 'Change' : 'Attach'}
+              </button>
+              {entity.props.image && (
+                <button
+                  className="btn-ghost text-slate-500 text-xs"
+                  onClick={() => {
+                    const next = { ...entity.props }
+                    delete next.image
+                    onChange({ props: next })
+                  }}
+                >
+                  Remove
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+
         <div>
           <label className="label">Notes</label>
           <textarea
@@ -351,7 +414,7 @@ function EntityInspector({
         <div>
           <label className="label">Properties</label>
           <div className="space-y-1.5 mb-2">
-            {Object.entries(entity.props).map(([k, v]) => (
+            {Object.entries(entity.props).filter(([k]) => k !== 'image').map(([k, v]) => (
               <div key={k} className="flex items-center gap-2 text-sm">
                 <span className="text-slate-400 w-24 truncate">{k}</span>
                 <span className="text-slate-200 flex-1 truncate">{v}</span>

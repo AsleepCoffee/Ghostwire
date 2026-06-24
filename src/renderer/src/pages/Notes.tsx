@@ -13,7 +13,8 @@ import {
   FileDown,
   FolderUp,
   X,
-  Tag
+  Tag,
+  ImagePlus
 } from 'lucide-react'
 import { api, type Note } from '../lib/api'
 import { EmptyState } from '../components/ui'
@@ -226,10 +227,42 @@ function NoteEditor({
   onExport: () => void
 }): JSX.Element {
   const [tagInput, setTagInput] = useState('')
+  const bodyRef = useRef<HTMLTextAreaElement | null>(null)
   const addTag = (): void => {
     const t = tagInput.trim()
     if (t && !note.tags.includes(t)) onPatch({ tags: [...note.tags, t] })
     setTagInput('')
+  }
+
+  const insertAtCursor = (text: string): void => {
+    const el = bodyRef.current
+    const body = note.body
+    if (!el) {
+      onPatch({ body: `${body}\n${text}\n` })
+      return
+    }
+    const start = el.selectionStart ?? body.length
+    const end = el.selectionEnd ?? body.length
+    onPatch({ body: body.slice(0, start) + text + body.slice(end) })
+  }
+
+  const insertImageFile = async (): Promise<void> => {
+    const url = await api.files.pickImage('notes')
+    if (url) insertAtCursor(`\n![image](${url})\n`)
+  }
+
+  const onPaste = async (e: React.ClipboardEvent<HTMLTextAreaElement>): Promise<void> => {
+    const item = Array.from(e.clipboardData.items).find((i) => i.type.startsWith('image/'))
+    if (!item) return
+    e.preventDefault()
+    const file = item.getAsFile()
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = async (): Promise<void> => {
+      const url = await api.files.saveDataUrl(String(reader.result), 'notes')
+      insertAtCursor(`\n![pasted image](${url})\n`)
+    }
+    reader.readAsDataURL(file)
   }
 
   return (
@@ -244,6 +277,9 @@ function NoteEditor({
           />
           <button className="btn-ghost !px-2" onClick={() => onPatch({ pinned: !note.pinned })} title="Pin">
             {note.pinned ? <PinOff size={17} /> : <Pin size={17} />}
+          </button>
+          <button className="btn-ghost !px-2" onClick={insertImageFile} title="Insert image">
+            <ImagePlus size={17} />
           </button>
           <button className="btn-ghost" onClick={onTogglePreview}>
             {preview ? <Pencil size={16} /> : <Eye size={16} />}
@@ -293,10 +329,12 @@ function NoteEditor({
           </div>
         ) : (
           <textarea
+            ref={bodyRef}
             className="w-full h-full bg-ink-950 text-slate-200 font-mono text-sm leading-relaxed p-6 outline-none resize-none"
             value={note.body}
             onChange={(e) => onPatch({ body: e.target.value })}
-            placeholder="# Start writing in Markdown…"
+            onPaste={onPaste}
+            placeholder="# Start writing in Markdown…  (paste or insert images too)"
             spellCheck={false}
           />
         )}

@@ -29,7 +29,21 @@ const api: OsintApi = {
   tools: {
     list: () => ipcRenderer.invoke('tools:list'),
     save: (t) => ipcRenderer.invoke('tools:save', t),
-    remove: (id) => ipcRenderer.invoke('tools:remove', id)
+    remove: (id) => ipcRenderer.invoke('tools:remove', id),
+    testAll: () => ipcRenderer.invoke('tools:testAll'),
+    onTestProgress: (cb) => {
+      const listener = (_e: unknown, payload: unknown): void =>
+        cb(payload as Parameters<typeof cb>[0])
+      ipcRenderer.on('tools:testProgress', listener as never)
+      return () => ipcRenderer.removeListener('tools:testProgress', listener as never)
+    }
+  },
+  files: {
+    pickImage: (kind) => ipcRenderer.invoke('files:pickImage', kind),
+    saveDataUrl: (dataUrl, kind) => ipcRenderer.invoke('files:saveDataUrl', dataUrl, kind)
+  },
+  shell: {
+    openExternal: (url) => ipcRenderer.invoke('shell:openExternal', url)
   },
   settings: {
     get: () => ipcRenderer.invoke('settings:get'),

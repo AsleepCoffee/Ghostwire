@@ -92,7 +92,10 @@ CREATE TABLE IF NOT EXISTS tools (
   category TEXT DEFAULT 'General',
   description TEXT,
   builtin INTEGER DEFAULT 0,
-  sortOrder INTEGER DEFAULT 0
+  sortOrder INTEGER DEFAULT 0,
+  openMode TEXT DEFAULT 'embed',
+  health TEXT,
+  checkedAt INTEGER
 );
 
 CREATE TABLE IF NOT EXISTS settings (
@@ -114,8 +117,25 @@ export async function initDb(): Promise<void> {
     db = new SQL.Database()
   }
   db.run(SCHEMA)
+  migrate()
   seedTools()
   persist(true)
+}
+
+/** Idempotent column additions for DBs created before a column existed. */
+function migrate(): void {
+  const adds = [
+    "ALTER TABLE tools ADD COLUMN openMode TEXT DEFAULT 'embed'",
+    'ALTER TABLE tools ADD COLUMN health TEXT',
+    'ALTER TABLE tools ADD COLUMN checkedAt INTEGER'
+  ]
+  for (const sql of adds) {
+    try {
+      db.run(sql)
+    } catch {
+      // column already exists — ignore
+    }
+  }
 }
 
 /** Persist the in-memory DB to disk (debounced unless `immediate`). */
@@ -156,14 +176,32 @@ export function run(sql: string, params: unknown[] = []): void {
   persist()
 }
 
+// Sites that are painful to use embedded (hard login walls / framebusting) → open externally.
+const EXTERNAL_BY_DEFAULT = new Set([
+  'LinkedIn',
+  'Facebook',
+  'Instagram',
+  'PimEyes',
+  'TikTok',
+  'Dehashed'
+])
+
 function seedTools(): void {
   const count = get<{ c: number }>('SELECT COUNT(*) AS c FROM tools')?.c ?? 0
   if (count > 0) return
   let order = 0
   for (const t of DEFAULT_TOOLS) {
     run(
-      'INSERT INTO tools (id, name, url, category, description, builtin, sortOrder) VALUES (?,?,?,?,?,1,?)',
-      [cryptoId(), t.name, t.url, t.category, t.description ?? '', order++]
+      'INSERT INTO tools (id, name, url, category, description, builtin, sortOrder, openMode) VALUES (?,?,?,?,?,1,?,?)',
+      [
+        cryptoId(),
+        t.name,
+        t.url,
+        t.category,
+        t.description ?? '',
+        order++,
+        EXTERNAL_BY_DEFAULT.has(t.name) ? 'external' : 'embed'
+      ]
     )
   }
 }

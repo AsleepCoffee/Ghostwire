@@ -1,8 +1,21 @@
-import { useEffect, useMemo, useState } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
-import { Plus, Search, ExternalLink, Trash2, Pencil, Target } from 'lucide-react'
-import { api, type ToolLink } from '../lib/api'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
+import {
+  Plus,
+  Search,
+  ExternalLink,
+  Trash2,
+  Pencil,
+  Target,
+  Crosshair,
+  Activity,
+  Loader2
+} from 'lucide-react'
+import { api, type ToolLink, type ToolHealth } from '../lib/api'
 import { Icon, Modal, EmptyState } from '../components/ui'
+import { PivotModal } from '../components/PivotModal'
+import { useOpenInBrowser } from '../lib/browserBus'
+import type { PivotSubject } from '../lib/pivot'
 
 const CATEGORY_ICON: Record<string, string> = {
   Search: 'Search',
@@ -17,6 +30,13 @@ const CATEGORY_ICON: Record<string, string> = {
   General: 'Wrench'
 }
 
+const HEALTH: Record<ToolHealth, { color: string; label: string }> = {
+  ok: { color: '#34d399', label: 'Loads OK' },
+  login: { color: '#f59e0b', label: 'Login required' },
+  blocked: { color: '#f43f5e', label: 'Blocked / failed' },
+  error: { color: '#f43f5e', label: 'Error / timeout' }
+}
+
 export function Tools(): JSX.Element {
   const [params] = useSearchParams()
   const [tools, setTools] = useState<ToolLink[]>([])
@@ -24,17 +44,19 @@ export function Tools(): JSX.Element {
   const [query, setQuery] = useState('')
   const [term, setTerm] = useState('')
   const [editing, setEditing] = useState<Partial<ToolLink> | null>(null)
-  const nav = useNavigate()
+  const [pivotOpen, setPivotOpen] = useState(false)
+  const [testing, setTesting] = useState(false)
+  const [progress, setProgress] = useState({ done: 0, total: 0 })
+  const openInBrowser = useOpenInBrowser()
+  const unsubRef = useRef<(() => void) | null>(null)
 
   const load = async (): Promise<void> => setTools(await api.tools.list())
   useEffect(() => {
     load()
+    return () => unsubRef.current?.()
   }, [])
 
-  const categories = useMemo(
-    () => ['All', ...Array.from(new Set(tools.map((t) => t.category)))],
-    [tools]
-  )
+  const categories = useMemo(() => ['All', ...Array.from(new Set(tools.map((t) => t.category)))], [tools])
 
   const filtered = useMemo(() => {
     const q = query.toLowerCase()
@@ -45,16 +67,39 @@ export function Tools(): JSX.Element {
     )
   }, [tools, cat, query])
 
+  const resolveUrl = (t: ToolLink): string =>
+    t.url.includes('{QUERY}') ? t.url.replace('{QUERY}', encodeURIComponent(term.trim())) : t.url
+
   const launch = (t: ToolLink): void => {
-    const url = t.url.includes('{QUERY}')
-      ? t.url.replace('{QUERY}', encodeURIComponent(term.trim()))
-      : t.url
-    nav(`/browser?url=${encodeURIComponent(url)}`)
+    const url = resolveUrl(t)
+    if (t.openMode === 'external') api.shell.openExternal(url)
+    else openInBrowser([url])
+  }
+
+  const launchAllVisible = (): void => {
+    const embed = filtered.filter((t) => t.openMode !== 'external')
+    const external = filtered.filter((t) => t.openMode === 'external')
+    external.forEach((t) => api.shell.openExternal(resolveUrl(t)))
+    if (embed.length) openInBrowser(embed.map(resolveUrl))
   }
 
   const remove = async (t: ToolLink): Promise<void> => {
     if (!confirm(`Remove "${t.name}" from your tools?`)) return
     await api.tools.remove(t.id)
+    load()
+  }
+
+  const testAll = async (): Promise<void> => {
+    setTesting(true)
+    setProgress({ done: 0, total: tools.length })
+    unsubRef.current = api.tools.onTestProgress((r) => {
+      setProgress({ done: r.done, total: r.total })
+      setTools((prev) => prev.map((t) => (t.id === r.id ? { ...t, health: r.health } : t)))
+    })
+    await api.tools.testAll()
+    unsubRef.current?.()
+    unsubRef.current = null
+    setTesting(false)
     load()
   }
 
@@ -66,12 +111,18 @@ export function Tools(): JSX.Element {
             <Icon name="Wrench" size={20} className="text-brand-glow" /> Tools & Resources
           </h1>
           <p className="text-sm text-slate-500">
-            Launch OSINT tools in the embedded browser. Tools with a query slot use the search term below.
+            Launch tools in the in-app browser (or externally). Run a health-check to see what works.
           </p>
         </div>
-        <button className="btn-primary" onClick={() => setEditing({ category: 'General' })}>
-          <Plus size={16} /> Add Tool
-        </button>
+        <div className="flex gap-2">
+          <button className="btn-ghost border border-ink-600" onClick={testAll} disabled={testing}>
+            {testing ? <Loader2 size={16} className="animate-spin" /> : <Activity size={16} />}
+            {testing ? `Testing ${progress.done}/${progress.total}` : 'Test all'}
+          </button>
+          <button className="btn-primary" onClick={() => setEditing({ category: 'General', openMode: 'embed' })}>
+            <Plus size={16} /> Add Tool
+          </button>
+        </div>
       </div>
 
       {/* Query + search */}
@@ -80,12 +131,23 @@ export function Tools(): JSX.Element {
           <Target size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-accent" />
           <input
             className="input pl-9"
-            placeholder="Search term to inject into tools (email, username, domain…)"
+            placeholder="Search term to inject into {QUERY} tools (email, username, domain…)"
             value={term}
             onChange={(e) => setTerm(e.target.value)}
           />
         </div>
-        <div className="relative w-64">
+        <button className="btn-ghost border border-ink-600" disabled={!term.trim()} onClick={() => setPivotOpen(true)}>
+          <Crosshair size={15} /> Pivot
+        </button>
+        <button
+          className="btn-ghost border border-ink-600"
+          disabled={filtered.length === 0}
+          onClick={launchAllVisible}
+          title="Open all tools shown below"
+        >
+          <ExternalLink size={15} /> Run all shown
+        </button>
+        <div className="relative w-56">
           <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
           <input
             className="input pl-9"
@@ -116,51 +178,72 @@ export function Tools(): JSX.Element {
           <EmptyState icon="Wrench" title="No tools found" subtitle="Try a different filter or add a custom tool." />
         ) : (
           <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3">
-            {filtered.map((t) => (
-              <div
-                key={t.id}
-                className="card p-3.5 hover:border-brand/40 hover:shadow-glow transition-all cursor-pointer group relative"
-                onClick={() => launch(t)}
-              >
-                <div className="flex items-start gap-3">
-                  <div className="w-10 h-10 rounded-lg bg-ink-800 border border-ink-700 flex items-center justify-center shrink-0">
-                    <Icon name={CATEGORY_ICON[t.category] ?? 'Wrench'} size={18} className="text-brand-glow" />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="font-semibold text-slate-100 truncate flex items-center gap-1">
-                      {t.name}
-                      {t.url.includes('{QUERY}') && (
-                        <span className="text-[9px] text-accent border border-accent/30 rounded px-1">Q</span>
+            {filtered.map((t) => {
+              const h = t.health ? HEALTH[t.health] : null
+              return (
+                <div
+                  key={t.id}
+                  className="card p-3.5 hover:border-brand/40 hover:shadow-glow transition-all cursor-pointer group relative"
+                  onClick={() => launch(t)}
+                >
+                  <div className="flex items-start gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-ink-800 border border-ink-700 flex items-center justify-center shrink-0 relative">
+                      <Icon name={CATEGORY_ICON[t.category] ?? 'Wrench'} size={18} className="text-brand-glow" />
+                      {h && (
+                        <span
+                          className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full border border-ink-850"
+                          style={{ background: h.color }}
+                          title={h.label}
+                        />
                       )}
                     </div>
-                    <div className="text-xs text-slate-500 truncate">{t.category}</div>
+                    <div className="min-w-0 flex-1">
+                      <div className="font-semibold text-slate-100 truncate flex items-center gap-1">
+                        {t.name}
+                        {t.url.includes('{QUERY}') && (
+                          <span className="text-[9px] text-accent border border-accent/30 rounded px-1">Q</span>
+                        )}
+                        {t.openMode === 'external' && (
+                          <ExternalLink size={11} className="text-slate-500" />
+                        )}
+                      </div>
+                      <div className="text-xs text-slate-500 truncate">{t.category}</div>
+                    </div>
+                  </div>
+                  {t.description && <p className="text-xs text-slate-500 mt-2 line-clamp-2">{t.description}</p>}
+                  <div className="absolute top-2 right-2 hidden group-hover:flex gap-1">
+                    <button
+                      className="btn-ghost !p-1"
+                      title="Open externally"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        api.shell.openExternal(resolveUrl(t))
+                      }}
+                    >
+                      <ExternalLink size={13} />
+                    </button>
+                    <button
+                      className="btn-ghost !p-1"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setEditing(t)
+                      }}
+                    >
+                      <Pencil size={13} />
+                    </button>
+                    <button
+                      className="btn-danger !p-1"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        remove(t)
+                      }}
+                    >
+                      <Trash2 size={13} />
+                    </button>
                   </div>
                 </div>
-                {t.description && (
-                  <p className="text-xs text-slate-500 mt-2 line-clamp-2">{t.description}</p>
-                )}
-                <div className="absolute top-2 right-2 hidden group-hover:flex gap-1">
-                  <button
-                    className="btn-ghost !p-1"
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      setEditing(t)
-                    }}
-                  >
-                    <Pencil size={13} />
-                  </button>
-                  <button
-                    className="btn-danger !p-1"
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      remove(t)
-                    }}
-                  >
-                    <Trash2 size={13} />
-                  </button>
-                </div>
-              </div>
-            ))}
+              )
+            })}
           </div>
         )}
       </div>
@@ -175,8 +258,22 @@ export function Tools(): JSX.Element {
           }}
         />
       )}
+
+      <PivotModal open={pivotOpen} onClose={() => setPivotOpen(false)} subject={guessSubject(term)} value={term} />
     </div>
   )
+}
+
+/** Best-effort guess of what the term is, to preselect the pivot subject. */
+function guessSubject(v: string): PivotSubject {
+  const s = v.trim()
+  if (/@/.test(s) && /\w+@\w+\.\w+/.test(s)) return 'email'
+  if (/^\+?[\d\s().-]{7,}$/.test(s)) return 'phone'
+  if (/^\d{1,3}(\.\d{1,3}){3}$/.test(s)) return 'ip'
+  if (/^[\w-]+(\.[\w-]+)+$/.test(s)) return 'domain'
+  if (/^@?\w+$/.test(s)) return 'username'
+  if (/\s/.test(s)) return 'name'
+  return 'generic'
 }
 
 function ToolEditor({
@@ -219,9 +316,20 @@ function ToolEditor({
             <input className="input" value={t.category ?? ''} onChange={(e) => set({ category: e.target.value })} />
           </div>
           <div>
-            <label className="label">Description</label>
-            <input className="input" value={t.description ?? ''} onChange={(e) => set({ description: e.target.value })} />
+            <label className="label">Opens in</label>
+            <select
+              className="input"
+              value={t.openMode ?? 'embed'}
+              onChange={(e) => set({ openMode: e.target.value as 'embed' | 'external' })}
+            >
+              <option value="embed">In-app browser</option>
+              <option value="external">System browser</option>
+            </select>
           </div>
+        </div>
+        <div>
+          <label className="label">Description</label>
+          <input className="input" value={t.description ?? ''} onChange={(e) => set({ description: e.target.value })} />
         </div>
       </div>
       <div className="flex justify-end gap-2 mt-5">

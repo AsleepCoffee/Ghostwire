@@ -1,7 +1,9 @@
-import { ipcMain, dialog, BrowserWindow } from 'electron'
+import { ipcMain, dialog, shell, BrowserWindow } from 'electron'
 import { randomUUID } from 'crypto'
 import { all, get, run } from './db'
 import { exportAllNotes, writeNote } from './export'
+import { pickImage, saveDataUrl } from './media'
+import { testAllTools } from './toolcheck'
 import type {
   AppSettings,
   Board,
@@ -103,7 +105,10 @@ function mapTool(r: Record<string, unknown>): ToolLink {
     category: String(r.category ?? 'General'),
     description: (r.description as string) ?? '',
     builtin: Number(r.builtin) === 1,
-    sortOrder: Number(r.sortOrder ?? 0)
+    sortOrder: Number(r.sortOrder ?? 0),
+    openMode: (r.openMode as 'embed' | 'external') ?? 'embed',
+    health: (r.health as ToolLink['health']) ?? null,
+    checkedAt: r.checkedAt != null ? Number(r.checkedAt) : null
   }
 }
 
@@ -296,11 +301,11 @@ export function registerHandlers(): void {
   ipcMain.handle('tools:save', (_e, tl: Partial<ToolLink>) => {
     const id = tl.id ?? randomUUID()
     run(
-      `INSERT INTO tools (id,name,url,category,description,builtin,sortOrder)
-       VALUES (?,?,?,?,?,?,?)
+      `INSERT INTO tools (id,name,url,category,description,builtin,sortOrder,openMode)
+       VALUES (?,?,?,?,?,?,?,?)
        ON CONFLICT(id) DO UPDATE SET
          name=excluded.name, url=excluded.url, category=excluded.category,
-         description=excluded.description, sortOrder=excluded.sortOrder`,
+         description=excluded.description, sortOrder=excluded.sortOrder, openMode=excluded.openMode`,
       [
         id,
         tl.name ?? 'Tool',
@@ -308,13 +313,32 @@ export function registerHandlers(): void {
         tl.category ?? 'General',
         tl.description ?? '',
         tl.builtin ? 1 : 0,
-        tl.sortOrder ?? 100
+        tl.sortOrder ?? 100,
+        tl.openMode ?? 'embed'
       ]
     )
     return mapTool(get('SELECT * FROM tools WHERE id = ?', [id])!)
   })
   ipcMain.handle('tools:remove', (_e, id: string) => {
     run('DELETE FROM tools WHERE id = ?', [id])
+  })
+  ipcMain.handle('tools:testAll', async (e) => {
+    const tools = all('SELECT * FROM tools').map(mapTool)
+    const results = await testAllTools(tools, (r, done, total) => {
+      const t = now()
+      run('UPDATE tools SET health = ?, checkedAt = ? WHERE id = ?', [r.health, t, r.id])
+      if (!e.sender.isDestroyed()) e.sender.send('tools:testProgress', { ...r, done, total })
+    })
+    return results
+  })
+
+  // ===== Files / images =====
+  ipcMain.handle('files:pickImage', (_e, kind: string) => pickImage(kind))
+  ipcMain.handle('files:saveDataUrl', (_e, dataUrl: string, kind: string) => saveDataUrl(kind, dataUrl))
+
+  // ===== Shell =====
+  ipcMain.handle('shell:openExternal', async (_e, url: string) => {
+    if (/^https?:\/\//i.test(url)) await shell.openExternal(url)
   })
 
   // ===== Settings =====

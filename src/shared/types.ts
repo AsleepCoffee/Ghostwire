@@ -88,6 +88,8 @@ export interface EntityEdge {
   createdAt: number
 }
 
+export type ToolHealth = 'ok' | 'blocked' | 'login' | 'error'
+
 export interface ToolLink {
   id: string
   name: string
@@ -96,6 +98,17 @@ export interface ToolLink {
   description?: string
   builtin: boolean
   sortOrder: number
+  /** 'embed' opens in the in-app browser; 'external' opens the system browser. */
+  openMode: 'embed' | 'external'
+  health?: ToolHealth | null
+  checkedAt?: number | null
+}
+
+export interface ToolTestResult {
+  id: string
+  name: string
+  health: ToolHealth
+  finalUrl?: string
 }
 
 export interface AppSettings {
@@ -132,6 +145,17 @@ export interface OsintApi {
     list(): Promise<ToolLink[]>
     save(t: Partial<ToolLink>): Promise<ToolLink>
     remove(id: string): Promise<void>
+    testAll(): Promise<ToolTestResult[]>
+    onTestProgress(cb: (r: ToolTestResult & { done: number; total: number }) => void): () => void
+  }
+  files: {
+    /** Open a file picker, copy the chosen image into app media, return a gwmedia:// url. */
+    pickImage(kind: string): Promise<string | null>
+    /** Persist a data URL (e.g. a pasted image) into app media, return a gwmedia:// url. */
+    saveDataUrl(dataUrl: string, kind: string): Promise<string>
+  }
+  shell: {
+    openExternal(url: string): Promise<void>
   }
   settings: {
     get(): Promise<AppSettings>

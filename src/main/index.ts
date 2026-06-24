@@ -2,6 +2,10 @@ import { app, shell, BrowserWindow } from 'electron'
 import { join } from 'path'
 import { initDb } from './db'
 import { registerHandlers } from './handlers'
+import { registerMediaScheme, registerMediaProtocol } from './media'
+
+// Must run before app is ready.
+registerMediaScheme()
 
 function createWindow(): void {
   const win = new BrowserWindow({
@@ -39,6 +43,7 @@ function createWindow(): void {
 }
 
 app.whenReady().then(async () => {
+  registerMediaProtocol()
   await initDb()
   registerHandlers()
   createWindow()

@@ -13,6 +13,7 @@ const GROUPS: { heading?: string; items: NavItem[] }[] = [
       { to: '/', label: 'Dashboard', icon: 'LayoutDashboard' },
       { to: '/graph', label: 'Graph Workspace', icon: 'Workflow' },
       { to: '/tools', label: 'Tools & Resources', icon: 'Wrench' },
+      { to: '/dork', label: 'Dork & Pivot', icon: 'Binoculars' },
       { to: '/sock-puppets', label: 'Sock Puppets', icon: 'Drama' },
       { to: '/browser', label: 'Browser', icon: 'Globe' },
       { to: '/notes', label: 'Notes', icon: 'NotebookPen' }

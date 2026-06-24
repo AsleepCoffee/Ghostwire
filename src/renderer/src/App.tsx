@@ -7,6 +7,7 @@ import { Browser } from './pages/Browser'
 import { Notes } from './pages/Notes'
 import { Tools } from './pages/Tools'
 import { Graph } from './pages/Graph'
+import { Dork } from './pages/Dork'
 import { Settings } from './pages/Settings'
 
 export default function App(): JSX.Element {
@@ -22,6 +23,7 @@ export default function App(): JSX.Element {
             <Route path="/browser" element={<Browser />} />
             <Route path="/notes" element={<Notes />} />
             <Route path="/tools" element={<Tools />} />
+            <Route path="/dork" element={<Dork />} />
             <Route path="/graph" element={<Graph />} />
             <Route path="/settings" element={<Settings />} />
           </Routes>

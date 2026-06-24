@@ -16,6 +16,7 @@ import {
 import { api, type Persona, type Note, type ToolLink, type Board } from '../lib/api'
 import { personaColor } from '../lib/constants'
 import { Icon, StatusBadge, Panel } from '../components/ui'
+import { useOpenInBrowser } from '../lib/browserBus'
 
 const CATEGORY_ICON: Record<string, string> = {
   Search: 'Search',
@@ -36,6 +37,13 @@ export function Dashboard(): JSX.Element {
   const [notes, setNotes] = useState<Note[]>([])
   const [tools, setTools] = useState<ToolLink[]>([])
   const [boards, setBoards] = useState<Board[]>([])
+  const openInBrowser = useOpenInBrowser()
+
+  const launchTool = (t: ToolLink): void => {
+    const url = t.url.replace('{QUERY}', '')
+    if (t.openMode === 'external') api.shell.openExternal(url)
+    else openInBrowser([url])
+  }
 
   useEffect(() => {
     api.personas.list().then(setPersonas)
@@ -188,7 +196,7 @@ export function Dashboard(): JSX.Element {
             {featuredTools.map((t) => (
               <button
                 key={t.id}
-                onClick={() => nav(`/browser?url=${encodeURIComponent(t.url.replace('{QUERY}', ''))}`)}
+                onClick={() => launchTool(t)}
                 className="flex items-center gap-3 p-3 rounded-xl bg-ink-800/60 border border-ink-700 hover:border-brand/40 hover:shadow-glow transition-all text-left"
               >
                 <div className="w-9 h-9 rounded-lg bg-ink-850 border border-ink-700 flex items-center justify-center shrink-0">
