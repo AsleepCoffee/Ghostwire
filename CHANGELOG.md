@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.1.7
+- Fixed the urlscan.io key test (now uses the search API endpoint, not the non-API quota route).
+- Censys now accepts a Platform token (Bearer) as well as legacy "API ID:Secret".
+- API keys are cleaned of stray quotes/whitespace before use.
+
 ## v0.1.6
 - Course Notes can now be toggled on/off on its own; Resources is always shown (just above Settings).
 - API key tests now show the provider's actual HTTP status when a key is rejected.

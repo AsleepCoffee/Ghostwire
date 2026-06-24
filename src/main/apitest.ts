@@ -27,22 +27,36 @@ const TESTS: Record<string, Build> = {
   securitytrails: (k) => ({ url: 'https://api.securitytrails.com/v1/ping', headers: { APIKEY: k, Accept: 'application/json' } }),
   pulsedive: (k) => ({ url: `https://pulsedive.com/api/info.php?indicator=google.com&pretty=1&key=${enc(k)}` }),
   opencage: (k) => ({ url: `https://api.opencagedata.com/geocode/v1/json?q=berlin&key=${enc(k)}&limit=1` }),
-  urlscan: (k) => ({ url: 'https://urlscan.io/user/quota/', headers: { 'API-Key': k, Accept: 'application/json' } }),
-  // Censys uses Basic auth with "API ID:Secret".
-  censys: (k) => ({
-    url: 'https://search.censys.io/api/v1/account',
-    headers: { Authorization: `Basic ${Buffer.from(k).toString('base64')}`, Accept: 'application/json' }
-  })
+  // urlscan: the core search endpoint validates a supplied API-Key header.
+  urlscan: (k) => ({
+    url: 'https://urlscan.io/api/v1/search/?q=domain:urlscan.io&size=1',
+    headers: { 'API-Key': k, Accept: 'application/json' }
+  }),
+  // Censys: "API ID:Secret" → legacy Search (Basic auth); a single token → Platform (Bearer).
+  censys: (k) =>
+    k.includes(':')
+      ? {
+          url: 'https://search.censys.io/api/v1/account',
+          headers: { Authorization: `Basic ${Buffer.from(k).toString('base64')}`, Accept: 'application/json' }
+        }
+      : {
+          url: 'https://api.platform.censys.io/v3/global/account',
+          headers: { Authorization: `Bearer ${k}`, Accept: 'application/json' }
+        }
+}
+
+/** Strip whitespace, surrounding quotes, and zero-width chars often added by copy/paste. */
+function cleanKey(s: string): string {
+  return s
+    .trim()
+    .replace(/^["']|["']$/g, '')
+    .replace(/[​-‍﻿]/g, '')
+    .trim()
 }
 
 export async function testApiKey(id: string, key: string): Promise<KeyTestResult> {
-  const k = (key ?? '').trim()
+  const k = cleanKey(key ?? '')
   if (!k) return { ok: false, status: 'invalid', message: 'No key entered' }
-
-  // Censys uses Basic auth with two values: "API ID:Secret".
-  if (id === 'censys' && !k.includes(':')) {
-    return { ok: false, status: 'invalid', message: 'Censys needs "API ID:Secret" (two values, colon-separated)' }
-  }
 
   const build = TESTS[id]
   if (!build) return { ok: false, status: 'untestable', message: 'No automatic test — key is saved for use' }

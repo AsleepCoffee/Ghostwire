@@ -7,6 +7,15 @@ export interface ChangelogEntry {
 /** In-app patch notes. Newest first. Keep in sync with CHANGELOG.md. */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.1.7',
+    date: '2026-06-24',
+    notes: [
+      'Fixed the urlscan.io key test (now uses the search API endpoint, not the non-API quota route).',
+      'Censys now accepts a Platform token (Bearer) as well as legacy "API ID:Secret".',
+      'API keys are cleaned of stray quotes/whitespace before use.'
+    ]
+  },
+  {
     version: '0.1.6',
     date: '2026-06-24',
     notes: [

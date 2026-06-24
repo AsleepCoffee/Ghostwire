@@ -90,8 +90,8 @@ export const API_SERVICES: ApiService[] = [
   {
     id: 'censys',
     name: 'Censys',
-    description: 'Host & cert search — enter as API ID:Secret',
-    free: 'Free tier with monthly query allowance. Key format: API ID:Secret.',
+    description: 'Host & cert search — Platform token, or legacy API ID:Secret',
+    free: 'Free tier. Paste a Platform token, or legacy "API ID:Secret".',
     tier: 'free',
     signup: 'https://censys.io/register',
     unlocks: 'Host & certificate search.',
