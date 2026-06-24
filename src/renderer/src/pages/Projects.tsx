@@ -1,8 +1,16 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Plus, Search, Drama, NotebookPen, Workflow, Target } from 'lucide-react'
-import { api, type Project, type ProjectCounts, type ProjectType, type ProjectStatus } from '../lib/api'
-import { PROJECT_TYPES } from '../lib/constants'
+import { Plus, Search, Drama, NotebookPen, Workflow, Target, Trash2 } from 'lucide-react'
+import {
+  api,
+  type Project,
+  type ProjectCounts,
+  type ProjectType,
+  type ProjectStatus,
+  type DataPoint,
+  type EntityType
+} from '../lib/api'
+import { PROJECT_TYPES, ENTITY_TYPES } from '../lib/constants'
 import { Icon, Modal, StatusBadge, EmptyState } from '../components/ui'
 
 export function Projects(): JSX.Element {
@@ -147,6 +155,13 @@ export function ProjectEditor({
   const set = (patch: Partial<Project>): void => setP((prev) => ({ ...prev, ...patch }))
   const save = async (): Promise<void> => onSaved(await api.projects.save(p))
 
+  const points = p.dataPoints ?? []
+  const addPoint = (): void =>
+    set({ dataPoints: [...points, { id: crypto.randomUUID(), type: 'email', value: '', note: '' }] })
+  const updatePoint = (id: string, patch: Partial<DataPoint>): void =>
+    set({ dataPoints: points.map((d) => (d.id === id ? { ...d, ...patch } : d)) })
+  const removePoint = (id: string): void => set({ dataPoints: points.filter((d) => d.id !== id) })
+
   return (
     <Modal open onClose={onClose} title={initial.id ? 'Edit investigation' : 'New investigation'} wide>
       <div className="space-y-4">
@@ -187,11 +202,57 @@ export function ProjectEditor({
             />
           </div>
         </div>
+        {/* Structured known data points */}
         <div>
-          <label className="label">What we know</label>
+          <div className="flex items-center justify-between mb-2">
+            <label className="label !mb-0">Known information</label>
+            <button className="btn-ghost text-xs" onClick={addPoint}>
+              <Plus size={14} /> Add field
+            </button>
+          </div>
+          <p className="text-[11px] text-slate-500 mb-2">
+            Emails, usernames, domains, phones, etc. You can pivot on these and drop them onto the link chart later.
+          </p>
+          <div className="space-y-2">
+            {points.map((d) => (
+              <div key={d.id} className="grid grid-cols-12 gap-2 items-center">
+                <select
+                  className="input col-span-3 py-1.5 text-sm"
+                  value={d.type}
+                  onChange={(e) => updatePoint(d.id, { type: e.target.value as EntityType })}
+                >
+                  {Object.entries(ENTITY_TYPES).map(([t, cfg]) => (
+                    <option key={t} value={t}>
+                      {cfg.label}
+                    </option>
+                  ))}
+                </select>
+                <input
+                  className="input col-span-4 py-1.5 text-sm"
+                  placeholder="value"
+                  value={d.value}
+                  onChange={(e) => updatePoint(d.id, { value: e.target.value })}
+                />
+                <input
+                  className="input col-span-4 py-1.5 text-sm"
+                  placeholder="note (optional)"
+                  value={d.note ?? ''}
+                  onChange={(e) => updatePoint(d.id, { note: e.target.value })}
+                />
+                <button className="btn-danger !px-2 col-span-1 justify-center" onClick={() => removePoint(d.id)}>
+                  <Trash2 size={15} />
+                </button>
+              </div>
+            ))}
+            {points.length === 0 && <p className="text-xs text-slate-500">No data points yet.</p>}
+          </div>
+        </div>
+
+        <div>
+          <label className="label">Notes / context</label>
           <textarea
-            className="input min-h-[90px] resize-y"
-            placeholder="Starting facts, leads, identifiers…"
+            className="input min-h-[80px] resize-y"
+            placeholder="Freeform notes, leads, background…"
             value={p.known ?? ''}
             onChange={(e) => set({ known: e.target.value })}
           />

@@ -5,6 +5,15 @@ export type PersonaStatus = 'draft' | 'active' | 'burned'
 export type ProjectType = 'person' | 'company' | 'other'
 export type ProjectStatus = 'active' | 'paused' | 'closed'
 
+/** A structured known fact about the investigation's subject. `type` matches
+ *  EntityType so it maps straight onto the link chart. */
+export interface DataPoint {
+  id: string
+  type: EntityType
+  value: string
+  note?: string
+}
+
 export interface Project {
   id: string
   name: string
@@ -12,7 +21,9 @@ export interface Project {
   /** The target of the investigation (a person's name, a company, a domain…). */
   subject: string
   status: ProjectStatus
-  /** What we already know. */
+  /** Structured known data points (emails, usernames, domains, …). */
+  dataPoints: DataPoint[]
+  /** What we already know (freeform). */
   known: string
   /** What we're trying to find out. */
   objectives: string

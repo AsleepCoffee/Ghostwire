@@ -1,3 +1,5 @@
+import type { PivotSubject } from './pivot'
+
 /** OSINT services that sit behind an API key. Keys are stored locally in
  *  settings.apiKeys keyed by `id`. Services are split into free-tier and paid. */
 export interface ApiService {
@@ -162,3 +164,31 @@ export const API_SERVICES: ApiService[] = [
 export const FREE_SERVICES = API_SERVICES.filter((s) => s.tier === 'free')
 export const PAID_SERVICES = API_SERVICES.filter((s) => s.tier === 'paid')
 export const INTEGRATION_SERVICES = API_SERVICES.filter((s) => s.tool)
+
+/** Which pivot subjects each keyed service is useful for. */
+const INTEGRATION_SUBJECTS: Record<string, PivotSubject[]> = {
+  virustotal: ['domain', 'ip'],
+  shodan: ['ip', 'domain'],
+  abuseipdb: ['ip'],
+  urlscan: ['domain', 'ip'],
+  ipinfo: ['ip'],
+  hunter: ['domain'],
+  pulsedive: ['domain', 'ip'],
+  censys: ['ip', 'domain'],
+  securitytrails: ['domain'],
+  dehashed: ['email', 'username', 'name'],
+  intelx: ['email', 'domain', 'username'],
+  greynoise: ['ip']
+}
+
+/** Build pivot queries for services the user has a key for, relevant to `subject`. */
+export function integrationQueriesFor(
+  subject: PivotSubject,
+  value: string,
+  apiKeys: Record<string, string>
+): { label: string; url: string; group: string }[] {
+  const v = encodeURIComponent(value.trim())
+  return API_SERVICES.filter(
+    (s) => s.tool && apiKeys[s.id] && (INTEGRATION_SUBJECTS[s.id] ?? []).includes(subject)
+  ).map((s) => ({ group: 'Your API tools', label: s.name, url: s.tool!.url.replace('{QUERY}', v) }))
+}

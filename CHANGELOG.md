@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.1.8
+- Investigations now hold structured "Known information" (emails, usernames, domains, IPs, …) you can capture on create or in the detail view.
+- Pivot on any data point, or add it to the investigation's link chart in one click; "Build link chart" seeds the whole board at once.
+- Pivots now include your keyed API tools (VirusTotal, Shodan, urlscan, etc.) for the relevant data type — building toward a Maltego-style flow.
+- Fixed Censys Platform token (censys_…) validation — now uses the correct Platform API endpoint.
+
 ## v0.1.7
 - Fixed the urlscan.io key test (now uses the search API endpoint, not the non-API quota route).
 - Censys now accepts a Platform token (Bearer) as well as legacy "API ID:Secret".

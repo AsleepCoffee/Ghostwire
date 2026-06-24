@@ -40,7 +40,8 @@ const TESTS: Record<string, Build> = {
           headers: { Authorization: `Basic ${Buffer.from(k).toString('base64')}`, Accept: 'application/json' }
         }
       : {
-          url: 'https://api.platform.censys.io/v3/global/account',
+          // Censys Platform token (Bearer). Host-asset lookup validates the token.
+          url: 'https://api.platform.censys.io/v3/global/asset/host/8.8.8.8',
           headers: { Authorization: `Bearer ${k}`, Accept: 'application/json' }
         }
 }

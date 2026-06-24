@@ -84,6 +84,7 @@ function mapProject(r: Record<string, unknown>): Project {
     type: (r.type as Project['type']) ?? 'person',
     subject: String(r.subject ?? ''),
     status: (r.status as Project['status']) ?? 'active',
+    dataPoints: pj(r.dataPoints, []),
     known: String(r.known ?? ''),
     objectives: String(r.objectives ?? ''),
     createdAt: Number(r.createdAt),
@@ -172,17 +173,18 @@ export function registerHandlers(): void {
     const existing = p.id ? get('SELECT * FROM projects WHERE id = ?', [p.id]) : null
     const id = p.id ?? randomUUID()
     run(
-      `INSERT INTO projects (id,name,type,subject,status,known,objectives,createdAt,updatedAt)
-       VALUES (?,?,?,?,?,?,?,?,?)
+      `INSERT INTO projects (id,name,type,subject,status,dataPoints,known,objectives,createdAt,updatedAt)
+       VALUES (?,?,?,?,?,?,?,?,?,?)
        ON CONFLICT(id) DO UPDATE SET
          name=excluded.name, type=excluded.type, subject=excluded.subject, status=excluded.status,
-         known=excluded.known, objectives=excluded.objectives, updatedAt=excluded.updatedAt`,
+         dataPoints=excluded.dataPoints, known=excluded.known, objectives=excluded.objectives, updatedAt=excluded.updatedAt`,
       [
         id,
         p.name ?? 'Untitled investigation',
         p.type ?? 'person',
         p.subject ?? '',
         p.status ?? 'active',
+        j(p.dataPoints ?? []),
         p.known ?? '',
         p.objectives ?? '',
         existing ? Number((existing as Record<string, unknown>).createdAt) : t,

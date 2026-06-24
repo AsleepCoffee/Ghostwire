@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import {
   ReactFlow,
   ReactFlowProvider,
@@ -107,10 +108,17 @@ function GraphInner(): JSX.Element {
     setBoards(list)
     if (!boardId && list.length) setBoardId(list[0].id)
   }
+  const [params] = useSearchParams()
   useEffect(() => {
     loadBoards()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  // Honor ?board=<id> (e.g. opened from an investigation's "Build link chart").
+  useEffect(() => {
+    const b = params.get('board')
+    if (b) setBoardId(b)
+  }, [params])
 
   const loadGraph = useCallback(async (id: string): Promise<void> => {
     const { nodes: ents, edges: eds } = await api.boards.graph(id)

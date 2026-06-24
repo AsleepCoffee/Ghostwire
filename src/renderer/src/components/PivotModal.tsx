@@ -3,7 +3,9 @@ import { Crosshair, ExternalLink, LayoutGrid, CheckSquare, Square } from 'lucide
 import { Modal } from './ui'
 import { api, type Persona } from '../lib/api'
 import { generatePivots, SUBJECT_LABELS, type PivotSubject } from '../lib/pivot'
+import { integrationQueriesFor } from '../lib/apiServices'
 import { useOpenInBrowser } from '../lib/browserBus'
+import { useSettings } from '../lib/settings'
 import { personaColor } from '../lib/constants'
 
 export function PivotModal({
@@ -23,6 +25,7 @@ export function PivotModal({
   const [personaId, setPersonaId] = useState('')
   const [personas, setPersonas] = useState<Persona[]>([])
   const openInBrowser = useOpenInBrowser()
+  const { settings } = useSettings()
 
   useEffect(() => {
     setSubj(subject)
@@ -33,7 +36,11 @@ export function PivotModal({
     if (open) api.personas.list().then(setPersonas)
   }, [open])
 
-  const queries = useMemo(() => generatePivots(subj, val), [subj, val])
+  const queries = useMemo(() => {
+    const base = generatePivots(subj, val)
+    const apiTools = integrationQueriesFor(subj, val, settings.apiKeys ?? {})
+    return [...apiTools, ...base]
+  }, [subj, val, settings.apiKeys])
 
   // Select all by default whenever the query set changes.
   useEffect(() => {

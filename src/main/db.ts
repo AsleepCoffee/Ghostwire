@@ -29,6 +29,7 @@ CREATE TABLE IF NOT EXISTS projects (
   type TEXT DEFAULT 'person',
   subject TEXT,
   status TEXT DEFAULT 'active',
+  dataPoints TEXT DEFAULT '[]',
   known TEXT DEFAULT '',
   objectives TEXT DEFAULT '',
   createdAt INTEGER,
@@ -145,7 +146,8 @@ function migrate(): void {
     'ALTER TABLE tools ADD COLUMN checkedAt INTEGER',
     'ALTER TABLE personas ADD COLUMN projectId TEXT',
     'ALTER TABLE notes ADD COLUMN projectId TEXT',
-    'ALTER TABLE boards ADD COLUMN projectId TEXT'
+    'ALTER TABLE boards ADD COLUMN projectId TEXT',
+    "ALTER TABLE projects ADD COLUMN dataPoints TEXT DEFAULT '[]'"
   ]
   for (const sql of adds) {
     try {

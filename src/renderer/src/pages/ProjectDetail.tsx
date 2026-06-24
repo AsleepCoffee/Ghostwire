@@ -22,15 +22,17 @@ import {
   type Persona,
   type Note,
   type Board,
-  type ProjectStatus
+  type ProjectStatus,
+  type DataPoint,
+  type EntityType
 } from '../lib/api'
-import { PROJECT_TYPES, personaColor } from '../lib/constants'
+import { PROJECT_TYPES, ENTITY_TYPES, personaColor } from '../lib/constants'
 import { Icon, StatusBadge } from '../components/ui'
 import { ProjectEditor } from './Projects'
 import { PivotModal } from '../components/PivotModal'
 import { useOpenInBrowser } from '../lib/browserBus'
 import { useConfirm } from '../lib/confirm'
-import type { PivotSubject } from '../lib/pivot'
+import { subjectForEntity, type PivotSubject } from '../lib/pivot'
 
 const subjectForType: Record<Project['type'], PivotSubject> = {
   person: 'name',
@@ -53,10 +55,17 @@ export function ProjectDetail(): JSX.Element {
   const [allNotes, setAllNotes] = useState<Note[]>([])
   const [allBoards, setAllBoards] = useState<Board[]>([])
   const [editing, setEditing] = useState(false)
-  const [pivotOpen, setPivotOpen] = useState(false)
+  const [pivot, setPivot] = useState<{ value: string; subject: PivotSubject } | null>(null)
   const [known, setKnown] = useState('')
   const [objectives, setObjectives] = useState('')
+  const [toast, setToast] = useState('')
+  const [newType, setNewType] = useState<EntityType>('email')
+  const [newValue, setNewValue] = useState('')
   const saveTimer = useRef<NodeJS.Timeout | null>(null)
+  const flash = (m: string): void => {
+    setToast(m)
+    setTimeout(() => setToast(''), 2600)
+  }
 
   const load = async (): Promise<void> => {
     const p = await api.projects.get(id)
@@ -88,6 +97,55 @@ export function ProjectDetail(): JSX.Element {
     if (!(await confirm({ title: `Delete investigation “${project.name}”?`, message: 'Linked personas, notes, and boards are kept — just unlinked from this investigation.', confirmText: 'Delete', danger: true }))) return
     await api.projects.remove(project.id)
     nav('/projects')
+  }
+
+  // ---- data points ----
+  const points = project?.dataPoints ?? []
+  const addPoint = (): void => {
+    if (!newValue.trim()) return
+    patchProject({ dataPoints: [...points, { id: crypto.randomUUID(), type: newType, value: newValue.trim() }] })
+    setNewValue('')
+  }
+  const removePoint = (pid: string): void => patchProject({ dataPoints: points.filter((d) => d.id !== pid) })
+
+  const ensureBoard = async (): Promise<string> => {
+    if (contents.boards[0]) return contents.boards[0].id
+    const b = await api.boards.save({ name: `${project?.name ?? 'Investigation'} — link chart`, projectId: id })
+    await load()
+    return b.id
+  }
+  const addToGraph = async (type: EntityType, value: string): Promise<void> => {
+    if (!value.trim()) return
+    const boardId = await ensureBoard()
+    await api.boards.saveNode({
+      boardId,
+      type,
+      label: value.trim(),
+      props: {},
+      x: 80 + Math.round(Math.random() * 360),
+      y: 80 + Math.round(Math.random() * 260)
+    })
+    await load()
+    flash(`Added “${value}” to the link chart`)
+  }
+  const addAllToGraph = async (): Promise<void> => {
+    if (points.length === 0) return
+    const boardId = await ensureBoard()
+    let i = 0
+    for (const d of points) {
+      if (!d.value.trim()) continue
+      await api.boards.saveNode({
+        boardId,
+        type: d.type,
+        label: d.value.trim(),
+        props: d.note ? { note: d.note } : {},
+        x: 120 + (i % 4) * 200,
+        y: 120 + Math.floor(i / 4) * 110
+      })
+      i++
+    }
+    await load()
+    nav(`/graph?board=${boardId}`)
   }
 
   // ---- linking helpers ----
@@ -172,7 +230,10 @@ export function ProjectDetail(): JSX.Element {
             <option value="closed">Closed</option>
           </select>
           {project.subject && (
-            <button className="btn-primary" onClick={() => setPivotOpen(true)}>
+            <button
+              className="btn-primary"
+              onClick={() => setPivot({ value: project.subject, subject: subjectForType[project.type] })}
+            >
               <Crosshair size={15} /> Search target
             </button>
           )}
@@ -184,11 +245,94 @@ export function ProjectDetail(): JSX.Element {
           </button>
         </div>
 
+        {/* Known information — structured data points */}
+        <section className="card">
+          <header className="flex items-center justify-between px-4 py-3 border-b border-ink-700">
+            <div className="font-semibold text-slate-100 text-sm flex items-center gap-2">
+              <Icon name="ListChecks" size={16} className="text-brand-glow" /> Known information
+              <span className="text-slate-500">({points.length})</span>
+            </div>
+            <button className="btn-primary !py-1 !px-2 text-xs" disabled={points.length === 0} onClick={addAllToGraph}>
+              <Workflow size={14} /> Build link chart
+            </button>
+          </header>
+
+          <div className="divide-y divide-ink-800">
+            {points.map((d) => {
+              const ecfg = ENTITY_TYPES[d.type]
+              return (
+                <div key={d.id} className="flex items-center gap-3 px-4 py-2.5 group">
+                  <div
+                    className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
+                    style={{ background: `${ecfg.color}22` }}
+                  >
+                    <Icon name={ecfg.icon} size={15} style={{ color: ecfg.color }} />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="text-sm font-medium text-slate-200 truncate">{d.value}</div>
+                    <div className="text-xs text-slate-500 truncate">
+                      {ecfg.label}
+                      {d.note ? ` · ${d.note}` : ''}
+                    </div>
+                  </div>
+                  <button
+                    className="btn-ghost !px-2 text-xs"
+                    title="Pivot — search this everywhere"
+                    onClick={() => setPivot({ value: d.value, subject: subjectForEntity(d.type) })}
+                  >
+                    <Crosshair size={14} /> Pivot
+                  </button>
+                  <button
+                    className="btn-ghost !px-2 text-xs"
+                    title="Add to the link chart"
+                    onClick={() => addToGraph(d.type, d.value)}
+                  >
+                    <Plus size={14} /> Graph
+                  </button>
+                  <button className="btn-ghost !px-2 text-slate-500" title="Remove" onClick={() => removePoint(d.id)}>
+                    <Trash2 size={14} />
+                  </button>
+                </div>
+              )
+            })}
+            {points.length === 0 && (
+              <div className="px-4 py-4 text-sm text-slate-500">
+                No data points yet. Add what you know below — then pivot on it or drop it onto the link chart.
+              </div>
+            )}
+          </div>
+
+          {/* Add a data point */}
+          <div className="flex items-center gap-2 px-4 py-3 border-t border-ink-700">
+            <select
+              className="input !w-40 py-1.5 text-sm"
+              value={newType}
+              onChange={(e) => setNewType(e.target.value as EntityType)}
+            >
+              {Object.entries(ENTITY_TYPES).map(([t, c]) => (
+                <option key={t} value={t}>
+                  {c.label}
+                </option>
+              ))}
+            </select>
+            <input
+              className="input py-1.5 text-sm"
+              placeholder="value (email, username, domain, IP…)"
+              value={newValue}
+              onChange={(e) => setNewValue(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && addPoint()}
+            />
+            <button className="btn-primary shrink-0" disabled={!newValue.trim()} onClick={addPoint}>
+              <Plus size={15} /> Add
+            </button>
+          </div>
+        </section>
+
         {/* Known / Objectives */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="card p-4">
             <h2 className="font-semibold text-slate-100 mb-2 flex items-center gap-2">
-              <Lightbulb size={16} className="text-ok" /> What we know
+              <Lightbulb size={16} className="text-ok" /> Notes & context
             </h2>
             <textarea
               className="input min-h-[140px] resize-y"
@@ -291,11 +435,17 @@ export function ProjectDetail(): JSX.Element {
       )}
 
       <PivotModal
-        open={pivotOpen}
-        onClose={() => setPivotOpen(false)}
-        subject={subjectForType[project.type]}
-        value={project.subject}
+        open={!!pivot}
+        onClose={() => setPivot(null)}
+        subject={pivot?.subject ?? subjectForType[project.type]}
+        value={pivot?.value ?? project.subject}
       />
+
+      {toast && (
+        <div className="fixed bottom-5 right-5 z-50 card px-4 py-2.5 text-sm text-slate-200 border-brand/30 shadow-xl">
+          {toast}
+        </div>
+      )}
     </div>
   )
 }
