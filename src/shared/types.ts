@@ -209,7 +209,10 @@ export interface OsintApi {
     fetchJson(url: string, headers?: Record<string, string>): Promise<unknown>
   }
   apiKeys: {
-    test(id: string, key: string): Promise<{ ok: boolean; message: string }>
+    test(
+      id: string,
+      key: string
+    ): Promise<{ ok: boolean; status: 'valid' | 'invalid' | 'error' | 'untestable'; message: string }>
   }
   app: {
     version(): Promise<string>

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import {
   Plus,
   Search,
@@ -9,13 +9,17 @@ import {
   Target,
   Crosshair,
   Activity,
-  Loader2
+  Loader2,
+  Lock,
+  Sparkles
 } from 'lucide-react'
 import { api, type ToolLink, type ToolHealth } from '../lib/api'
 import { Icon, Modal, EmptyState } from '../components/ui'
 import { PivotModal } from '../components/PivotModal'
 import { useOpenInBrowser } from '../lib/browserBus'
 import { useConfirm } from '../lib/confirm'
+import { useSettings } from '../lib/settings'
+import { INTEGRATION_SERVICES } from '../lib/apiServices'
 import type { PivotSubject } from '../lib/pivot'
 
 const CATEGORY_ICON: Record<string, string> = {
@@ -50,7 +54,20 @@ export function Tools(): JSX.Element {
   const [progress, setProgress] = useState({ done: 0, total: 0 })
   const openInBrowser = useOpenInBrowser()
   const confirm = useConfirm()
+  const nav = useNavigate()
+  const { settings } = useSettings()
+  const apiKeys = settings.apiKeys ?? {}
   const unsubRef = useRef<(() => void) | null>(null)
+
+  const launchIntegration = (s: (typeof INTEGRATION_SERVICES)[number]): void => {
+    if (!apiKeys[s.id]) {
+      nav('/settings')
+      return
+    }
+    if (!s.tool) return
+    const url = s.tool.query ? s.tool.url.replace('{QUERY}', encodeURIComponent(term.trim())) : s.tool.url
+    openInBrowser([url])
+  }
 
   const load = async (): Promise<void> => setTools(await api.tools.list())
   useEffect(() => {
@@ -175,7 +192,56 @@ export function Tools(): JSX.Element {
         ))}
       </div>
 
-      <div className="flex-1 overflow-y-auto p-6">
+      <div className="flex-1 overflow-y-auto p-6 space-y-6">
+        {/* API integrations — locked until the matching key is added in Settings */}
+        {(cat === 'All' || !query) && (
+          <section>
+            <div className="flex items-center gap-2 mb-1">
+              <Sparkles size={16} className="text-accent" />
+              <h2 className="font-semibold text-slate-100 text-sm">API Integrations</h2>
+            </div>
+            <p className="text-xs text-slate-500 mb-3">
+              Unlocked by adding the matching API key in Settings. Locked tools open Settings so you can paste a key.
+            </p>
+            <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3">
+              {INTEGRATION_SERVICES.map((s) => {
+                const unlocked = !!apiKeys[s.id]
+                return (
+                  <div
+                    key={s.id}
+                    onClick={() => launchIntegration(s)}
+                    className={`card p-3.5 relative transition-all cursor-pointer ${
+                      unlocked ? 'hover:border-accent/40 hover:shadow-glow' : 'opacity-60 hover:opacity-100'
+                    }`}
+                    title={unlocked ? `Launch ${s.name}` : `Locked — add your ${s.name} API key in Settings`}
+                  >
+                    <div className="flex items-start gap-3">
+                      <div className="w-10 h-10 rounded-lg bg-ink-800 border border-ink-700 flex items-center justify-center shrink-0">
+                        {unlocked ? (
+                          <Icon name={CATEGORY_ICON[s.tool!.category] ?? 'Wrench'} size={18} className="text-accent" />
+                        ) : (
+                          <Lock size={16} className="text-slate-500" />
+                        )}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="font-semibold text-slate-100 truncate flex items-center gap-1.5">
+                          {s.name}
+                          {s.tier === 'paid' && (
+                            <span className="text-[9px] text-warn border border-warn/40 rounded px-1">PAID</span>
+                          )}
+                        </div>
+                        <div className="text-xs text-slate-500 truncate">
+                          {unlocked ? s.unlocks : 'Locked — needs API key'}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </section>
+        )}
+
         {filtered.length === 0 ? (
           <EmptyState icon="Wrench" title="No tools found" subtitle="Try a different filter or add a custom tool." />
         ) : (

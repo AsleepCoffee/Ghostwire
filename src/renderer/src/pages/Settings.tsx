@@ -11,12 +11,14 @@ import {
   EyeOff,
   Loader2,
   PlugZap,
-  X
+  X,
+  AlertTriangle,
+  Minus
 } from 'lucide-react'
 import { api, type UpdateStatus } from '../lib/api'
 import { Icon } from '../components/ui'
 import { useSettings, THEMES } from '../lib/settings'
-import { API_SERVICES } from '../lib/apiServices'
+import { FREE_SERVICES, PAID_SERVICES, type ApiService } from '../lib/apiServices'
 
 export function Settings(): JSX.Element {
   const { settings, update } = useSettings()
@@ -25,13 +27,78 @@ export function Settings(): JSX.Element {
   const [version, setVersion] = useState('')
   const [upd, setUpd] = useState<UpdateStatus | null>(null)
   const [revealed, setRevealed] = useState<Record<string, boolean>>({})
-  const [tests, setTests] = useState<Record<string, { loading?: boolean; ok?: boolean; msg?: string }>>({})
+  const [tests, setTests] = useState<
+    Record<string, { loading?: boolean; status?: 'valid' | 'invalid' | 'error' | 'untestable'; msg?: string }>
+  >({})
 
   const testKey = async (id: string): Promise<void> => {
     const key = (settings.apiKeys ?? {})[id] ?? ''
     setTests((t) => ({ ...t, [id]: { loading: true } }))
     const res = await api.apiKeys.test(id, key)
-    setTests((t) => ({ ...t, [id]: { ok: res.ok, msg: res.message } }))
+    setTests((t) => ({ ...t, [id]: { status: res.status, msg: res.message } }))
+  }
+
+  const renderKeyRow = (s: ApiService): JSX.Element => {
+    const val = (settings.apiKeys ?? {})[s.id] ?? ''
+    const show = revealed[s.id]
+    const test = tests[s.id] ?? {}
+    return (
+      <div key={s.id} className="flex items-center gap-3">
+        <div className="w-40 shrink-0">
+          <div className="text-sm text-slate-200 font-medium flex items-center gap-1">
+            {s.name}
+            {val && <span className="w-1.5 h-1.5 rounded-full bg-ok" />}
+          </div>
+          <button
+            className="text-[11px] text-brand-glow hover:underline flex items-center gap-0.5"
+            onClick={() => api.shell.openExternal(s.signup)}
+            title={s.free}
+          >
+            {s.tier === 'paid' ? 'get a key' : 'get free key'} <ExternalLink size={9} />
+          </button>
+        </div>
+        <div className="relative flex-1">
+          <input
+            className="input pr-9 font-mono text-xs"
+            type={show ? 'text' : 'password'}
+            placeholder={s.description}
+            value={val}
+            onChange={(e) => {
+              setKey(s.id, e.target.value)
+              setTests((t) => ({ ...t, [s.id]: {} }))
+            }}
+          />
+          <button
+            className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300"
+            onClick={() => setRevealed((r) => ({ ...r, [s.id]: !r[s.id] }))}
+          >
+            {show ? <EyeOff size={15} /> : <Eye size={15} />}
+          </button>
+        </div>
+        <div className="w-48 shrink-0 flex items-center gap-1.5">
+          <button
+            className="btn-ghost border border-ink-600 !px-2 !py-1.5 text-xs"
+            disabled={!val || test.loading}
+            onClick={() => testKey(s.id)}
+            title="Test this key"
+          >
+            {test.loading ? <Loader2 size={13} className="animate-spin" /> : <PlugZap size={13} />} Test
+          </button>
+          {test.status === 'valid' && (
+            <span className="flex items-center gap-1 text-ok text-xs"><Check size={14} /> {test.msg}</span>
+          )}
+          {test.status === 'invalid' && (
+            <span className="flex items-center gap-1 text-danger text-xs truncate" title={test.msg}><X size={14} /> {test.msg}</span>
+          )}
+          {test.status === 'error' && (
+            <span className="flex items-center gap-1 text-warn text-xs truncate" title={test.msg}><AlertTriangle size={14} /> {test.msg}</span>
+          )}
+          {test.status === 'untestable' && (
+            <span className="flex items-center gap-1 text-slate-500 text-xs truncate" title={test.msg}><Minus size={14} /> can’t auto-test</span>
+          )}
+        </div>
+      </div>
+    )
   }
 
   useEffect(() => {
@@ -146,62 +213,17 @@ export function Settings(): JSX.Element {
             <KeyRound size={16} className="text-brand-glow" /> API keys
           </h2>
           <p className="text-sm text-slate-500 mb-4">
-            Optional. Stored locally only. Several power graph transforms and richer lookups — all have a free tier.
+            Optional and stored locally only. Adding a key unlocks its integration tool and richer graph transforms.
+            Use <b>Test</b> to confirm a key works.
           </p>
-          <div className="space-y-2.5">
-            {API_SERVICES.map((s) => {
-              const val = (settings.apiKeys ?? {})[s.id] ?? ''
-              const show = revealed[s.id]
-              const test = tests[s.id] ?? {}
-              return (
-                <div key={s.id} className="flex items-center gap-3" title={test.msg}>
-                  <div className="w-40 shrink-0">
-                    <div className="text-sm text-slate-200 font-medium flex items-center gap-1">
-                      {s.name}
-                      {val && <span className="w-1.5 h-1.5 rounded-full bg-ok" />}
-                    </div>
-                    <button
-                      className="text-[11px] text-brand-glow hover:underline flex items-center gap-0.5"
-                      onClick={() => api.shell.openExternal(s.signup)}
-                      title={s.free}
-                    >
-                      get free key <ExternalLink size={9} />
-                    </button>
-                  </div>
-                  <div className="relative flex-1">
-                    <input
-                      className="input pr-9 font-mono text-xs"
-                      type={show ? 'text' : 'password'}
-                      placeholder={s.description}
-                      value={val}
-                      onChange={(e) => {
-                        setKey(s.id, e.target.value)
-                        setTests((t) => ({ ...t, [s.id]: {} }))
-                      }}
-                    />
-                    <button
-                      className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300"
-                      onClick={() => setRevealed((r) => ({ ...r, [s.id]: !r[s.id] }))}
-                    >
-                      {show ? <EyeOff size={15} /> : <Eye size={15} />}
-                    </button>
-                  </div>
-                  <div className="w-32 shrink-0 flex items-center gap-1.5">
-                    <button
-                      className="btn-ghost border border-ink-600 !px-2 !py-1.5 text-xs"
-                      disabled={!val || test.loading}
-                      onClick={() => testKey(s.id)}
-                      title="Test this key"
-                    >
-                      {test.loading ? <Loader2 size={13} className="animate-spin" /> : <PlugZap size={13} />} Test
-                    </button>
-                    {test.ok === true && <Check size={15} className="text-ok shrink-0" />}
-                    {test.ok === false && <X size={15} className="text-danger shrink-0" />}
-                  </div>
-                </div>
-              )
-            })}
+
+          <div className="text-[10px] font-semibold uppercase tracking-widest text-slate-500 mb-2">Free tier</div>
+          <div className="space-y-2.5">{FREE_SERVICES.map(renderKeyRow)}</div>
+
+          <div className="text-[10px] font-semibold uppercase tracking-widest text-slate-500 mt-5 mb-2 flex items-center gap-2">
+            Paid <span className="px-1.5 py-0.5 rounded bg-warn/15 text-warn text-[9px] normal-case tracking-normal">requires a subscription</span>
           </div>
+          <div className="space-y-2.5">{PAID_SERVICES.map(renderKeyRow)}</div>
         </section>
 
         {/* Obsidian vault */}
