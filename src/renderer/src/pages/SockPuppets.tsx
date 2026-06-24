@@ -27,6 +27,7 @@ import {
 import { Modal, StatusBadge, EmptyState } from '../components/ui'
 import { PivotModal } from '../components/PivotModal'
 import { useOpenInBrowser, useOpenTabs } from '../lib/browserBus'
+import { useConfirm } from '../lib/confirm'
 import type { PivotSubject } from '../lib/pivot'
 
 const EMPTY: Partial<Persona> = {
@@ -44,6 +45,7 @@ export function SockPuppets(): JSX.Element {
   const [pivot, setPivot] = useState<{ value: string; subject: PivotSubject } | null>(null)
   const openInBrowser = useOpenInBrowser()
   const openTabs = useOpenTabs()
+  const confirm = useConfirm()
 
   const load = async (): Promise<void> => setPersonas(await api.personas.list())
   useEffect(() => {
@@ -92,7 +94,13 @@ export function SockPuppets(): JSX.Element {
   }, [personas, query])
 
   const remove = async (p: Persona): Promise<void> => {
-    if (!confirm(`Delete persona "${p.name}"? This does not delete its browser session data automatically.`)) return
+    const ok = await confirm({
+      title: `Delete persona “${p.name}”?`,
+      message: 'This removes the persona from GhostWire. Its browser session data is not deleted automatically.',
+      confirmText: 'Delete',
+      danger: true
+    })
+    if (!ok) return
     await api.personas.remove(p.id)
     load()
   }

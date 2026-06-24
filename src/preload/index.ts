@@ -56,11 +56,15 @@ const api: OsintApi = {
   net: {
     fetchJson: (url, headers) => ipcRenderer.invoke('net:fetchJson', url, headers)
   },
+  apiKeys: {
+    test: (id, key) => ipcRenderer.invoke('apikeys:test', id, key)
+  },
   app: {
     version: () => ipcRenderer.invoke('app:version')
   },
   updates: {
     check: () => ipcRenderer.invoke('updates:check'),
+    download: () => ipcRenderer.invoke('updates:download'),
     install: () => ipcRenderer.invoke('updates:install'),
     onStatus: (cb) => {
       const listener = (_e: unknown, payload: unknown): void =>

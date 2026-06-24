@@ -18,6 +18,7 @@ import {
 } from 'lucide-react'
 import { api, type Note, type Project } from '../lib/api'
 import { EmptyState } from '../components/ui'
+import { useConfirm } from '../lib/confirm'
 
 export function Notes(): JSX.Element {
   const [params] = useSearchParams()
@@ -28,6 +29,7 @@ export function Notes(): JSX.Element {
   const [preview, setPreview] = useState(false)
   const [toast, setToast] = useState('')
   const saveTimer = useRef<NodeJS.Timeout | null>(null)
+  const confirm = useConfirm()
 
   const load = async (selectId?: string): Promise<void> => {
     const list = await api.notes.list()
@@ -81,7 +83,7 @@ export function Notes(): JSX.Element {
   }
 
   const remove = async (n: Note): Promise<void> => {
-    if (!confirm(`Delete note "${n.title}"?`)) return
+    if (!(await confirm({ title: `Delete note “${n.title}”?`, confirmText: 'Delete', danger: true }))) return
     await api.notes.remove(n.id)
     setActiveId(null)
     load()

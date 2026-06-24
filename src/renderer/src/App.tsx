@@ -1,6 +1,7 @@
 import { Routes, Route, useLocation } from 'react-router-dom'
 import { Sidebar } from './components/Sidebar'
 import { Topbar } from './components/Topbar'
+import { UpdateNotice } from './components/UpdateNotice'
 import { Dashboard } from './pages/Dashboard'
 import { Projects } from './pages/Projects'
 import { ProjectDetail } from './pages/ProjectDetail'
@@ -18,6 +19,7 @@ export default function App(): JSX.Element {
 
   return (
     <div className="flex h-full w-full overflow-hidden">
+      <UpdateNotice />
       <Sidebar />
       <div className="flex-1 flex flex-col min-w-0">
         <Topbar />

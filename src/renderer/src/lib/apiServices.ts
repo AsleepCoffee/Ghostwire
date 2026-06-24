@@ -55,7 +55,7 @@ export const API_SERVICES: ApiService[] = [
     id: 'securitytrails',
     name: 'SecurityTrails',
     description: 'DNS history, subdomains, WHOIS.',
-    free: 'Free API tier (50 queries/month).',
+    free: 'Paid API (no free tier) — add a key only if you have one.',
     signup: 'https://securitytrails.com/app/signup'
   },
   {

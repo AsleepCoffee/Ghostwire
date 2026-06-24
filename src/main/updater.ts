@@ -11,8 +11,9 @@ function broadcast(payload: Record<string, unknown>): void {
 
 /** Wire up GitHub-backed auto-updates and the renderer-facing update IPC. */
 export function initUpdater(): void {
-  autoUpdater.autoDownload = true
-  autoUpdater.autoInstallOnAppQuit = true
+  // Don't download until the user opts in — they get an Install / Skip prompt.
+  autoUpdater.autoDownload = false
+  autoUpdater.autoInstallOnAppQuit = false
 
   autoUpdater.on('checking-for-update', () => broadcast({ state: 'checking' }))
   autoUpdater.on('update-available', (i) => broadcast({ state: 'available', version: i.version }))
@@ -31,6 +32,9 @@ export function initUpdater(): void {
       return
     }
     autoUpdater.checkForUpdates().catch((e) => broadcast({ state: 'error', message: String(e) }))
+  })
+  ipcMain.handle('updates:download', () => {
+    if (app.isPackaged) autoUpdater.downloadUpdate().catch((e) => broadcast({ state: 'error', message: String(e) }))
   })
   ipcMain.handle('updates:install', () => autoUpdater.quitAndInstall())
 

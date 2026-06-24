@@ -8,7 +8,10 @@ import {
   ExternalLink,
   KeyRound,
   Eye,
-  EyeOff
+  EyeOff,
+  Loader2,
+  PlugZap,
+  X
 } from 'lucide-react'
 import { api, type UpdateStatus } from '../lib/api'
 import { Icon } from '../components/ui'
@@ -22,6 +25,14 @@ export function Settings(): JSX.Element {
   const [version, setVersion] = useState('')
   const [upd, setUpd] = useState<UpdateStatus | null>(null)
   const [revealed, setRevealed] = useState<Record<string, boolean>>({})
+  const [tests, setTests] = useState<Record<string, { loading?: boolean; ok?: boolean; msg?: string }>>({})
+
+  const testKey = async (id: string): Promise<void> => {
+    const key = (settings.apiKeys ?? {})[id] ?? ''
+    setTests((t) => ({ ...t, [id]: { loading: true } }))
+    const res = await api.apiKeys.test(id, key)
+    setTests((t) => ({ ...t, [id]: { ok: res.ok, msg: res.message } }))
+  }
 
   useEffect(() => {
     api.settings.get().then((s) => setVaultPath(s.vaultPath))
@@ -80,24 +91,33 @@ export function Settings(): JSX.Element {
         {/* Appearance */}
         <section className="card p-5">
           <h2 className="font-semibold text-slate-100 mb-1">Appearance</h2>
-          <p className="text-sm text-slate-500 mb-4">Pick an accent theme. Applies instantly.</p>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2">
+          <p className="text-sm text-slate-500 mb-4">Each theme reskins the whole app — backgrounds, chrome and accents. Applies instantly.</p>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2.5">
             {THEMES.map((t) => {
-              const active = (settings.theme ?? 'cyan') === t.id
+              const active = (settings.theme ?? 'midnight') === t.id
               return (
                 <button
                   key={t.id}
                   onClick={() => update({ theme: t.id })}
-                  className={`flex items-center gap-2 px-3 py-2 rounded-lg border text-sm transition-colors ${
-                    active ? 'border-brand/60 bg-brand/10 text-slate-100' : 'border-ink-700 text-slate-400 hover:bg-ink-800'
+                  className={`rounded-xl border overflow-hidden text-left transition-all ${
+                    active ? 'border-brand shadow-glow' : 'border-ink-700 hover:border-ink-500'
                   }`}
                 >
-                  <span className="flex -space-x-1">
-                    <span className="w-3.5 h-3.5 rounded-full border border-ink-900" style={{ background: `rgb(${t.brand})` }} />
-                    <span className="w-3.5 h-3.5 rounded-full border border-ink-900" style={{ background: `rgb(${t.accent})` }} />
-                  </span>
-                  {t.label}
-                  {active && <Check size={13} className="ml-auto text-brand-glow" />}
+                  {/* Mini preview using the theme's own colors */}
+                  <div className="h-16 relative" style={{ background: `rgb(${t.ink[950]})` }}>
+                    <div className="absolute inset-x-2 top-2 h-3 rounded" style={{ background: `rgb(${t.ink[800]})` }} />
+                    <div className="absolute left-2 bottom-2 w-8 h-3 rounded" style={{ background: `rgb(${t.brand})` }} />
+                    <div className="absolute left-11 bottom-2 w-5 h-3 rounded" style={{ background: `rgb(${t.accent})` }} />
+                    {active && (
+                      <span className="absolute top-1.5 right-1.5 w-4 h-4 rounded-full flex items-center justify-center" style={{ background: `rgb(${t.brand})` }}>
+                        <Check size={11} className="text-white" />
+                      </span>
+                    )}
+                  </div>
+                  <div className="px-2.5 py-1.5" style={{ background: `rgb(${t.ink[900]})` }}>
+                    <div className="text-sm font-medium text-slate-100">{t.label}</div>
+                    <div className="text-[11px] text-slate-500 truncate">{t.blurb}</div>
+                  </div>
                 </button>
               )
             })}
@@ -132,8 +152,9 @@ export function Settings(): JSX.Element {
             {API_SERVICES.map((s) => {
               const val = (settings.apiKeys ?? {})[s.id] ?? ''
               const show = revealed[s.id]
+              const test = tests[s.id] ?? {}
               return (
-                <div key={s.id} className="flex items-center gap-3">
+                <div key={s.id} className="flex items-center gap-3" title={test.msg}>
                   <div className="w-40 shrink-0">
                     <div className="text-sm text-slate-200 font-medium flex items-center gap-1">
                       {s.name}
@@ -153,7 +174,10 @@ export function Settings(): JSX.Element {
                       type={show ? 'text' : 'password'}
                       placeholder={s.description}
                       value={val}
-                      onChange={(e) => setKey(s.id, e.target.value)}
+                      onChange={(e) => {
+                        setKey(s.id, e.target.value)
+                        setTests((t) => ({ ...t, [s.id]: {} }))
+                      }}
                     />
                     <button
                       className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300"
@@ -161,6 +185,18 @@ export function Settings(): JSX.Element {
                     >
                       {show ? <EyeOff size={15} /> : <Eye size={15} />}
                     </button>
+                  </div>
+                  <div className="w-32 shrink-0 flex items-center gap-1.5">
+                    <button
+                      className="btn-ghost border border-ink-600 !px-2 !py-1.5 text-xs"
+                      disabled={!val || test.loading}
+                      onClick={() => testKey(s.id)}
+                      title="Test this key"
+                    >
+                      {test.loading ? <Loader2 size={13} className="animate-spin" /> : <PlugZap size={13} />} Test
+                    </button>
+                    {test.ok === true && <Check size={15} className="text-ok shrink-0" />}
+                    {test.ok === false && <X size={15} className="text-danger shrink-0" />}
                   </div>
                 </div>
               )

@@ -15,6 +15,7 @@ import { api, type ToolLink, type ToolHealth } from '../lib/api'
 import { Icon, Modal, EmptyState } from '../components/ui'
 import { PivotModal } from '../components/PivotModal'
 import { useOpenInBrowser } from '../lib/browserBus'
+import { useConfirm } from '../lib/confirm'
 import type { PivotSubject } from '../lib/pivot'
 
 const CATEGORY_ICON: Record<string, string> = {
@@ -48,6 +49,7 @@ export function Tools(): JSX.Element {
   const [testing, setTesting] = useState(false)
   const [progress, setProgress] = useState({ done: 0, total: 0 })
   const openInBrowser = useOpenInBrowser()
+  const confirm = useConfirm()
   const unsubRef = useRef<(() => void) | null>(null)
 
   const load = async (): Promise<void> => setTools(await api.tools.list())
@@ -84,7 +86,7 @@ export function Tools(): JSX.Element {
   }
 
   const remove = async (t: ToolLink): Promise<void> => {
-    if (!confirm(`Remove "${t.name}" from your tools?`)) return
+    if (!(await confirm({ title: `Remove “${t.name}”?`, message: 'It will be removed from your tools.', confirmText: 'Remove', danger: true }))) return
     await api.tools.remove(t.id)
     load()
   }

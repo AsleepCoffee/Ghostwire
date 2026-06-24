@@ -208,11 +208,15 @@ export interface OsintApi {
   net: {
     fetchJson(url: string, headers?: Record<string, string>): Promise<unknown>
   }
+  apiKeys: {
+    test(id: string, key: string): Promise<{ ok: boolean; message: string }>
+  }
   app: {
     version(): Promise<string>
   }
   updates: {
     check(): Promise<void>
+    download(): Promise<void>
     install(): Promise<void>
     onStatus(cb: (s: UpdateStatus) => void): () => void
   }

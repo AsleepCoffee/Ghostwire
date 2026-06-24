@@ -26,6 +26,7 @@ import { subjectForEntity, type PivotSubject } from '../lib/pivot'
 import { transformsFor, type Transform } from '../lib/transforms'
 import { useOpenInBrowser } from '../lib/browserBus'
 import { useSettings } from '../lib/settings'
+import { useConfirm } from '../lib/confirm'
 
 type RFNode = Node<{ entity: EntityNode }>
 
@@ -93,6 +94,7 @@ function GraphInner(): JSX.Element {
   const seq = useRef(0)
   const openInBrowser = useOpenInBrowser()
   const { settings } = useSettings()
+  const confirm = useConfirm()
 
   const board = boards.find((b) => b.id === boardId)
   const flash = (m: string): void => {
@@ -154,7 +156,7 @@ function GraphInner(): JSX.Element {
 
   const deleteBoard = async (): Promise<void> => {
     if (!board) return
-    if (!confirm(`Delete board "${board.name}" and all its entities?`)) return
+    if (!(await confirm({ title: `Delete board “${board.name}”?`, message: 'This deletes the board and all its entities and links.', confirmText: 'Delete', danger: true }))) return
     await api.boards.remove(board.id)
     setBoardId('')
     setSelected(null)

@@ -29,6 +29,7 @@ import { Icon, StatusBadge } from '../components/ui'
 import { ProjectEditor } from './Projects'
 import { PivotModal } from '../components/PivotModal'
 import { useOpenInBrowser } from '../lib/browserBus'
+import { useConfirm } from '../lib/confirm'
 import type { PivotSubject } from '../lib/pivot'
 
 const subjectForType: Record<Project['type'], PivotSubject> = {
@@ -41,6 +42,7 @@ export function ProjectDetail(): JSX.Element {
   const { id = '' } = useParams()
   const nav = useNavigate()
   const openInBrowser = useOpenInBrowser()
+  const confirm = useConfirm()
   const [project, setProject] = useState<Project | null>(null)
   const [contents, setContents] = useState<{ personas: Persona[]; notes: Note[]; boards: Board[] }>({
     personas: [],
@@ -83,7 +85,7 @@ export function ProjectDetail(): JSX.Element {
 
   const remove = async (): Promise<void> => {
     if (!project) return
-    if (!confirm(`Delete investigation "${project.name}"? Linked items are kept but unlinked.`)) return
+    if (!(await confirm({ title: `Delete investigation “${project.name}”?`, message: 'Linked personas, notes, and boards are kept — just unlinked from this investigation.', confirmText: 'Delete', danger: true }))) return
     await api.projects.remove(project.id)
     nav('/projects')
   }

@@ -4,15 +4,15 @@ export default {
   theme: {
     extend: {
       colors: {
-        // Dark "command center" palette
+        // Theme-driven surface palette (overridden per theme via CSS variables).
         ink: {
-          950: '#070a0f',
-          900: '#0b0e15',
-          850: '#0f131c',
-          800: '#141925',
-          700: '#1d2433',
-          600: '#2a3242',
-          500: '#3a4456'
+          950: 'rgb(var(--ink-950) / <alpha-value>)',
+          900: 'rgb(var(--ink-900) / <alpha-value>)',
+          850: 'rgb(var(--ink-850) / <alpha-value>)',
+          800: 'rgb(var(--ink-800) / <alpha-value>)',
+          700: 'rgb(var(--ink-700) / <alpha-value>)',
+          600: 'rgb(var(--ink-600) / <alpha-value>)',
+          500: 'rgb(var(--ink-500) / <alpha-value>)'
         },
         brand: {
           DEFAULT: 'rgb(var(--brand) / <alpha-value>)',

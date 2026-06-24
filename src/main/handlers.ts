@@ -4,6 +4,7 @@ import { all, get, run } from './db'
 import { exportAllNotes, writeNote } from './export'
 import { pickImage, saveDataUrl } from './media'
 import { testAllTools } from './toolcheck'
+import { testApiKey } from './apitest'
 import type {
   AppSettings,
   Board,
@@ -145,7 +146,7 @@ function getSettings(): AppSettings {
   for (const row of rows) out[row.key] = parseSetting(row.value)
   // Defaults
   if (out.showTraining === undefined) out.showTraining = true
-  if (!out.theme) out.theme = 'cyan'
+  if (!out.theme || out.theme === 'cyan') out.theme = 'midnight'
   if (!out.apiKeys || typeof out.apiKeys !== 'object') out.apiKeys = {}
   return out as AppSettings
 }
@@ -443,6 +444,9 @@ export function registerHandlers(): void {
   // ===== Files / images =====
   ipcMain.handle('files:pickImage', (_e, kind: string) => pickImage(kind))
   ipcMain.handle('files:saveDataUrl', (_e, dataUrl: string, kind: string) => saveDataUrl(kind, dataUrl))
+
+  // ===== API key testing =====
+  ipcMain.handle('apikeys:test', (_e, id: string, key: string) => testApiKey(id, key))
 
   // ===== Shell =====
   ipcMain.handle('shell:openExternal', async (_e, url: string) => {
