@@ -9,7 +9,7 @@ interface NavItem {
   icon: string
 }
 
-const GROUPS: { heading?: string; items: NavItem[] }[] = [
+const GROUPS: { heading?: string; items: NavItem[]; toggle?: 'courseNotes' }[] = [
   {
     items: [
       { to: '/', label: 'Dashboard', icon: 'LayoutDashboard' },
@@ -24,10 +24,12 @@ const GROUPS: { heading?: string; items: NavItem[] }[] = [
   },
   {
     heading: 'Training',
-    items: [
-      { to: '/notes?folder=Course', label: 'Course Notes', icon: 'GraduationCap' },
-      { to: '/tools?category=Toolkits', label: 'Resources', icon: 'Library' }
-    ]
+    toggle: 'courseNotes',
+    items: [{ to: '/notes?folder=Course', label: 'Course Notes', icon: 'GraduationCap' }]
+  },
+  {
+    // Always visible, sits just above Settings.
+    items: [{ to: '/tools?category=Toolkits', label: 'Resources', icon: 'Library' }]
   },
   {
     heading: 'Settings',
@@ -37,7 +39,7 @@ const GROUPS: { heading?: string; items: NavItem[] }[] = [
 
 export function Sidebar(): JSX.Element {
   const { settings } = useSettings()
-  const groups = GROUPS.filter((g) => g.heading !== 'Training' || settings.showTraining !== false)
+  const groups = GROUPS.filter((g) => g.toggle !== 'courseNotes' || settings.showTraining !== false)
   return (
     <aside className="w-60 shrink-0 bg-ink-900 border-r border-ink-700 flex flex-col">
       {/* Brand */}

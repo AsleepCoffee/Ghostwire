@@ -36,18 +36,25 @@ const TESTS: Record<string, Build> = {
 }
 
 export async function testApiKey(id: string, key: string): Promise<KeyTestResult> {
-  if (!key || !key.trim()) return { ok: false, status: 'invalid', message: 'No key entered' }
+  const k = (key ?? '').trim()
+  if (!k) return { ok: false, status: 'invalid', message: 'No key entered' }
+
+  // Censys uses Basic auth with two values: "API ID:Secret".
+  if (id === 'censys' && !k.includes(':')) {
+    return { ok: false, status: 'invalid', message: 'Censys needs "API ID:Secret" (two values, colon-separated)' }
+  }
+
   const build = TESTS[id]
   if (!build) return { ok: false, status: 'untestable', message: 'No automatic test — key is saved for use' }
 
-  const { url, headers } = build(key.trim())
+  const { url, headers } = build(k)
   try {
     const res = await fetch(url, { headers: { 'User-Agent': 'GhostWire-OSINT', ...(headers ?? {}) } })
     if (res.ok) return { ok: true, status: 'valid', message: 'Key valid' }
     if (res.status === 429) return { ok: true, status: 'valid', message: 'Valid (rate-limited)' }
-    // 400 (malformed/rejected key), 401/403 (unauthorized) → the key was rejected.
+    // 400 (malformed/rejected key), 401/403 (unauthorized) → the provider rejected the key.
     if (res.status === 400 || res.status === 401 || res.status === 403) {
-      return { ok: false, status: 'invalid', message: 'Key rejected — double-check it' }
+      return { ok: false, status: 'invalid', message: `Provider rejected the key (HTTP ${res.status})` }
     }
     return { ok: false, status: 'error', message: `Service error (HTTP ${res.status})` }
   } catch {

@@ -19,6 +19,7 @@ import { api, type UpdateStatus } from '../lib/api'
 import { Icon } from '../components/ui'
 import { useSettings, THEMES } from '../lib/settings'
 import { FREE_SERVICES, PAID_SERVICES, type ApiService } from '../lib/apiServices'
+import { CHANGELOG } from '../lib/changelog'
 
 export function Settings(): JSX.Element {
   const { settings, update } = useSettings()
@@ -197,8 +198,8 @@ export function Settings(): JSX.Element {
           <p className="text-sm text-slate-500 mb-4">Turn sections on or off.</p>
           <label className="flex items-center justify-between py-2">
             <div>
-              <div className="text-sm text-slate-200 font-medium">Training & Course Notes</div>
-              <div className="text-xs text-slate-500">Show the Training section (course notes, resources) in the sidebar.</div>
+              <div className="text-sm text-slate-200 font-medium">Course Notes</div>
+              <div className="text-xs text-slate-500">Show the Course Notes shortcut in the sidebar (for the OSINT course).</div>
             </div>
             <Toggle
               on={settings.showTraining !== false}
@@ -289,6 +290,41 @@ export function Settings(): JSX.Element {
               and API keys are stored in plaintext — keep your device encrypted and secured.
             </li>
           </ul>
+        </section>
+
+        {/* What's new */}
+        <section className="card p-5">
+          <h2 className="font-semibold text-slate-100 mb-1 flex items-center gap-2">
+            <Icon name="Sparkles" size={16} className="text-brand-glow" /> What’s new
+          </h2>
+          <p className="text-sm text-slate-500 mb-4">Recent changes. Full history on GitHub Releases.</p>
+          <div className="space-y-4 max-h-80 overflow-y-auto pr-1">
+            {CHANGELOG.map((c) => (
+              <div key={c.version}>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-semibold text-slate-100">v{c.version}</span>
+                  {version === c.version && (
+                    <span className="text-[9px] px-1.5 py-0.5 rounded bg-brand/15 text-brand-glow">installed</span>
+                  )}
+                  <span className="text-xs text-slate-500">{c.date}</span>
+                </div>
+                <ul className="mt-1.5 space-y-1">
+                  {c.notes.map((n, i) => (
+                    <li key={i} className="text-sm text-slate-400 flex gap-2">
+                      <span className="text-brand-glow mt-1.5 w-1 h-1 rounded-full bg-current shrink-0" />
+                      {n}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
+          <button
+            className="btn-ghost border border-ink-600 mt-4"
+            onClick={() => api.shell.openExternal('https://github.com/AsleepCoffee/Ghostwire/releases')}
+          >
+            <ExternalLink size={15} /> All releases on GitHub
+          </button>
         </section>
 
         {msg && <div className="text-sm text-ok">{msg}</div>}

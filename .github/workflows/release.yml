@@ -33,3 +33,19 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: npm run release
+
+      - name: Set release notes from CHANGELOG
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          # Extract the section for this tag (## v0.1.6 ... up to the next ## heading).
+          NOTES=$(awk -v tag="## ${TAG}" '
+            $0 == tag {flag=1; next}
+            /^## / && flag {flag=0}
+            flag {print}
+          ' CHANGELOG.md)
+          if [ -z "$NOTES" ]; then NOTES="See the commit history for changes in ${TAG}."; fi
+          printf '%s\n' "$NOTES" > release-notes.md
+          gh release edit "$TAG" --notes-file release-notes.md
