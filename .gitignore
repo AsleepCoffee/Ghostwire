@@ -5,3 +5,10 @@ dist/
 .DS_Store
 .vscode/
 data/
+
+# Local app data — personas, notes, credentials, media (never commit)
+*.db
+*.sqlite
+*.sqlite3
+media/
+ghostwire.db
