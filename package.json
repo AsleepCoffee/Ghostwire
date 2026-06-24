@@ -8,22 +8,57 @@
   "build": {
     "appId": "com.ghostwire.osint",
     "productName": "GhostWire",
-    "directories": { "output": "dist" },
-    "files": ["out/**/*", "node_modules/**/*", "icon.png", "package.json"],
-    "asarUnpack": ["**/node_modules/sql.js/dist/*.wasm"],
-    "win": { "icon": "icon.png", "target": "nsis" },
-    "mac": { "icon": "icon.png", "category": "public.app-category.utilities" },
-    "linux": { "icon": "icon.png", "target": "AppImage" }
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "out/**/*",
+      "node_modules/**/*",
+      "icon.png",
+      "package.json"
+    ],
+    "asarUnpack": [
+      "**/node_modules/sql.js/dist/*.wasm"
+    ],
+    "win": {
+      "icon": "icon.png",
+      "target": "nsis"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "GhostWire"
+    },
+    "mac": {
+      "icon": "icon.png",
+      "category": "public.app-category.utilities"
+    },
+    "linux": {
+      "icon": "icon.png",
+      "target": "AppImage"
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "AsleepCoffee",
+        "repo": "Ghostwire"
+      }
+    ]
   },
   "scripts": {
     "dev": "electron-vite dev",
     "start": "electron-vite preview",
     "build": "electron-vite build",
-    "build:win": "electron-vite build && electron-builder --win",
+    "build:win": "electron-vite build && electron-builder --win --publish never",
+    "release": "electron-vite build && electron-builder --win --publish always",
     "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json"
   },
   "dependencies": {
     "@xyflow/react": "^12.3.5",
+    "electron-updater": "^6.8.9",
     "lucide-react": "^0.460.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",

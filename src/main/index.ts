@@ -3,6 +3,7 @@ import { join } from 'path'
 import { initDb } from './db'
 import { registerHandlers } from './handlers'
 import { registerMediaScheme, registerMediaProtocol } from './media'
+import { initUpdater } from './updater'
 
 // Must run before app is ready.
 registerMediaScheme()
@@ -47,6 +48,7 @@ app.whenReady().then(async () => {
   registerMediaProtocol()
   await initDb()
   registerHandlers()
+  initUpdater()
   createWindow()
 
   app.on('activate', () => {

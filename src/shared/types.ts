@@ -142,6 +142,13 @@ export interface AppSettings {
   vaultPath?: string
 }
 
+export interface UpdateStatus {
+  state: 'checking' | 'available' | 'none' | 'downloading' | 'ready' | 'error' | 'dev'
+  version?: string
+  percent?: number
+  message?: string
+}
+
 /** The API surface exposed on `window.api` via the preload bridge. */
 export interface OsintApi {
   projects: {
@@ -191,6 +198,14 @@ export interface OsintApi {
   }
   shell: {
     openExternal(url: string): Promise<void>
+  }
+  app: {
+    version(): Promise<string>
+  }
+  updates: {
+    check(): Promise<void>
+    install(): Promise<void>
+    onStatus(cb: (s: UpdateStatus) => void): () => void
   }
   settings: {
     get(): Promise<AppSettings>

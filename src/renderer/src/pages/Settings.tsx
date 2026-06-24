@@ -1,15 +1,41 @@
 import { useEffect, useState } from 'react'
-import { FolderOpen, FolderUp, Check } from 'lucide-react'
-import { api, type AppSettings } from '../lib/api'
+import { FolderOpen, FolderUp, Check, RefreshCw, DownloadCloud } from 'lucide-react'
+import { api, type AppSettings, type UpdateStatus } from '../lib/api'
 import { Icon } from '../components/ui'
 
 export function Settings(): JSX.Element {
   const [settings, setSettings] = useState<AppSettings>({})
   const [msg, setMsg] = useState('')
+  const [version, setVersion] = useState('')
+  const [update, setUpdate] = useState<UpdateStatus | null>(null)
 
   useEffect(() => {
     api.settings.get().then(setSettings)
+    api.app.version().then(setVersion)
+    const unsub = api.updates.onStatus(setUpdate)
+    return unsub
   }, [])
+
+  const updateLabel = (): string => {
+    switch (update?.state) {
+      case 'checking':
+        return 'Checking for updates…'
+      case 'available':
+        return `Update ${update.version} found — downloading…`
+      case 'downloading':
+        return `Downloading update… ${update.percent ?? 0}%`
+      case 'ready':
+        return `Update ${update.version} ready to install.`
+      case 'none':
+        return "You're on the latest version."
+      case 'dev':
+        return 'Updates only run in the installed (packaged) app.'
+      case 'error':
+        return `Update check failed: ${update.message ?? 'unknown error'}`
+      default:
+        return ''
+    }
+  }
 
   const pickVault = async (): Promise<void> => {
     const dir = await api.settings.pickVault()
@@ -74,10 +100,28 @@ export function Settings(): JSX.Element {
           </ul>
         </section>
 
+        <section className="card p-5">
+          <h2 className="font-semibold text-slate-100 mb-1">Updates</h2>
+          <p className="text-sm text-slate-500 mb-4">
+            GhostWire checks for new releases on GitHub at launch and installs them automatically.
+          </p>
+          <div className="flex items-center gap-3">
+            <button className="btn-primary" onClick={() => api.updates.check()}>
+              <RefreshCw size={16} /> Check for updates
+            </button>
+            {update?.state === 'ready' && (
+              <button className="btn-ghost border border-ok/40 text-ok" onClick={() => api.updates.install()}>
+                <DownloadCloud size={16} /> Restart & install
+              </button>
+            )}
+            {update && updateLabel() && <span className="text-sm text-slate-400">{updateLabel()}</span>}
+          </div>
+        </section>
+
         {msg && <div className="text-sm text-ok">{msg}</div>}
 
         <div className="text-center text-xs text-slate-600 pt-4">
-          GhostWire · OSINT Workbench · v0.1.0
+          GhostWire · OSINT Workbench · v{version || '…'}
         </div>
       </div>
     </div>

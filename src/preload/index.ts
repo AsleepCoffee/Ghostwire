@@ -53,6 +53,19 @@ const api: OsintApi = {
   shell: {
     openExternal: (url) => ipcRenderer.invoke('shell:openExternal', url)
   },
+  app: {
+    version: () => ipcRenderer.invoke('app:version')
+  },
+  updates: {
+    check: () => ipcRenderer.invoke('updates:check'),
+    install: () => ipcRenderer.invoke('updates:install'),
+    onStatus: (cb) => {
+      const listener = (_e: unknown, payload: unknown): void =>
+        cb(payload as Parameters<typeof cb>[0])
+      ipcRenderer.on('updates:status', listener as never)
+      return () => ipcRenderer.removeListener('updates:status', listener as never)
+    }
+  },
   settings: {
     get: () => ipcRenderer.invoke('settings:get'),
     set: (s) => ipcRenderer.invoke('settings:set', s),
