@@ -5,6 +5,16 @@
   "main": "./out/main/index.js",
   "author": "Michael Morin",
   "license": "MIT",
+  "build": {
+    "appId": "com.ghostwire.osint",
+    "productName": "GhostWire",
+    "directories": { "output": "dist" },
+    "files": ["out/**/*", "node_modules/**/*", "icon.png", "package.json"],
+    "asarUnpack": ["**/node_modules/sql.js/dist/*.wasm"],
+    "win": { "icon": "icon.png", "target": "nsis" },
+    "mac": { "icon": "icon.png", "category": "public.app-category.utilities" },
+    "linux": { "icon": "icon.png", "target": "AppImage" }
+  },
   "scripts": {
     "dev": "electron-vite dev",
     "start": "electron-vite preview",

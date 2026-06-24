@@ -16,6 +16,7 @@ function createWindow(): void {
     show: false,
     backgroundColor: '#0a0c10',
     title: 'GhostWire',
+    icon: join(__dirname, '../../icon.png'),
     autoHideMenuBar: true,
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
