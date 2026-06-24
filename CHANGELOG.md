@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.1.9
+- Pivots now surface every API tool you hold a key for, deep-linked to the right result page per data type (email, domain, IP, username, phone…).
+- From the graph, a node now has Pivot and "Add to notes" — drop findings straight into the investigation's notes.
+- Removed the duplicate "Resources" sidebar item (Tools & Resources already covers it).
+
 ## v0.1.8
 - Investigations now hold structured "Known information" (emails, usernames, domains, IPs, …) you can capture on create or in the detail view.
 - Pivot on any data point, or add it to the investigation's link chart in one click; "Build link chart" seeds the whole board at once.

@@ -28,10 +28,6 @@ const GROUPS: { heading?: string; items: NavItem[]; toggle?: 'courseNotes' }[] =
     items: [{ to: '/notes?folder=Course', label: 'Course Notes', icon: 'GraduationCap' }]
   },
   {
-    // Always visible, sits just above Settings.
-    items: [{ to: '/tools?category=Toolkits', label: 'Resources', icon: 'Library' }]
-  },
-  {
     heading: 'Settings',
     items: [{ to: '/settings', label: 'Settings', icon: 'Settings' }]
   }

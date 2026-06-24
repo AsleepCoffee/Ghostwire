@@ -165,20 +165,52 @@ export const FREE_SERVICES = API_SERVICES.filter((s) => s.tier === 'free')
 export const PAID_SERVICES = API_SERVICES.filter((s) => s.tier === 'paid')
 export const INTEGRATION_SERVICES = API_SERVICES.filter((s) => s.tool)
 
-/** Which pivot subjects each keyed service is useful for. */
-const INTEGRATION_SUBJECTS: Record<string, PivotSubject[]> = {
-  virustotal: ['domain', 'ip'],
-  shodan: ['ip', 'domain'],
-  abuseipdb: ['ip'],
-  urlscan: ['domain', 'ip'],
-  ipinfo: ['ip'],
-  hunter: ['domain'],
-  pulsedive: ['domain', 'ip'],
-  censys: ['ip', 'domain'],
-  securitytrails: ['domain'],
-  dehashed: ['email', 'username', 'name'],
-  intelx: ['email', 'domain', 'username'],
-  greynoise: ['ip']
+/** Deep-link templates per service per pivot subject ({V} = the value).
+ *  These are the result pages each provider shows for that data type. */
+const INTEGRATION_TARGETS: Record<string, Partial<Record<PivotSubject, string>>> = {
+  virustotal: {
+    domain: 'https://www.virustotal.com/gui/domain/{V}',
+    ip: 'https://www.virustotal.com/gui/ip-address/{V}',
+    email: 'https://www.virustotal.com/gui/search/{V}',
+    username: 'https://www.virustotal.com/gui/search/{V}'
+  },
+  shodan: {
+    ip: 'https://www.shodan.io/host/{V}',
+    domain: 'https://www.shodan.io/search?query=hostname:{V}'
+  },
+  abuseipdb: { ip: 'https://www.abuseipdb.com/check/{V}' },
+  urlscan: {
+    domain: 'https://urlscan.io/domain/{V}',
+    ip: 'https://urlscan.io/search/#ip:%22{V}%22'
+  },
+  ipinfo: { ip: 'https://ipinfo.io/{V}' },
+  hunter: {
+    domain: 'https://hunter.io/search/{V}',
+    email: 'https://hunter.io/verify/{V}'
+  },
+  pulsedive: {
+    domain: 'https://pulsedive.com/indicator/?ioc={V}',
+    ip: 'https://pulsedive.com/indicator/?ioc={V}'
+  },
+  censys: {
+    ip: 'https://search.censys.io/hosts/{V}',
+    domain: 'https://search.censys.io/search?resource=hosts&q={V}'
+  },
+  securitytrails: { domain: 'https://securitytrails.com/domain/{V}/dns' },
+  greynoise: { ip: 'https://viz.greynoise.io/ip/{V}' },
+  dehashed: {
+    email: 'https://dehashed.com/search?query={V}',
+    username: 'https://dehashed.com/search?query={V}',
+    name: 'https://dehashed.com/search?query={V}',
+    phone: 'https://dehashed.com/search?query={V}'
+  },
+  intelx: {
+    email: 'https://intelx.io/?s={V}',
+    domain: 'https://intelx.io/?s={V}',
+    username: 'https://intelx.io/?s={V}',
+    phone: 'https://intelx.io/?s={V}',
+    name: 'https://intelx.io/?s={V}'
+  }
 }
 
 /** Build pivot queries for services the user has a key for, relevant to `subject`. */
@@ -188,7 +220,12 @@ export function integrationQueriesFor(
   apiKeys: Record<string, string>
 ): { label: string; url: string; group: string }[] {
   const v = encodeURIComponent(value.trim())
-  return API_SERVICES.filter(
-    (s) => s.tool && apiKeys[s.id] && (INTEGRATION_SUBJECTS[s.id] ?? []).includes(subject)
-  ).map((s) => ({ group: 'Your API tools', label: s.name, url: s.tool!.url.replace('{QUERY}', v) }))
+  const out: { label: string; url: string; group: string }[] = []
+  for (const s of API_SERVICES) {
+    if (!apiKeys[s.id]) continue
+    const tmpl = INTEGRATION_TARGETS[s.id]?.[subject]
+    if (!tmpl) continue
+    out.push({ group: 'Your API tools', label: s.name, url: tmpl.replace('{V}', v) })
+  }
+  return out
 }

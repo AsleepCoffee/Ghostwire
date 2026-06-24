@@ -7,6 +7,15 @@ export interface ChangelogEntry {
 /** In-app patch notes. Newest first. Keep in sync with CHANGELOG.md. */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.1.9',
+    date: '2026-06-24',
+    notes: [
+      'Pivots now surface every API tool you hold a key for, deep-linked to the right result page per data type (email, domain, IP, username, phone…).',
+      'From the graph, a node now has Pivot and “Add to notes” — drop findings straight into the investigation’s notes.',
+      'Removed the duplicate “Resources” sidebar item (Tools & Resources already covers it).'
+    ]
+  },
+  {
     version: '0.1.8',
     date: '2026-06-24',
     notes: [

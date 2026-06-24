@@ -266,6 +266,25 @@ function GraphInner(): JSX.Element {
     }
   }
 
+  const addEntityToNotes = async (entity: EntityNode): Promise<void> => {
+    const title = `${board?.name ?? 'Link chart'} — findings`
+    const pid = board?.projectId ?? null
+    const cfg = ENTITY_TYPES[entity.type]
+    const propLines = Object.entries(entity.props ?? {})
+      .filter(([k]) => k !== 'image')
+      .map(([k, v]) => `  - ${k}: ${v}`)
+      .join('\n')
+    const line = `- **${cfg.label}:** ${entity.label}${entity.notes ? ` — ${entity.notes}` : ''}${propLines ? `\n${propLines}` : ''}`
+    const list = await api.notes.list()
+    const existing = list.find((n) => n.title === title && (n.projectId ?? null) === pid)
+    if (existing) {
+      await api.notes.save({ ...existing, body: `${existing.body}\n${line}` })
+    } else {
+      await api.notes.save({ title, body: `# ${title}\n\n${line}`, folder: 'Investigations', projectId: pid })
+    }
+    flash('Added to investigation notes')
+  }
+
   const entityTypeList = useMemo(() => Object.entries(ENTITY_TYPES) as [EntityType, typeof ENTITY_TYPES[EntityType]][], [])
 
   const boardModal = (
@@ -410,6 +429,7 @@ function GraphInner(): JSX.Element {
             busyTransform={busyTransform}
             apiKeys={settings.apiKeys ?? {}}
             onTransform={(t) => runTransform(selected, t)}
+            onAddToNotes={() => addEntityToNotes(selected)}
           />
         )}
       </div>
@@ -441,7 +461,8 @@ function EntityInspector({
   transforms,
   busyTransform,
   apiKeys,
-  onTransform
+  onTransform,
+  onAddToNotes
 }: {
   entity: EntityNode
   onChange: (p: Partial<EntityNode>) => void
@@ -452,6 +473,7 @@ function EntityInspector({
   busyTransform: string | null
   apiKeys: Record<string, string>
   onTransform: (t: Transform) => void
+  onAddToNotes: () => void
 }): JSX.Element {
   const [propKey, setPropKey] = useState('')
   const [propVal, setPropVal] = useState('')
@@ -495,9 +517,14 @@ function EntityInspector({
           <input className="input" value={entity.label} onChange={(e) => onChange({ label: e.target.value })} />
         </div>
 
-        <button className="btn-primary w-full justify-center" disabled={!entity.label.trim()} onClick={onPivot}>
-          <Crosshair size={15} /> Search everywhere
-        </button>
+        <div className="grid grid-cols-2 gap-2">
+          <button className="btn-primary justify-center" disabled={!entity.label.trim()} onClick={onPivot}>
+            <Crosshair size={15} /> Pivot
+          </button>
+          <button className="btn-ghost border border-ink-600 justify-center" disabled={!entity.label.trim()} onClick={onAddToNotes}>
+            <Icon name="NotebookPen" size={15} /> Add to notes
+          </button>
+        </div>
 
         {/* Transforms (Maltego-style automations) */}
         <div>
