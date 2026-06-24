@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.1.10
+- API-powered graph transforms — pull real data straight into the link chart: VirusTotal (subdomains, resolved IPs, domains-on-IP), Shodan (ports/hostnames/org), Hunter (emails on a domain), AbuseIPDB (reputation).
+- Right-click any graph node for a menu: run transforms, pivot, or add to notes.
+- Fixed the update prompt showing a stale "downloading" after you click Skip.
+- The app version now shows at the bottom-left of the sidebar.
+
 ## v0.1.9
 - Pivots now surface every API tool you hold a key for, deep-linked to the right result page per data type (email, domain, IP, username, phone…).
 - From the graph, a node now has Pivot and "Add to notes" — drop findings straight into the investigation's notes.

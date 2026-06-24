@@ -130,7 +130,7 @@ export function Settings(): JSX.Element {
       case 'checking':
         return 'Checking for updates…'
       case 'available':
-        return `Update ${upd.version} found — downloading…`
+        return `Update ${upd.version} available — use the prompt to install.`
       case 'downloading':
         return `Downloading… ${upd.percent ?? 0}%`
       case 'ready':

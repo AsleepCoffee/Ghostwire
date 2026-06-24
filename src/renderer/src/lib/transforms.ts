@@ -64,9 +64,142 @@ const crtshSubdomains: Transform = {
   }
 }
 
+const enc = encodeURIComponent
+const arr = (v: unknown): unknown[] => (Array.isArray(v) ? v : [])
+
+// ---------- API-powered transforms (pull data straight into the graph) ----------
+const vtDomainSubdomains: Transform = {
+  id: 'vt-subdomains',
+  label: 'VirusTotal: subdomains',
+  description: 'Fetch known subdomains from VirusTotal and add them as domain entities.',
+  needsKey: 'virustotal',
+  network: true,
+  run: async (label, _p, { apiKeys }) => {
+    const data = (await api.net.fetchJson(
+      `https://www.virustotal.com/api/v3/domains/${enc(label)}/subdomains?limit=40`,
+      { 'x-apikey': apiKeys.virustotal }
+    )) as { data?: { id?: string }[] }
+    const subs = arr(data.data)
+      .map((d) => String((d as { id?: string }).id ?? '').toLowerCase())
+      .filter(Boolean)
+      .slice(0, 30)
+    return { entities: subs.map((s) => ({ type: 'domain' as EntityType, label: s })), urls: [], note: `VirusTotal: ${subs.length} subdomains` }
+  }
+}
+
+const vtDomainResolutions: Transform = {
+  id: 'vt-domain-ips',
+  label: 'VirusTotal: resolved IPs',
+  description: 'Add the IP addresses this domain has resolved to (passive DNS).',
+  needsKey: 'virustotal',
+  network: true,
+  run: async (label, _p, { apiKeys }) => {
+    const data = (await api.net.fetchJson(
+      `https://www.virustotal.com/api/v3/domains/${enc(label)}/resolutions?limit=40`,
+      { 'x-apikey': apiKeys.virustotal }
+    )) as { data?: { attributes?: { ip_address?: string } }[] }
+    const ips = Array.from(
+      new Set(arr(data.data).map((d) => (d as { attributes?: { ip_address?: string } }).attributes?.ip_address).filter(Boolean) as string[])
+    ).slice(0, 30)
+    return { entities: ips.map((ip) => ({ type: 'ip' as EntityType, label: ip })), urls: [], note: `VirusTotal: ${ips.length} resolved IPs` }
+  }
+}
+
+const hunterEmails: Transform = {
+  id: 'hunter-emails',
+  label: 'Hunter: emails on domain',
+  description: 'Pull email addresses found on this domain via Hunter.io.',
+  needsKey: 'hunter',
+  network: true,
+  run: async (label, _p, { apiKeys }) => {
+    const data = (await api.net.fetchJson(
+      `https://api.hunter.io/v2/domain-search?domain=${enc(label)}&limit=25&api_key=${enc(apiKeys.hunter)}`
+    )) as { data?: { emails?: { value?: string }[] } }
+    const emails = arr(data.data?.emails)
+      .map((e) => String((e as { value?: string }).value ?? ''))
+      .filter(Boolean)
+      .slice(0, 30)
+    return { entities: emails.map((e) => ({ type: 'email' as EntityType, label: e })), urls: [], note: `Hunter: ${emails.length} emails` }
+  }
+}
+
+const shodanHost: Transform = {
+  id: 'shodan-host',
+  label: 'Shodan: host details',
+  description: 'Open ports, hostnames and org for this IP; adds hostnames as domains.',
+  needsKey: 'shodan',
+  network: true,
+  run: async (label, _p, { apiKeys }) => {
+    const d = (await api.net.fetchJson(
+      `https://api.shodan.io/shodan/host/${enc(label)}?key=${enc(apiKeys.shodan)}`
+    )) as { ports?: number[]; hostnames?: string[]; org?: string; isp?: string; country_name?: string; os?: string }
+    const hostnames = arr(d.hostnames).map(String).filter(Boolean).slice(0, 20)
+    const ports = arr(d.ports).map(String)
+    return {
+      entities: hostnames.map((h) => ({ type: 'domain' as EntityType, label: h })),
+      urls: [],
+      updateSource: {
+        ...(ports.length ? { ports: ports.join(', ') } : {}),
+        ...(d.org ? { org: d.org } : {}),
+        ...(d.isp ? { isp: d.isp } : {}),
+        ...(d.country_name ? { country: d.country_name } : {}),
+        ...(d.os ? { os: d.os } : {})
+      },
+      note: `Shodan: ${ports.length} ports, ${hostnames.length} hostnames`
+    }
+  }
+}
+
+const abuseipdbCheck: Transform = {
+  id: 'abuseipdb-check',
+  label: 'AbuseIPDB: reputation',
+  description: 'Attach abuse score, ISP, country and report count to this IP.',
+  needsKey: 'abuseipdb',
+  network: true,
+  run: async (label, _p, { apiKeys }) => {
+    const r = (await api.net.fetchJson(
+      `https://api.abuseipdb.com/api/v2/check?ipAddress=${enc(label)}&maxAgeInDays=90`,
+      { Key: apiKeys.abuseipdb, Accept: 'application/json' }
+    )) as { data?: { abuseConfidenceScore?: number; isp?: string; countryCode?: string; totalReports?: number; domain?: string } }
+    const d = r.data ?? {}
+    return {
+      entities: d.domain ? [{ type: 'domain' as EntityType, label: d.domain }] : [],
+      urls: [],
+      updateSource: {
+        abuse_score: `${d.abuseConfidenceScore ?? 0}%`,
+        ...(d.isp ? { isp: d.isp } : {}),
+        ...(d.countryCode ? { country: d.countryCode } : {}),
+        reports: String(d.totalReports ?? 0)
+      },
+      note: `AbuseIPDB: ${d.abuseConfidenceScore ?? 0}% abuse, ${d.totalReports ?? 0} reports`
+    }
+  }
+}
+
+const vtIpResolutions: Transform = {
+  id: 'vt-ip-domains',
+  label: 'VirusTotal: domains on IP',
+  description: 'Add domains that have resolved to this IP (passive DNS).',
+  needsKey: 'virustotal',
+  network: true,
+  run: async (label, _p, { apiKeys }) => {
+    const data = (await api.net.fetchJson(
+      `https://www.virustotal.com/api/v3/ip_addresses/${enc(label)}/resolutions?limit=40`,
+      { 'x-apikey': apiKeys.virustotal }
+    )) as { data?: { attributes?: { host_name?: string } }[] }
+    const hosts = Array.from(
+      new Set(arr(data.data).map((d) => (d as { attributes?: { host_name?: string } }).attributes?.host_name).filter(Boolean) as string[])
+    ).slice(0, 30)
+    return { entities: hosts.map((h) => ({ type: 'domain' as EntityType, label: h })), urls: [], note: `VirusTotal: ${hosts.length} domains` }
+  }
+}
+
 const TRANSFORMS: Partial<Record<EntityType, Transform[]>> = {
   domain: [
     crtshSubdomains,
+    vtDomainSubdomains,
+    vtDomainResolutions,
+    hunterEmails,
     {
       id: 'domain-recon',
       label: 'Open recon tools',
@@ -117,6 +250,9 @@ const TRANSFORMS: Partial<Record<EntityType, Transform[]>> = {
     }
   ],
   ip: [
+    shodanHost,
+    abuseipdbCheck,
+    vtIpResolutions,
     {
       id: 'ip-ipinfo',
       label: 'Enrich with IPinfo',

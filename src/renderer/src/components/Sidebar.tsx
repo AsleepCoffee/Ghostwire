@@ -1,6 +1,8 @@
+import { useEffect, useState } from 'react'
 import { NavLink } from 'react-router-dom'
 import { Icon } from './ui'
 import { useSettings } from '../lib/settings'
+import { api } from '../lib/api'
 import iconUrl from '../assets/icon.png'
 
 interface NavItem {
@@ -35,6 +37,10 @@ const GROUPS: { heading?: string; items: NavItem[]; toggle?: 'courseNotes' }[] =
 
 export function Sidebar(): JSX.Element {
   const { settings } = useSettings()
+  const [version, setVersion] = useState('')
+  useEffect(() => {
+    api.app.version().then(setVersion)
+  }, [])
   const groups = GROUPS.filter((g) => g.toggle !== 'courseNotes' || settings.showTraining !== false)
   return (
     <aside className="w-60 shrink-0 bg-ink-900 border-r border-ink-700 flex flex-col">
@@ -88,6 +94,7 @@ export function Sidebar(): JSX.Element {
             <div className="text-slate-500">Stored on this device</div>
           </div>
         </div>
+        <div className="text-[10px] text-slate-600 text-center mt-2">GhostWire{version ? ` v${version}` : ''}</div>
       </div>
     </aside>
   )

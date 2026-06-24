@@ -92,6 +92,7 @@ function GraphInner(): JSX.Element {
   const [projects, setProjects] = useState<Project[]>([])
   const [toast, setToast] = useState('')
   const [busyTransform, setBusyTransform] = useState<string | null>(null)
+  const [menu, setMenu] = useState<{ x: number; y: number; entity: EntityNode } | null>(null)
   const seq = useRef(0)
   const openInBrowser = useOpenInBrowser()
   const { settings } = useSettings()
@@ -206,6 +207,12 @@ function GraphInner(): JSX.Element {
 
   const onNodeClick = useCallback((_: unknown, node: Node): void => {
     setSelected((node.data as { entity: EntityNode }).entity)
+    setMenu(null)
+  }, [])
+
+  const onNodeContextMenu = useCallback((e: React.MouseEvent, node: Node): void => {
+    e.preventDefault()
+    setMenu({ x: e.clientX, y: e.clientY, entity: (node.data as { entity: EntityNode }).entity })
   }, [])
 
   const updateSelected = (patch: Partial<EntityNode>): void => {
@@ -366,7 +373,7 @@ function GraphInner(): JSX.Element {
           </button>
         )}
         <div className="ml-auto text-xs text-slate-500">
-          {nodes.length} entities · {edges.length} links · drag from node edge to link
+          {nodes.length} entities · {edges.length} links · right-click a node for transforms · drag an edge to link
         </div>
       </div>
 
@@ -397,7 +404,11 @@ function GraphInner(): JSX.Element {
             onConnect={onConnect}
             onNodeDragStop={onNodeDragStop}
             onNodeClick={onNodeClick}
-            onPaneClick={() => setSelected(null)}
+            onNodeContextMenu={onNodeContextMenu}
+            onPaneClick={() => {
+              setSelected(null)
+              setMenu(null)
+            }}
             nodeTypes={nodeTypes}
             fitView
             proOptions={{ hideAttribution: true }}
@@ -442,6 +453,67 @@ function GraphInner(): JSX.Element {
         subject={pivot?.subject ?? 'generic'}
         value={pivot?.value ?? ''}
       />
+
+      {/* Right-click node context menu */}
+      {menu && (
+        <>
+          <div
+            className="fixed inset-0 z-40"
+            onClick={() => setMenu(null)}
+            onContextMenu={(e) => {
+              e.preventDefault()
+              setMenu(null)
+            }}
+          />
+          <div
+            className="fixed z-50 w-60 card py-1 shadow-2xl max-h-[70vh] overflow-y-auto"
+            style={{ left: Math.min(menu.x, window.innerWidth - 250), top: Math.min(menu.y, window.innerHeight - 360) }}
+          >
+            <div className="px-3 py-1.5 text-[10px] uppercase tracking-widest text-slate-500 truncate">
+              {ENTITY_TYPES[menu.entity.type].label}: {menu.entity.label || '—'}
+            </div>
+            <button
+              className="w-full flex items-center gap-2 px-3 py-1.5 text-sm text-slate-200 hover:bg-ink-700"
+              onClick={() => {
+                setPivot({ value: menu.entity.label, subject: subjectForEntity(menu.entity.type) })
+                setMenu(null)
+              }}
+            >
+              <Crosshair size={14} /> Pivot — search everywhere
+            </button>
+            <button
+              className="w-full flex items-center gap-2 px-3 py-1.5 text-sm text-slate-200 hover:bg-ink-700"
+              onClick={() => {
+                addEntityToNotes(menu.entity)
+                setMenu(null)
+              }}
+            >
+              <Icon name="NotebookPen" size={14} /> Add to notes
+            </button>
+            <div className="border-t border-ink-700 my-1" />
+            <div className="px-3 py-1 text-[10px] uppercase tracking-widest text-slate-600">Transforms</div>
+            {transformsFor(menu.entity.type).map((t) => {
+              const locked = !!t.needsKey && !(settings.apiKeys ?? {})[t.needsKey]
+              return (
+                <button
+                  key={t.id}
+                  disabled={locked || busyTransform === t.id}
+                  className="w-full flex items-center gap-2 px-3 py-1.5 text-sm text-slate-200 hover:bg-ink-700 disabled:opacity-40"
+                  onClick={() => {
+                    runTransform(menu.entity, t)
+                    setMenu(null)
+                  }}
+                >
+                  <Sparkles size={14} className="text-accent shrink-0" />
+                  <span className="flex-1 text-left truncate">{t.label}</span>
+                  {t.network && <span className="text-[9px] text-slate-500 border border-ink-600 rounded px-1">NET</span>}
+                  {locked && <span className="text-[9px] text-warn border border-warn/40 rounded px-1">KEY</span>}
+                </button>
+              )
+            })}
+          </div>
+        </>
+      )}
 
       {toast && (
         <div className="fixed bottom-5 right-5 z-50 card px-4 py-2.5 text-sm text-slate-200 border-brand/30 shadow-xl max-w-sm">

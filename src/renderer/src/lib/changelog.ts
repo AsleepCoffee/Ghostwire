@@ -7,6 +7,16 @@ export interface ChangelogEntry {
 /** In-app patch notes. Newest first. Keep in sync with CHANGELOG.md. */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.1.10',
+    date: '2026-06-24',
+    notes: [
+      'API-powered graph transforms — pull real data straight into the link chart: VirusTotal (subdomains, resolved IPs, domains-on-IP), Shodan (ports/hostnames/org), Hunter (emails on a domain), AbuseIPDB (reputation).',
+      'Right-click any graph node for a menu: run transforms, pivot, or add to notes.',
+      'Fixed the update prompt showing a stale “downloading” after you click Skip.',
+      'The app version now shows at the bottom-left of the sidebar.'
+    ]
+  },
+  {
     version: '0.1.9',
     date: '2026-06-24',
     notes: [

@@ -12,12 +12,11 @@ export function UpdateNotice(): JSX.Element | null {
 
   useEffect(() => {
     return api.updates.onStatus((s) => {
+      // Ignore everything for a version the user chose to skip (no stale "downloading", etc.).
+      if (s.version && skipped.current === s.version) return
       setStatus(s)
-      if (s.state === 'available' && s.version && skipped.current !== s.version) setOpen(true)
+      if (s.state === 'available' && s.version) setOpen(true)
       if (s.state === 'ready') setOpen(true)
-      if (s.state === 'error' || s.state === 'none' || s.state === 'dev') {
-        // nothing to prompt
-      }
     })
   }, [])
 
@@ -26,6 +25,7 @@ export function UpdateNotice(): JSX.Element | null {
 
   const skip = (): void => {
     if (status.version) skipped.current = status.version
+    setStatus(null)
     setOpen(false)
   }
 
