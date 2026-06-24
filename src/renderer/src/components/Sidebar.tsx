@@ -1,0 +1,92 @@
+import { NavLink } from 'react-router-dom'
+import { Icon } from './ui'
+
+interface NavItem {
+  to: string
+  label: string
+  icon: string
+}
+
+const GROUPS: { heading?: string; items: NavItem[] }[] = [
+  {
+    items: [
+      { to: '/', label: 'Dashboard', icon: 'LayoutDashboard' },
+      { to: '/graph', label: 'Graph Workspace', icon: 'Workflow' },
+      { to: '/tools', label: 'Tools & Resources', icon: 'Wrench' },
+      { to: '/sock-puppets', label: 'Sock Puppets', icon: 'Drama' },
+      { to: '/browser', label: 'Browser', icon: 'Globe' },
+      { to: '/notes', label: 'Notes', icon: 'NotebookPen' }
+    ]
+  },
+  {
+    heading: 'Training',
+    items: [
+      { to: '/notes?folder=Course', label: 'Course Notes', icon: 'GraduationCap' },
+      { to: '/tools?category=Toolkits', label: 'Resources', icon: 'Library' }
+    ]
+  },
+  {
+    heading: 'Settings',
+    items: [{ to: '/settings', label: 'Settings', icon: 'Settings' }]
+  }
+]
+
+export function Sidebar(): JSX.Element {
+  return (
+    <aside className="w-60 shrink-0 bg-ink-900 border-r border-ink-700 flex flex-col">
+      {/* Brand */}
+      <div className="flex items-center gap-3 px-4 h-16 border-b border-ink-700">
+        <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-brand to-accent flex items-center justify-center shadow-glow">
+          <Icon name="Radar" size={20} className="text-white" />
+        </div>
+        <div className="leading-tight">
+          <div className="font-bold text-slate-100 tracking-tight">GhostWire</div>
+          <div className="text-[10px] text-slate-500 uppercase tracking-widest">OSINT Workbench</div>
+        </div>
+      </div>
+
+      {/* Nav */}
+      <nav className="flex-1 overflow-y-auto py-3 px-2 space-y-4">
+        {GROUPS.map((g, i) => (
+          <div key={i}>
+            {g.heading && (
+              <div className="px-3 mb-1.5 text-[10px] font-semibold uppercase tracking-widest text-slate-600">
+                {g.heading}
+              </div>
+            )}
+            <div className="space-y-0.5">
+              {g.items.map((item) => (
+                <NavLink
+                  key={item.to}
+                  to={item.to}
+                  end={item.to === '/'}
+                  className={({ isActive }) =>
+                    `flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
+                      isActive
+                        ? 'bg-brand/15 text-brand-glow font-medium'
+                        : 'text-slate-400 hover:text-slate-200 hover:bg-ink-800'
+                    }`
+                  }
+                >
+                  <Icon name={item.icon} size={18} />
+                  {item.label}
+                </NavLink>
+              ))}
+            </div>
+          </div>
+        ))}
+      </nav>
+
+      {/* Footer status */}
+      <div className="p-3 border-t border-ink-700">
+        <div className="flex items-center gap-2 px-2 py-2 rounded-lg bg-ink-800 border border-ink-700">
+          <Icon name="HardDriveDownload" size={16} className="text-ok" />
+          <div className="text-xs">
+            <div className="text-slate-300 font-medium">Local data</div>
+            <div className="text-slate-500">Stored on this device</div>
+          </div>
+        </div>
+      </div>
+    </aside>
+  )
+}

@@ -1,0 +1,103 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    color-scheme: dark;
+  }
+  html,
+  body,
+  #root {
+    height: 100%;
+    margin: 0;
+  }
+  body {
+    @apply bg-ink-950 text-slate-200 font-sans antialiased;
+    overflow: hidden;
+  }
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-thumb {
+    @apply bg-ink-600 rounded-full;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+}
+
+@layer components {
+  .card {
+    @apply bg-ink-850 border border-ink-700 rounded-xl;
+  }
+  .btn {
+    @apply inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed;
+  }
+  .btn-primary {
+    @apply btn bg-accent/15 text-accent-glow border border-accent/30 hover:bg-accent/25;
+  }
+  .btn-ghost {
+    @apply btn text-slate-300 hover:bg-ink-700;
+  }
+  .btn-danger {
+    @apply btn text-danger hover:bg-danger/10 border border-transparent hover:border-danger/30;
+  }
+  .input {
+    @apply w-full bg-ink-900 border border-ink-700 rounded-lg px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 outline-none focus:border-accent/60 focus:ring-1 focus:ring-accent/40;
+  }
+  .label {
+    @apply block text-xs font-medium uppercase tracking-wide text-slate-400 mb-1.5;
+  }
+  .chip {
+    @apply inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs bg-ink-700 text-slate-300;
+  }
+}
+
+/* React Flow dark tweaks */
+.react-flow__attribution {
+  display: none;
+}
+
+/* Markdown preview */
+.md-preview h1 {
+  @apply text-2xl font-bold mt-4 mb-2;
+}
+.md-preview h2 {
+  @apply text-xl font-bold mt-4 mb-2;
+}
+.md-preview h3 {
+  @apply text-lg font-semibold mt-3 mb-1.5;
+}
+.md-preview p {
+  @apply my-2 leading-relaxed;
+}
+.md-preview ul {
+  @apply list-disc ml-6 my-2;
+}
+.md-preview ol {
+  @apply list-decimal ml-6 my-2;
+}
+.md-preview a {
+  @apply text-accent underline;
+}
+.md-preview code {
+  @apply bg-ink-800 px-1.5 py-0.5 rounded text-accent-glow font-mono text-sm;
+}
+.md-preview pre {
+  @apply bg-ink-900 border border-ink-700 rounded-lg p-3 my-3 overflow-x-auto;
+}
+.md-preview pre code {
+  @apply bg-transparent p-0;
+}
+.md-preview blockquote {
+  @apply border-l-2 border-accent/50 pl-3 my-2 text-slate-400;
+}
+.md-preview table {
+  @apply border-collapse my-3;
+}
+.md-preview th,
+.md-preview td {
+  @apply border border-ink-700 px-3 py-1.5;
+}
