@@ -26,6 +26,7 @@ export function Settings(): JSX.Element {
   const [vaultPath, setVaultPath] = useState<string | undefined>(undefined)
   const [msg, setMsg] = useState('')
   const [version, setVersion] = useState('')
+  const [encrypted, setEncrypted] = useState<boolean | null>(null)
   const [upd, setUpd] = useState<UpdateStatus | null>(null)
   const [revealed, setRevealed] = useState<Record<string, boolean>>({})
   const [tests, setTests] = useState<
@@ -105,6 +106,7 @@ export function Settings(): JSX.Element {
   useEffect(() => {
     api.settings.get().then((s) => setVaultPath(s.vaultPath))
     api.app.version().then(setVersion)
+    api.app.encryptionStatus().then(setEncrypted)
     return api.updates.onStatus(setUpd)
   }, [])
 
@@ -308,8 +310,17 @@ export function Settings(): JSX.Element {
               browser session so identities never cross-contaminate.
             </li>
             <li className="flex gap-2">
-              <Icon name="TriangleAlert" size={16} className="text-warn shrink-0 mt-0.5" /> Persona credentials
-              and API keys are stored in plaintext — keep your device encrypted and secured.
+              {encrypted ? (
+                <>
+                  <Check size={16} className="text-ok shrink-0 mt-0.5" /> The database is <b>encrypted at rest</b>.
+                </>
+              ) : (
+                <>
+                  <Icon name="TriangleAlert" size={16} className="text-warn shrink-0 mt-0.5" /> Persona credentials,
+                  API keys and mailbox passwords are stored unencrypted in the local database — enable OS full-disk
+                  encryption (e.g. BitLocker) and keep your device secured.
+                </>
+              )}
             </li>
           </ul>
         </section>

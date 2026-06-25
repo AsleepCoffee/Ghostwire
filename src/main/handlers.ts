@@ -2,7 +2,7 @@ import { ipcMain, dialog, shell, BrowserWindow } from 'electron'
 import { randomUUID, createHash } from 'crypto'
 import { existsSync, mkdirSync, writeFileSync, copyFileSync } from 'fs'
 import { join, dirname, basename } from 'path'
-import { all, get, run } from './db'
+import { all, get, run, encryptionAvailable } from './db'
 import { exportAllNotes, writeNote } from './export'
 import exifr from 'exifr'
 import { pickImage, saveDataUrl, resolveMediaPath, importImageFromUrl, readMedia } from './media'
@@ -595,6 +595,19 @@ export function registerHandlers(): void {
   ipcMain.handle('files:pickImage', (_e, kind: string) => pickImage(kind))
   ipcMain.handle('files:saveDataUrl', (_e, dataUrl: string, kind: string) => saveDataUrl(kind, dataUrl))
   ipcMain.handle('files:fetchImage', (_e, url: string, kind: string) => importImageFromUrl(kind, url))
+  ipcMain.handle('files:exportImage', async (_e, dataUrl: string, defaultName: string) => {
+    const m = /^data:image\/[a-zA-Z0-9.+-]+;base64,(.*)$/.exec(dataUrl)
+    if (!m) throw new Error('Unsupported image data')
+    const win = BrowserWindow.getFocusedWindow()
+    const res = await dialog.showSaveDialog(win!, {
+      title: 'Export image',
+      defaultPath: defaultName,
+      filters: [{ name: 'PNG', extensions: ['png'] }]
+    })
+    if (res.canceled || !res.filePath) return null
+    writeFileSync(res.filePath, Buffer.from(m[1], 'base64'))
+    return res.filePath
+  })
   ipcMain.handle('files:exif', async (_e, mediaUrl: string) => {
     const buf = readMedia(mediaUrl)
     if (!buf) return {}
@@ -636,6 +649,9 @@ export function registerHandlers(): void {
   ipcMain.handle('shell:openExternal', async (_e, url: string) => {
     if (/^https?:\/\//i.test(url)) await shell.openExternal(url)
   })
+
+  // ===== App =====
+  ipcMain.handle('app:encryptionStatus', () => encryptionAvailable())
 
   // ===== Network (for graph transforms / free APIs; bypasses renderer CORS) =====
   ipcMain.handle('net:fetchJson', async (_e, url: string, headers?: Record<string, string>) => {

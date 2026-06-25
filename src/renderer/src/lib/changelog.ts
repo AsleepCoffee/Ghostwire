@@ -7,6 +7,14 @@ export interface ChangelogEntry {
 /** In-app patch notes. Newest first. Keep in sync with CHANGELOG.md. */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.1.15',
+    date: '2026-06-24',
+    notes: [
+      'Export the investigation link chart as a PNG — fits the whole graph and lets you choose where to save it.',
+      'Privacy note: the local database is intentionally not app-encrypted — a trial of OS-keystore encryption could fail to decrypt across launches (data-loss risk), so we recommend OS full-disk encryption (BitLocker) instead. Settings reflects this.'
+    ]
+  },
+  {
     version: '0.1.14',
     date: '2026-06-24',
     notes: [

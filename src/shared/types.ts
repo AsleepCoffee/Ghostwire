@@ -289,6 +289,8 @@ export interface OsintApi {
     fetchImage(url: string, kind: string): Promise<string | null>
     /** Parse EXIF (GPS + camera) from a stored gwmedia:// image. */
     exif(mediaUrl: string): Promise<ExifResult>
+    /** Save a data URL (e.g. an exported graph PNG) to a user-chosen file. Returns the path. */
+    exportImage(dataUrl: string, defaultName: string): Promise<string | null>
   }
   activity: {
     log(projectId: string, type: string, message: string): Promise<void>
@@ -315,6 +317,8 @@ export interface OsintApi {
   }
   app: {
     version(): Promise<string>
+    /** Whether the local database is encrypted at rest by the OS keystore. */
+    encryptionStatus(): Promise<boolean>
   }
   updates: {
     check(): Promise<void>

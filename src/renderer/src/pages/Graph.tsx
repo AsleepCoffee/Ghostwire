@@ -12,13 +12,16 @@ import {
   useNodesState,
   useEdgesState,
   addEdge,
+  getNodesBounds,
+  getViewportForBounds,
   type Node,
   type Edge,
   type Connection,
   type NodeProps
 } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
-import { Plus, Trash2, X, ImagePlus, Crosshair, Sparkles, Loader2 } from 'lucide-react'
+import { toPng } from 'html-to-image'
+import { Plus, Trash2, X, ImagePlus, Crosshair, Sparkles, Loader2, ImageDown } from 'lucide-react'
 import { api, type Board, type EntityNode, type EntityType, type Project } from '../lib/api'
 import { ENTITY_TYPES } from '../lib/constants'
 import { Icon, EmptyState, Modal } from '../components/ui'
@@ -319,6 +322,32 @@ function GraphInner(): JSX.Element {
     flash('Added to investigation notes')
   }
 
+  const exportPng = async (): Promise<void> => {
+    if (nodes.length === 0) {
+      flash('Nothing to export — add some entities first')
+      return
+    }
+    const w = 1600
+    const h = 1000
+    const bounds = getNodesBounds(nodes)
+    const vp = getViewportForBounds(bounds, w, h, 0.4, 2, 0.15)
+    const el = document.querySelector('.react-flow__viewport') as HTMLElement | null
+    if (!el) return
+    try {
+      const dataUrl = await toPng(el, {
+        backgroundColor: '#0b0e15',
+        width: w,
+        height: h,
+        style: { width: `${w}px`, height: `${h}px`, transform: `translate(${vp.x}px, ${vp.y}px) scale(${vp.zoom})` }
+      })
+      const name = `${(board?.name ?? 'graph').replace(/[^a-z0-9_-]+/gi, '-')}.png`
+      const path = await api.files.exportImage(dataUrl, name)
+      if (path) flash(`Saved ${path}`)
+    } catch (e) {
+      flash(`Export failed: ${String((e as Error)?.message ?? e)}`)
+    }
+  }
+
   const entityTypeList = useMemo(() => Object.entries(ENTITY_TYPES) as [EntityType, typeof ENTITY_TYPES[EntityType]][], [])
 
   const boardModal = (
@@ -394,6 +423,11 @@ function GraphInner(): JSX.Element {
         <button className="btn-ghost" onClick={openCreateBoard}>
           <Plus size={15} /> New board
         </button>
+        {board && (
+          <button className="btn-ghost" onClick={exportPng} title="Export the chart as a PNG">
+            <ImageDown size={15} /> Export PNG
+          </button>
+        )}
         {board && (
           <button className="btn-danger" onClick={deleteBoard}>
             <Trash2 size={15} /> Delete board

@@ -56,7 +56,8 @@ const api: OsintApi = {
     pickImage: (kind) => ipcRenderer.invoke('files:pickImage', kind),
     saveDataUrl: (dataUrl, kind) => ipcRenderer.invoke('files:saveDataUrl', dataUrl, kind),
     fetchImage: (url, kind) => ipcRenderer.invoke('files:fetchImage', url, kind),
-    exif: (mediaUrl) => ipcRenderer.invoke('files:exif', mediaUrl)
+    exif: (mediaUrl) => ipcRenderer.invoke('files:exif', mediaUrl),
+    exportImage: (dataUrl, defaultName) => ipcRenderer.invoke('files:exportImage', dataUrl, defaultName)
   },
   activity: {
     log: (projectId, type, message) => ipcRenderer.invoke('activity:log', projectId, type, message),
@@ -78,7 +79,8 @@ const api: OsintApi = {
     test: (id, key) => ipcRenderer.invoke('apikeys:test', id, key)
   },
   app: {
-    version: () => ipcRenderer.invoke('app:version')
+    version: () => ipcRenderer.invoke('app:version'),
+    encryptionStatus: () => ipcRenderer.invoke('app:encryptionStatus')
   },
   updates: {
     check: () => ipcRenderer.invoke('updates:check'),

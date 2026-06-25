@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.1.15
+- Export the investigation link chart as a PNG — fits the whole graph and lets you choose where to save it.
+- Privacy note: the local database is intentionally not app-encrypted — a trial of OS-keystore encryption could fail to decrypt across launches (data-loss risk), so we recommend OS full-disk encryption (BitLocker) instead.
+
 ## v0.1.14
 - Random AI-face avatars for personas — "Random face" in the editor, and auto-added on Quick Create.
 - EXIF transform on image entities: pulls GPS into a location node and camera/date/software into properties.

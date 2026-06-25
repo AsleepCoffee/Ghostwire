@@ -159,6 +159,13 @@ export async function initDb(): Promise<void> {
   persist(true)
 }
 
+/** Whether the local DB is encrypted at rest by the app. Currently false —
+ *  whole-DB OS encryption was unreliable to decrypt across runs (data-loss risk),
+ *  so we rely on OS full-disk encryption instead. */
+export function encryptionAvailable(): boolean {
+  return false
+}
+
 /** Idempotent column additions for DBs created before a column existed. */
 function migrate(): void {
   const adds = [
@@ -183,8 +190,7 @@ function migrate(): void {
 /** Persist the in-memory DB to disk (debounced unless `immediate`). */
 export function persist(immediate = false): void {
   const write = () => {
-    const data = db.export()
-    writeFileSync(dbPath, Buffer.from(data))
+    writeFileSync(dbPath, Buffer.from(db.export()))
   }
   if (immediate) {
     if (saveTimer) clearTimeout(saveTimer)
