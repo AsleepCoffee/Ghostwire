@@ -5,6 +5,7 @@ import { registerHandlers } from './handlers'
 import { registerMediaScheme, registerMediaProtocol } from './media'
 import { initUpdater } from './updater'
 import { initVpn, shutdownVpn } from './vpn'
+import { registerBackupHandlers, maybeAutoBackup } from './backup'
 
 // Must run before app is ready.
 registerMediaScheme()
@@ -54,8 +55,10 @@ app.whenReady().then(async () => {
   registerMediaProtocol()
   await initDb()
   registerHandlers()
+  registerBackupHandlers()
   initUpdater()
   initVpn()
+  maybeAutoBackup()
 
   // The Mailbox webview signs into webmail (e.g. Gmail), which tries to open its
   // login in a popup window. Keep it inline: navigate the webview itself instead

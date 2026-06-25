@@ -13,15 +13,19 @@ import {
   PlugZap,
   X,
   AlertTriangle,
-  Minus
+  Minus,
+  Save,
+  RotateCcw
 } from 'lucide-react'
-import { api, type UpdateStatus } from '../lib/api'
+import { api, type UpdateStatus, type BackupInfo } from '../lib/api'
 import { Icon } from '../components/ui'
 import { useSettings, THEMES } from '../lib/settings'
+import { useConfirm } from '../lib/confirm'
+import { fmtDateTime } from '../lib/format'
 import { FREE_SERVICES, PAID_SERVICES, type ApiService } from '../lib/apiServices'
 import { VpnManager } from '../components/VpnManager'
 
-type SectionId = 'appearance' | 'features' | 'vpn' | 'email' | 'apikeys' | 'vault' | 'updates' | 'privacy'
+type SectionId = 'appearance' | 'features' | 'vpn' | 'email' | 'apikeys' | 'vault' | 'backups' | 'updates' | 'privacy'
 
 const SECTIONS: { id: SectionId; label: string; icon: string }[] = [
   { id: 'appearance', label: 'Appearance', icon: 'Palette' },
@@ -30,6 +34,7 @@ const SECTIONS: { id: SectionId; label: string; icon: string }[] = [
   { id: 'email', label: 'Persona email', icon: 'Mail' },
   { id: 'apikeys', label: 'API keys', icon: 'KeyRound' },
   { id: 'vault', label: 'Obsidian vault', icon: 'FolderOpen' },
+  { id: 'backups', label: 'Backups', icon: 'Archive' },
   { id: 'updates', label: 'Updates', icon: 'RefreshCw' },
   { id: 'privacy', label: 'Data & privacy', icon: 'ShieldCheck' }
 ]
@@ -357,6 +362,8 @@ export function Settings(): JSX.Element {
             </section>
           )}
 
+          {section === 'backups' && <BackupSection flash={flash} />}
+
           {section === 'updates' && (
             <section className="card p-5">
               <h2 className="font-semibold text-slate-100 mb-1">Updates</h2>
@@ -410,6 +417,121 @@ export function Settings(): JSX.Element {
         </div>
       </div>
     </div>
+  )
+}
+
+function BackupSection({ flash }: { flash: (m: string) => void }): JSX.Element {
+  const { settings, update } = useSettings()
+  const confirm = useConfirm()
+  const [backups, setBackups] = useState<BackupInfo[]>([])
+  const [busy, setBusy] = useState(false)
+
+  const refresh = (): void => {
+    api.backup.list().then(setBackups)
+  }
+  useEffect(() => {
+    refresh()
+  }, [settings.backupDir])
+
+  const pickFolder = async (): Promise<void> => {
+    const dir = await api.backup.pickFolder()
+    if (dir) {
+      await update({ backupDir: dir })
+      refresh()
+    }
+  }
+
+  const backupNow = async (): Promise<void> => {
+    setBusy(true)
+    try {
+      const r = await api.backup.run()
+      flash(r.ok ? 'Backup created ✓' : `Backup failed: ${r.error ?? 'unknown error'}`)
+      refresh()
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const restore = async (path: string, name: string): Promise<void> => {
+    const ok = await confirm({
+      title: 'Restore this backup?',
+      message: `This replaces all current data with the contents of “${name}”. GhostWire will restart. Anything since that backup will be lost.`,
+      confirmText: 'Restore & restart',
+      danger: true
+    })
+    if (!ok) return
+    await api.backup.restore(path) // app relaunches on success
+  }
+
+  return (
+    <section className="card p-5">
+      <h2 className="font-semibold text-slate-100 mb-1 flex items-center gap-2">
+        <Icon name="Archive" size={16} className="text-brand-glow" /> Backups
+      </h2>
+      <p className="text-sm text-slate-500 mb-4">
+        Back up everything — investigations, personas, notes, link charts, evidence images and settings — to a folder you
+        choose. Each backup is a timestamped copy; the latest {15} are kept.
+      </p>
+
+      <div className="flex items-center gap-3">
+        <div className="flex-1 input flex items-center gap-2 font-mono text-xs">
+          <FolderOpen size={15} className="text-slate-500" />
+          <span className="truncate">{settings.backupDir || 'No backup folder selected'}</span>
+        </div>
+        <button className="btn-primary" onClick={pickFolder}>
+          <FolderOpen size={16} /> Choose folder
+        </button>
+      </div>
+
+      <label className="flex items-center justify-between py-3 mt-2 border-t border-ink-700">
+        <div>
+          <div className="text-sm text-slate-200 font-medium">Automatic backups</div>
+          <div className="text-xs text-slate-500">Make a backup on launch (at most once a day) when a folder is set.</div>
+        </div>
+        <Toggle on={settings.autoBackup === true} onChange={(v) => update({ autoBackup: v })} />
+      </label>
+
+      <div className="flex items-center gap-2">
+        <button className="btn-primary" onClick={backupNow} disabled={!settings.backupDir || busy}>
+          {busy ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />} Back up now
+        </button>
+        <button className="btn-ghost border border-ink-600" onClick={() => api.backup.reveal()} disabled={!settings.backupDir}>
+          <ExternalLink size={15} /> Open folder
+        </button>
+        <button className="btn-ghost border border-ink-600 ml-auto" onClick={() => api.backup.restore()}>
+          <RotateCcw size={15} /> Restore from folder…
+        </button>
+      </div>
+
+      {settings.lastBackupAt && (
+        <p className="text-[11px] text-slate-500 mt-2">Last backup: {fmtDateTime(settings.lastBackupAt)}</p>
+      )}
+
+      {backups.length > 0 && (
+        <div className="mt-4">
+          <div className="text-[10px] font-semibold uppercase tracking-widest text-slate-500 mb-2">
+            Recent backups in this folder
+          </div>
+          <div className="space-y-1.5 max-h-64 overflow-y-auto">
+            {backups.map((b) => (
+              <div key={b.path} className="flex items-center gap-3 rounded-lg border border-ink-700 bg-ink-900/50 px-3 py-2">
+                <Icon name="Archive" size={14} className="text-slate-500 shrink-0" />
+                <div className="min-w-0 flex-1">
+                  <div className="text-sm text-slate-200 truncate">{fmtDateTime(b.at)}</div>
+                  <div className="text-[11px] text-slate-500 truncate">{b.sizeMB} MB · {b.name}</div>
+                </div>
+                <button className="btn-ghost border border-ink-600 !px-2 !py-1 text-xs" onClick={() => api.backup.reveal(b.path)} title="Open in file manager">
+                  <ExternalLink size={13} />
+                </button>
+                <button className="btn-ghost border border-ink-600 !px-2 !py-1 text-xs" onClick={() => restore(b.path, b.name)} title="Restore this backup">
+                  <RotateCcw size={13} /> Restore
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </section>
   )
 }
 

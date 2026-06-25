@@ -7,6 +7,14 @@ export interface ChangelogEntry {
 /** In-app patch notes. Newest first. Keep in sync with CHANGELOG.md. */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.1.27',
+    date: '2026-06-25',
+    notes: [
+      'New Backups (Settings → Backups): pick a folder and back up everything — investigations, personas, notes, link charts, evidence images and settings. Back up on demand, turn on daily automatic backups, and restore any previous backup in one click (the app restarts into it). The most recent 15 backups are kept.',
+      'VPN exits are now auto-named by location — imported Proton configs show their country (e.g. “United States · US-NY#1”) so it’s obvious which exit to assign to which persona.'
+    ]
+  },
+  {
     version: '0.1.26',
     date: '2026-06-25',
     notes: [

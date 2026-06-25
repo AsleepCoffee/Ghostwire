@@ -129,6 +129,13 @@ const api: OsintApi = {
       ipcRenderer.on('vpn:status', listener as never)
       return () => ipcRenderer.removeListener('vpn:status', listener as never)
     }
+  },
+  backup: {
+    run: () => ipcRenderer.invoke('backup:run'),
+    list: () => ipcRenderer.invoke('backup:list'),
+    pickFolder: () => ipcRenderer.invoke('backup:pickFolder'),
+    reveal: (path) => ipcRenderer.invoke('backup:reveal', path),
+    restore: (path) => ipcRenderer.invoke('backup:restore', path)
   }
 }
 

@@ -199,6 +199,11 @@ function migrate(): void {
   }
 }
 
+/** Absolute path to the on-disk SQLite database file. */
+export function databasePath(): string {
+  return dbPath
+}
+
 /** Persist the in-memory DB to disk (debounced unless `immediate`). */
 export function persist(immediate = false): void {
   const write = () => {

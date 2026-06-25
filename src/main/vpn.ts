@@ -145,6 +145,45 @@ function parseEndpoint(text: string): string {
   return m ? m[1].trim() : ''
 }
 
+/** ISO country codes → names, for labeling Proton exits by location. */
+const COUNTRY_NAMES: Record<string, string> = {
+  US: 'United States', UK: 'United Kingdom', GB: 'United Kingdom', CA: 'Canada', DE: 'Germany',
+  FR: 'France', NL: 'Netherlands', JP: 'Japan', AU: 'Australia', CH: 'Switzerland', SE: 'Sweden',
+  NO: 'Norway', ES: 'Spain', IT: 'Italy', IE: 'Ireland', SG: 'Singapore', HK: 'Hong Kong',
+  IN: 'India', BR: 'Brazil', PL: 'Poland', RO: 'Romania', CZ: 'Czechia', AT: 'Austria',
+  BE: 'Belgium', DK: 'Denmark', FI: 'Finland', PT: 'Portugal', GR: 'Greece', NZ: 'New Zealand',
+  ZA: 'South Africa', MX: 'Mexico', AR: 'Argentina', IL: 'Israel', AE: 'United Arab Emirates',
+  TR: 'Turkey', UA: 'Ukraine', RS: 'Serbia', HU: 'Hungary', BG: 'Bulgaria', HR: 'Croatia',
+  SK: 'Slovakia', SI: 'Slovenia', EE: 'Estonia', LV: 'Latvia', LT: 'Lithuania', IS: 'Iceland',
+  LU: 'Luxembourg', CL: 'Chile', CO: 'Colombia', CR: 'Costa Rica', TW: 'Taiwan', KR: 'South Korea',
+  MY: 'Malaysia', TH: 'Thailand', ID: 'Indonesia', PH: 'Philippines', VN: 'Vietnam', EG: 'Egypt',
+  NG: 'Nigeria', KE: 'Kenya', MD: 'Moldova', GE: 'Georgia', AM: 'Armenia', AZ: 'Azerbaijan',
+  CY: 'Cyprus', MT: 'Malta', AL: 'Albania', MK: 'North Macedonia', BA: 'Bosnia & Herzegovina',
+  PE: 'Peru', EC: 'Ecuador', PK: 'Pakistan', BD: 'Bangladesh', LK: 'Sri Lanka', KZ: 'Kazakhstan'
+}
+
+// A Proton server label like "US-NY#1", "DE#5", "JP-FREE#2".
+const SERVER_LABEL = /^[A-Z]{2}[A-Z0-9]*([-#][A-Z0-9]+)*$/
+
+/** Derive a human, location-aware name for an imported config: prefer Proton's
+ *  server-label comment (e.g. "US-NY#1"), prefixed with the full country name. */
+function deriveConfigName(text: string, filename: string): string {
+  const base = filename.replace(/\.conf$/i, '').trim()
+  const comments = text
+    .split(/\r?\n/)
+    .map((l) => l.trim())
+    .filter((l) => l.startsWith('#'))
+    .map((l) => l.replace(/^#+\s*/, '').trim())
+  let label = comments.find((c) => SERVER_LABEL.test(c) && !/^KEY/i.test(c))
+  if (!label && SERVER_LABEL.test(base)) label = base
+  if (label) {
+    const country = COUNTRY_NAMES[label.slice(0, 2).toUpperCase()]
+    return country ? `${country} · ${label}` : label
+  }
+  const friendly = base.replace(/[-_]+/g, ' ').replace(/\s+/g, ' ').trim()
+  return friendly ? friendly.replace(/\b\w/g, (c) => c.toUpperCase()) : 'VPN config'
+}
+
 // ---------- process supervision ----------
 interface Running {
   child: ChildProcess
@@ -311,7 +350,7 @@ function registerVpnHandlers(): void {
         if (!/\[Interface\]/i.test(text) || !/PrivateKey\s*=/i.test(text)) continue
         const id = randomUUID()
         const base = fp.split(/[\\/]/).pop() ?? 'config'
-        const name = base.replace(/\.conf$/i, '')
+        const name = deriveConfigName(text, base)
         run('INSERT INTO vpn_configs (id,name,endpoint,socksPort,config,createdAt) VALUES (?,?,?,?,?,?)', [
           id,
           name,

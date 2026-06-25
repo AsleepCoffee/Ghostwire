@@ -224,6 +224,19 @@ export interface AppSettings {
   personalEmailPassword?: string
   /** The investigation new evidence/captures are filed under. */
   activeProjectId?: string | null
+  /** Folder where data backups (DB + media) are written. */
+  backupDir?: string
+  /** Auto-create a backup on launch (at most once per ~day). */
+  autoBackup?: boolean
+  /** Timestamp of the last successful backup. */
+  lastBackupAt?: number
+}
+
+export interface BackupInfo {
+  name: string
+  path: string
+  at: number
+  sizeMB: number
 }
 
 export interface Activity {
@@ -396,5 +409,17 @@ export interface OsintApi {
     /** One-click: download the latest wireproxy build for this OS into the app's bin folder. */
     installEngine(): Promise<{ ok: boolean; path?: string; error?: string }>
     onStatus(cb: (s: VpnState) => void): () => void
+  }
+  backup: {
+    /** Create a timestamped backup (DB + media) in the configured folder. */
+    run(): Promise<{ ok: boolean; path?: string; error?: string }>
+    /** Existing backups in the configured folder, newest first. */
+    list(): Promise<BackupInfo[]>
+    /** Pick the backup folder (persists to settings). Returns the chosen path. */
+    pickFolder(): Promise<string | null>
+    /** Open a backup folder (or the configured one) in the OS file manager. */
+    reveal(path?: string): Promise<void>
+    /** Restore DB + media from a backup folder, then relaunch. */
+    restore(path?: string): Promise<{ ok: boolean; error?: string }>
   }
 }

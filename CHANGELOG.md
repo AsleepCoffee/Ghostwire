@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.1.27
+- New Backups (Settings → Backups): pick a folder and back up everything (DB + evidence/avatar media). On-demand backup, optional daily auto-backup, and one-click restore (the app restarts into the restored data). Keeps the latest 15 backups.
+- VPN exits are auto-named by location — imported Proton configs show their country (e.g. "United States · US-NY#1") so it's obvious which exit to assign to which persona.
+
 ## v0.1.26
 - One-click VPN engine install — the VPN tab downloads and sets up the wireproxy helper for you automatically (no archives, PATHs, or folders to fuss with).
 - Clearer Proton setup — the guide now states exactly what to pick on Proton's WireGuard page (Platform: GNU/Linux, Moderate NAT off, NAT-PMP off, VPN Accelerator on, pick a country, Create).

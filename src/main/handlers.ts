@@ -240,7 +240,7 @@ function parseSetting(v: string): unknown {
   }
 }
 
-function getSettings(): AppSettings {
+export function getSettings(): AppSettings {
   const rows = all<{ key: string; value: string }>('SELECT key, value FROM settings')
   const out: Record<string, unknown> = {}
   for (const row of rows) out[row.key] = parseSetting(row.value)
@@ -251,7 +251,7 @@ function getSettings(): AppSettings {
   return out as AppSettings
 }
 
-function putSetting(key: string, value: unknown): void {
+export function putSetting(key: string, value: unknown): void {
   run('INSERT INTO settings (key,value) VALUES (?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value', [
     key,
     JSON.stringify(value)
