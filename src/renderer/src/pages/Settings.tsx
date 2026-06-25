@@ -189,7 +189,7 @@ export function Settings(): JSX.Element {
 
       {/* Section content */}
       <div className="flex-1 overflow-y-auto min-w-0">
-        <div className="max-w-3xl mx-auto p-8 space-y-6">
+        <div className="w-full max-w-6xl mx-auto px-10 py-8 space-y-6">
           {section === 'appearance' && (
             <section className="card p-5">
               <h2 className="font-semibold text-slate-100 mb-1">Appearance</h2>
@@ -263,7 +263,7 @@ export function Settings(): JSX.Element {
                 <b>catch-all email</b> (e.g. Cloudflare Email Routing — free), set it here to give personas durable
                 addresses like <code className="text-accent">handle@yourdomain.com</code> that won’t be blocked as disposable.
               </p>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-2xl">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-4xl">
                 <div>
                   <label className="label">Catch-all domain (optional)</label>
                   <input

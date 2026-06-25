@@ -27,23 +27,32 @@ function mailFillScript(email: string, password: string): string {
   return `(function(){
     try {
       var D=${data};
+      var EMAIL_SEL='input[type="email"], input[autocomplete="username"], input[name="identifier"], input[name="loginfmt"], input[name*="email" i]';
+      var PASS_SEL='input[type="password"], input[autocomplete="current-password"], input[name="passwd"], input[name="Passwd"], input[name*="pass" i]';
       function vis(el){ return el && el.offsetParent !== null && !el.disabled && !el.readOnly; }
       function setVal(el,val){
         if(!vis(el)||!val||el.value) return false;
         el.focus();
-        var s=Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype,'value').set;
+        var proto = el.ownerDocument.defaultView.HTMLInputElement.prototype;
+        var s=Object.getOwnPropertyDescriptor(proto,'value').set;
         s.call(el,val);
         el.dispatchEvent(new Event('input',{bubbles:true}));
         el.dispatchEvent(new Event('change',{bubbles:true}));
+        el.dispatchEvent(new KeyboardEvent('keyup',{bubbles:true}));
         return true;
       }
       function tick(){
-        setVal(document.querySelector('input[type="email"], input[autocomplete="username"], input[name="identifier"], input[name="loginfmt"], input[name*="email" i]'), D.email);
-        setVal(document.querySelector('input[type="password"], input[autocomplete="current-password"], input[name="passwd"], input[name="Passwd"], input[name*="pass" i]'), D.password);
+        setVal(document.querySelector(EMAIL_SEL), D.email);
+        setVal(document.querySelector(PASS_SEL), D.password);
       }
-      if (window.__gwMailFill) clearInterval(window.__gwMailFill);
+      // Re-arm: a MutationObserver catches the password box that Google/Microsoft
+      // reveal on the SECOND step (after picking the account) without a reload.
+      if (window.__gwMailObs) { try { window.__gwMailObs.disconnect(); } catch(e){} }
+      if (window.__gwMailInt) clearInterval(window.__gwMailInt);
+      window.__gwMailObs = new MutationObserver(tick);
+      window.__gwMailObs.observe(document.documentElement, { childList:true, subtree:true, attributes:true, attributeFilter:['type','style','class'] });
       var n = 0;
-      window.__gwMailFill = setInterval(function(){ n++; tick(); if (n > 30) clearInterval(window.__gwMailFill); }, 400);
+      window.__gwMailInt = setInterval(function(){ n++; tick(); if (n > 150) { clearInterval(window.__gwMailInt); try { window.__gwMailObs.disconnect(); } catch(e){} } }, 600);
       tick();
     } catch(e){}
   })();`
@@ -146,10 +155,14 @@ export function Mailbox(): JSX.Element {
     wv.addEventListener('dom-ready', fill)
     wv.addEventListener('did-finish-load', fill)
     wv.addEventListener('did-navigate-in-page', fill)
+    wv.addEventListener('did-stop-loading', fill)
+    // If the login page is already loaded by the time creds resolve, start now.
+    fill()
     return () => {
       wv.removeEventListener('dom-ready', fill)
       wv.removeEventListener('did-finish-load', fill)
       wv.removeEventListener('did-navigate-in-page', fill)
+      wv.removeEventListener('did-stop-loading', fill)
     }
   }, [configured, settings.personalEmail, settings.personalEmailPassword])
 

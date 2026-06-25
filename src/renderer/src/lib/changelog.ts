@@ -7,6 +7,14 @@ export interface ChangelogEntry {
 /** In-app patch notes. Newest first. Keep in sync with CHANGELOG.md. */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.1.22',
+    date: '2026-06-25',
+    notes: [
+      'Mailbox auto sign-in now fills the password on the second Google/Microsoft step — it watches the page for the password box appearing after you pick the account, instead of only filling once on load. Still backed by the 🔑 manual fill button.',
+      'Settings now uses the full window width instead of a narrow centered column.'
+    ]
+  },
+  {
     version: '0.1.21',
     date: '2026-06-25',
     notes: [

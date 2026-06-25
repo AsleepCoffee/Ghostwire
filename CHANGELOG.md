@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.1.22
+- Mailbox auto sign-in now fills the password on the second Google/Microsoft step — it watches the page for the password box appearing after you pick the account, instead of only filling once on load. Still backed by the 🔑 manual fill button.
+- Settings now uses the full window width instead of a narrow centered column.
+
 ## v0.1.21
 - Mailbox auto sign-in is much more reliable — it keeps filling email + password as the login advances (Gmail/Microsoft reveal the password box on a second step), plus a 🔑 fill-on-demand button. The webmail view uses a real desktop browser identity to avoid "insecure browser" blocks.
 - Per-persona VPN exits: import Proton WireGuard configs and route each sock puppet through a different country (userspace via wireproxy, no admin rights). Manage tunnels in Settings → VPN or the VPN tab; sessions are fail-closed and WebRTC is locked to the proxy.
