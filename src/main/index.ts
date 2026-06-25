@@ -7,6 +7,7 @@ import { initUpdater } from './updater'
 import { initVpn, shutdownVpn } from './vpn'
 import { registerBackupHandlers, maybeAutoBackup } from './backup'
 import { hardenWebContents } from './fingerprint'
+import { attachContextMenu } from './contextmenu'
 
 // Must run before app is ready.
 registerMediaScheme()
@@ -66,6 +67,9 @@ app.whenReady().then(async () => {
 
     // Per-persona browser fingerprint hardening (UA + canvas/WebGL/navigator spoof).
     hardenWebContents(contents)
+
+    // Right-click menu: add images to evidence, reverse search, copy/paste.
+    attachContextMenu(contents)
 
     // Neutralize WebAuthn/passkeys inside embedded sign-up flows (e.g. X/Twitter)
     // so sites don't pop the Windows Hello / security-key dialog and instead

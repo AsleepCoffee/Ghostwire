@@ -7,6 +7,14 @@ export interface ChangelogEntry {
 /** In-app patch notes. Newest first. Keep in sync with CHANGELOG.md. */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.1.42',
+    date: '2026-06-25',
+    notes: [
+      'New Map view — plots your location entities and photo GPS on a map; named places are geocoded via OpenStreetMap. Filter by investigation.',
+      'Right-click images in the in-app browser — “Add image to evidence” (saved with SHA-256, EXIF readable on the Evidence Board), reverse image search, copy/open. The browser now has a full right-click menu (copy/paste in fields, link & selection actions) too.'
+    ]
+  },
+  {
     version: '0.1.41',
     date: '2026-06-25',
     notes: [

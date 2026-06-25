@@ -260,6 +260,29 @@ export function putSetting(key: string, value: unknown): void {
   ])
 }
 
+/** Save an image (http(s) URL or data:image URL) into the evidence locker with a
+ *  SHA-256 hash. Used by the renderer and the in-browser right-click menu. */
+export async function addEvidenceFromUrl(url: string, projectId: string | null): Promise<Evidence> {
+  let path: string | null
+  let sourceUrl = url
+  if (/^data:image\//i.test(url)) {
+    path = saveDataUrl('evidence', url)
+    sourceUrl = ''
+  } else {
+    path = await importImageFromUrl('evidence', url)
+  }
+  if (!path) throw new Error('Could not save that image')
+  const buf = readMedia(path)
+  const sha = buf ? createHash('sha256').update(buf).digest('hex') : ''
+  const id = randomUUID()
+  run(
+    'INSERT INTO evidence (id,projectId,kind,path,sourceUrl,title,sha256,capturedAt,note) VALUES (?,?,?,?,?,?,?,?,?)',
+    [id, projectId ?? null, 'image', path, sourceUrl, '', sha, now(), '']
+  )
+  logActivity(projectId, 'evidence', `Added image${sourceUrl ? ` from ${sourceUrl}` : ''}`)
+  return mapEvidence(get('SELECT * FROM evidence WHERE id = ?', [id])!)
+}
+
 /** Gather everything for a full case report, with evidence images embedded. */
 function gatherReport(id: string): ReportData | null {
   const pr = get('SELECT * FROM projects WHERE id = ?', [id])
@@ -476,19 +499,7 @@ export function registerHandlers(): void {
     run('UPDATE evidence SET note = ? WHERE id = ?', [String(note ?? ''), id])
   })
   // Download an image from a URL straight into the evidence locker (with SHA-256).
-  ipcMain.handle('evidence:fromUrl', async (_e, url: string, projectId: string | null) => {
-    const path = await importImageFromUrl('evidence', url)
-    if (!path) throw new Error('Could not download an image from that URL')
-    const buf = readMedia(path)
-    const sha = buf ? createHash('sha256').update(buf).digest('hex') : ''
-    const id = randomUUID()
-    run(
-      'INSERT INTO evidence (id,projectId,kind,path,sourceUrl,title,sha256,capturedAt,note) VALUES (?,?,?,?,?,?,?,?,?)',
-      [id, projectId ?? null, 'image', path, url, '', sha, now(), '']
-    )
-    logActivity(projectId, 'evidence', `Added image from ${url}`)
-    return mapEvidence(get('SELECT * FROM evidence WHERE id = ?', [id])!)
-  })
+  ipcMain.handle('evidence:fromUrl', (_e, url: string, projectId: string | null) => addEvidenceFromUrl(url, projectId))
 
   // ===== Personas =====
   ipcMain.handle('personas:list', () =>

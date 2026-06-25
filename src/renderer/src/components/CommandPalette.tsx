@@ -71,6 +71,7 @@ export function CommandPalette(): JSX.Element | null {
       ['/projects', 'Investigations', 'FolderSearch'],
       ['/graph', 'Graph Workspace', 'Workflow'],
       ['/evidence', 'Evidence Board', 'Images'],
+      ['/map', 'Map', 'Map'],
       ['/timeline', 'Case Timeline', 'History'],
       ['/notes', 'Notes', 'NotebookPen'],
       ['/sock-puppets', 'Sock Puppets', 'Drama'],

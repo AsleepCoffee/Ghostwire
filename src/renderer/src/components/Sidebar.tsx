@@ -21,6 +21,7 @@ const GROUPS: { heading?: string; items: NavItem[]; toggle?: 'courseNotes' }[] =
       { to: '/projects', label: 'Investigations', icon: 'FolderSearch' },
       { to: '/graph', label: 'Graph Workspace', icon: 'Workflow' },
       { to: '/evidence', label: 'Evidence Board', icon: 'Images' },
+      { to: '/map', label: 'Map', icon: 'Map' },
       { to: '/timeline', label: 'Case Timeline', icon: 'History' },
       { to: '/notes', label: 'Notes', icon: 'NotebookPen' }
     ]
