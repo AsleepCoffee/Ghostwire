@@ -1,19 +1,18 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { DownloadCloud, Sparkles } from 'lucide-react'
 import { api, type UpdateStatus } from '../lib/api'
 import { Modal } from './ui'
 
 /** App-wide update prompt: when an update is available the user gets
- *  Install / Skip for now; after downloading, Restart & install / Later. */
+ *  Install / Skip for now; after downloading, Restart & install / Later.
+ *  Skip only dismisses the current prompt — a later check (manual or on next
+ *  launch) re-emits "available" and re-opens it. */
 export function UpdateNotice(): JSX.Element | null {
   const [status, setStatus] = useState<UpdateStatus | null>(null)
   const [open, setOpen] = useState(false)
-  const skipped = useRef<string | null>(null)
 
   useEffect(() => {
     return api.updates.onStatus((s) => {
-      // Ignore everything for a version the user chose to skip (no stale "downloading", etc.).
-      if (s.version && skipped.current === s.version) return
       setStatus(s)
       if (s.state === 'available' && s.version) setOpen(true)
       if (s.state === 'ready') setOpen(true)
@@ -24,7 +23,6 @@ export function UpdateNotice(): JSX.Element | null {
   const version = status.version ? `v${status.version}` : 'A new version'
 
   const skip = (): void => {
-    if (status.version) skipped.current = status.version
     setStatus(null)
     setOpen(false)
   }

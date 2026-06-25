@@ -1,5 +1,12 @@
 # Changelog
 
+## v0.1.17
+- Update prompt: "Skip for now" is temporary again — re-checking (or the next launch) re-prompts to install.
+- Fixed random-face avatars (old source stopped serving images) — now a real AI face with a fallback + clear error; plus Save-avatar-to-file for uploading to profiles.
+- New Mailbox tab: log into your inbox to read catch-all alias mail; step-by-step setup guide when not configured.
+- Quick Create uses your catch-all domain for the persona's email when set.
+- Redesigned dashboard — cleaner, consistent layout.
+
 ## v0.1.16
 - Custom themed window title bar — minimize / maximize / close now match your theme (frameless, draggable window).
 - Quality pass (typecheck/build/boot, no stray debug or unthemed popups) and README refreshed for all current features.

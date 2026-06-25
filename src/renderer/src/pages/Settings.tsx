@@ -220,15 +220,29 @@ export function Settings(): JSX.Element {
             <b>catch-all email</b> (e.g. Cloudflare Email Routing — free), set it here to give personas durable
             addresses like <code className="text-accent">handle@yourdomain.com</code> that won’t be blocked as disposable.
           </p>
-          <label className="label">Catch-all domain (optional)</label>
-          <input
-            className="input max-w-sm"
-            placeholder="yourdomain.com"
-            value={settings.catchAllDomain ?? ''}
-            onChange={(e) => update({ catchAllDomain: e.target.value.trim().replace(/^@/, '') })}
-          />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-2xl">
+            <div>
+              <label className="label">Catch-all domain (optional)</label>
+              <input
+                className="input"
+                placeholder="yourdomain.com"
+                value={settings.catchAllDomain ?? ''}
+                onChange={(e) => update({ catchAllDomain: e.target.value.trim().replace(/^@/, '') })}
+              />
+            </div>
+            <div>
+              <label className="label">Personal inbox (forwards here)</label>
+              <input
+                className="input"
+                placeholder="you@gmail.com"
+                value={settings.personalEmail ?? ''}
+                onChange={(e) => update({ personalEmail: e.target.value.trim() })}
+              />
+            </div>
+          </div>
           <p className="text-[11px] text-slate-600 mt-2">
-            Catch-all addresses are receive-only here — verification mail lands in whatever inbox your domain forwards to.
+            Catch-all aliases forward to your personal inbox — open it from the <b>Mailbox</b> tab (which also has a
+            step-by-step setup guide).
           </p>
         </section>
 

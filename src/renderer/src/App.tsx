@@ -12,6 +12,7 @@ import { Notes } from './pages/Notes'
 import { Tools } from './pages/Tools'
 import { Graph } from './pages/Graph'
 import { Dork } from './pages/Dork'
+import { Mailbox } from './pages/Mailbox'
 import { Settings } from './pages/Settings'
 
 export default function App(): JSX.Element {
@@ -38,6 +39,7 @@ export default function App(): JSX.Element {
               <Route path="/notes" element={<Notes />} />
               <Route path="/tools" element={<Tools />} />
               <Route path="/dork" element={<Dork />} />
+              <Route path="/mailbox" element={<Mailbox />} />
               <Route path="/graph" element={<Graph />} />
               <Route path="/settings" element={<Settings />} />
             </Routes>

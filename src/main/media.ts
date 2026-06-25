@@ -81,18 +81,55 @@ export function readMedia(url: string): Buffer | null {
   return p ? readFileSync(p) : null
 }
 
-/** Download an image from a URL into app media; returns a gwmedia:// url (or null). */
+const BROWSER_UA =
+  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36'
+
+/** Download an image from a URL into app media; returns a gwmedia:// url (or null).
+ *  Guards on content-type so we never save an HTML error page as an image. */
 export async function importImageFromUrl(kind: string, url: string): Promise<string | null> {
   if (!/^https?:\/\//i.test(url)) return null
-  const res = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0 GhostWire' } })
+  const res = await fetch(url, {
+    headers: { 'User-Agent': BROWSER_UA, Accept: 'image/avif,image/webp,image/png,image/*,*/*' }
+  })
   if (!res.ok) return null
-  const ct = res.headers.get('content-type') ?? ''
+  const ct = (res.headers.get('content-type') ?? '').toLowerCase()
+  if (!ct.startsWith('image/')) return null
   const ext = ct.includes('png') ? 'png' : ct.includes('webp') ? 'webp' : ct.includes('gif') ? 'gif' : 'jpg'
   const buf = Buffer.from(await res.arrayBuffer())
-  if (buf.length === 0) return null
+  if (buf.length < 256) return null
   const file = `${randomUUID()}.${ext}`
   writeFileSync(join(kindDir(kind), file), buf)
   return mediaUrl(kind, file)
+}
+
+/** Fetch a random AI-generated face for a persona avatar.
+ *  Primary: this-person-does-not-exist.com (real AI faces). Fallback: pravatar. */
+export async function fetchAvatar(): Promise<string | null> {
+  try {
+    const meta = await fetch(
+      'https://this-person-does-not-exist.com/new?new=1&gender=all&age=all&etnic=all',
+      { headers: { 'User-Agent': BROWSER_UA, Accept: 'application/json' } }
+    )
+    if (meta.ok) {
+      const j = (await meta.json()) as { src?: string }
+      if (j.src) {
+        const got = await importImageFromUrl('avatars', `https://this-person-does-not-exist.com${j.src}`)
+        if (got) return got
+      }
+    }
+  } catch {
+    /* fall through to fallback */
+  }
+  // Reliable fallback (stock portrait) if the AI-face service is unavailable.
+  return importImageFromUrl('avatars', `https://i.pravatar.cc/512?u=${randomUUID()}`)
+}
+
+/** Copy a stored gwmedia image to a user-chosen file (for uploading elsewhere). */
+export function copyMediaToPath(mediaUrl: string, destPath: string): boolean {
+  const src = resolveMediaPath(mediaUrl)
+  if (!src) return false
+  copyFileSync(src, destPath)
+  return true
 }
 
 export async function pickImage(kind: string): Promise<string | null> {

@@ -61,6 +61,7 @@ export function SockPuppets(): JSX.Element {
   const openInBrowser = useOpenInBrowser()
   const openTabs = useOpenTabs()
   const confirm = useConfirm()
+  const { settings } = useSettings()
 
   const load = async (): Promise<void> => setPersonas(await api.personas.list())
   useEffect(() => {
@@ -82,10 +83,16 @@ export function SockPuppets(): JSX.Element {
     const g = generateIdentity()
     let avatarPath: string | null = null
     try {
-      avatarPath = await api.files.fetchImage(`https://thispersondoesnotexist.com/?_=${Date.now()}`, 'avatars')
+      avatarPath = await api.files.randomAvatar()
     } catch {
       /* avatar is best-effort */
     }
+    // Prefer the user's catch-all domain (durable alias) for the persona's email when set.
+    const domain = settings.catchAllDomain
+    const email = domain ? `${g.handle.toLowerCase().replace(/[^a-z0-9._-]/g, '')}@${domain}` : g.email
+    const mailbox = domain
+      ? { provider: 'catchall' as const, address: email, password: generatePassword(), createdAt: Date.now() }
+      : null
     const saved = await api.personas.save({
       name: g.name,
       handle: g.handle,
@@ -94,10 +101,11 @@ export function SockPuppets(): JSX.Element {
       birthdate: g.birthdate,
       location: g.location,
       occupation: g.occupation,
-      email: g.email,
+      email,
       backstory: g.backstory,
       avatarPath,
-      accounts: buildStarterAccounts(g.handle, g.email),
+      mailbox,
+      accounts: buildStarterAccounts(g.handle, email),
       tags: ['generated']
     })
     await load()
@@ -321,9 +329,11 @@ function PersonaEditor({
 
   const randomAvatar = async (): Promise<void> => {
     setGenAvatar(true)
+    setMailErr('')
     try {
-      const url = await api.files.fetchImage(`https://thispersondoesnotexist.com/?_=${Date.now()}`, 'avatars')
+      const url = await api.files.randomAvatar()
       if (url) set({ avatarPath: url })
+      else setMailErr('Could not fetch a face right now — try again, or use Upload.')
     } finally {
       setGenAvatar(false)
     }
@@ -425,6 +435,15 @@ function PersonaEditor({
               <button className="btn-ghost border border-ink-600" disabled={genAvatar} onClick={randomAvatar} title="Generate a random AI face">
                 {genAvatar ? <Loader2 size={15} className="animate-spin" /> : <Dices size={15} />} Random face
               </button>
+              {p.avatarPath && (
+                <button
+                  className="btn-ghost border border-ink-600"
+                  onClick={() => api.files.saveCopy(p.avatarPath!, `${(p.handle || 'persona')}-avatar.jpg`)}
+                  title="Save the image to upload to social profiles"
+                >
+                  <ImagePlus size={15} /> Save image
+                </button>
+              )}
               {p.avatarPath && (
                 <button className="btn-ghost text-slate-500" onClick={() => set({ avatarPath: null })}>
                   Remove

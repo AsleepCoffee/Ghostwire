@@ -21,6 +21,7 @@ const GROUPS: { heading?: string; items: NavItem[]; toggle?: 'courseNotes' }[] =
       { to: '/dork', label: 'Dork & Pivot', icon: 'Binoculars' },
       { to: '/sock-puppets', label: 'Sock Puppets', icon: 'Drama' },
       { to: '/browser', label: 'Browser', icon: 'Globe' },
+      { to: '/mailbox', label: 'Mailbox', icon: 'Mail' },
       { to: '/notes', label: 'Notes', icon: 'NotebookPen' }
     ]
   },

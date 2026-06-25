@@ -5,7 +5,7 @@ import { join, dirname, basename } from 'path'
 import { all, get, run, encryptionAvailable } from './db'
 import { exportAllNotes, writeNote } from './export'
 import exifr from 'exifr'
-import { pickImage, saveDataUrl, resolveMediaPath, importImageFromUrl, readMedia } from './media'
+import { pickImage, saveDataUrl, resolveMediaPath, importImageFromUrl, readMedia, fetchAvatar, copyMediaToPath } from './media'
 import { testAllTools } from './toolcheck'
 import { testApiKey } from './apitest'
 import { createMailbox, listMessages, getMessage } from './mail'
@@ -595,6 +595,17 @@ export function registerHandlers(): void {
   ipcMain.handle('files:pickImage', (_e, kind: string) => pickImage(kind))
   ipcMain.handle('files:saveDataUrl', (_e, dataUrl: string, kind: string) => saveDataUrl(kind, dataUrl))
   ipcMain.handle('files:fetchImage', (_e, url: string, kind: string) => importImageFromUrl(kind, url))
+  ipcMain.handle('files:randomAvatar', () => fetchAvatar())
+  ipcMain.handle('files:saveCopy', async (_e, mediaUrl: string, defaultName: string) => {
+    const win = BrowserWindow.getFocusedWindow()
+    const res = await dialog.showSaveDialog(win!, {
+      title: 'Save image',
+      defaultPath: defaultName,
+      filters: [{ name: 'Image', extensions: ['jpg', 'jpeg', 'png', 'webp', 'gif'] }]
+    })
+    if (res.canceled || !res.filePath) return null
+    return copyMediaToPath(mediaUrl, res.filePath) ? res.filePath : null
+  })
   ipcMain.handle('files:exportImage', async (_e, dataUrl: string, defaultName: string) => {
     const m = /^data:image\/[a-zA-Z0-9.+-]+;base64,(.*)$/.exec(dataUrl)
     if (!m) throw new Error('Unsupported image data')

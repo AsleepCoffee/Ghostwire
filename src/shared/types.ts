@@ -187,6 +187,8 @@ export interface AppSettings {
   apiKeys?: Record<string, string>
   /** Your catch-all email domain (e.g. example.com) for persona mailboxes. */
   catchAllDomain?: string
+  /** Your real inbox that the catch-all forwards to (used to open its webmail). */
+  personalEmail?: string
   /** The investigation new evidence/captures are filed under. */
   activeProjectId?: string | null
 }
@@ -287,6 +289,10 @@ export interface OsintApi {
     saveDataUrl(dataUrl: string, kind: string): Promise<string>
     /** Download an image from a URL into app media, return a gwmedia:// url (or null). */
     fetchImage(url: string, kind: string): Promise<string | null>
+    /** Fetch a random AI-generated face for a persona avatar (gwmedia:// url or null). */
+    randomAvatar(): Promise<string | null>
+    /** Save a stored gwmedia image to a user-chosen file (e.g. to upload to a profile). */
+    saveCopy(mediaUrl: string, defaultName: string): Promise<string | null>
     /** Parse EXIF (GPS + camera) from a stored gwmedia:// image. */
     exif(mediaUrl: string): Promise<ExifResult>
     /** Save a data URL (e.g. an exported graph PNG) to a user-chosen file. Returns the path. */

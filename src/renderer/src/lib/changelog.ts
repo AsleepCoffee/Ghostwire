@@ -7,6 +7,17 @@ export interface ChangelogEntry {
 /** In-app patch notes. Newest first. Keep in sync with CHANGELOG.md. */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.1.17',
+    date: '2026-06-24',
+    notes: [
+      'Update prompt: “Skip for now” is temporary again — re-checking (or the next launch) re-prompts to install.',
+      'Fixed random-face avatars (the old source stopped serving images) — now fetches a real AI-generated face, with a fallback and a clear error if it can’t. You can also Save a persona’s avatar to upload it to profiles.',
+      'New Mailbox tab: with a catch-all domain set, log in to your inbox to read alias mail; without one, a step-by-step setup guide (Cloudflare Email Routing) with links.',
+      'Quick Create now uses your catch-all domain for the persona’s email when configured.',
+      'Redesigned dashboard — cleaner, consistent layout (hero + stats, quick start, recent investigations/personas/notes, tools, quick capture).'
+    ]
+  },
+  {
     version: '0.1.16',
     date: '2026-06-24',
     notes: [
