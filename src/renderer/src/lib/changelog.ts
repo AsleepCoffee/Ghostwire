@@ -7,6 +7,13 @@ export interface ChangelogEntry {
 /** In-app patch notes. Newest first. Keep in sync with CHANGELOG.md. */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.1.40',
+    date: '2026-06-25',
+    notes: [
+      'Select multiple nodes in the graph — toggle Pan/Select in the toolbar to drag a selection box, or shift-click to add nodes. Move the whole selection together (positions saved) or press Delete to remove them at once.'
+    ]
+  },
+  {
     version: '0.1.39',
     date: '2026-06-25',
     notes: [

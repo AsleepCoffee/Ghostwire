@@ -1,5 +1,8 @@
 # Changelog
 
+## v0.1.40
+- Multi-select in the graph — toggle Pan/Select to box-select nodes, or shift-click to add; move the selection together (saved) or Delete them all at once.
+
 ## v0.1.39
 - Dashboard world clocks — set a Time zone on an investigation (editor) and the dashboard shows a live clock for it beside local time (investigations with a zone appear automatically, active first).
 - "Add clock" on the dashboard pins any time zone alongside local time.

@@ -14,6 +14,7 @@ import {
   addEdge,
   getNodesBounds,
   getViewportForBounds,
+  SelectionMode,
   type Node,
   type Edge,
   type Connection,
@@ -21,7 +22,7 @@ import {
 } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 import { toPng } from 'html-to-image'
-import { Plus, Trash2, X, ImagePlus, Crosshair, Sparkles, Loader2, ImageDown, Check, AlertTriangle, KeyRound, Minus, ChevronDown, ChevronUp, Globe, ExternalLink } from 'lucide-react'
+import { Plus, Trash2, X, ImagePlus, Crosshair, Sparkles, Loader2, ImageDown, Check, AlertTriangle, KeyRound, Minus, ChevronDown, ChevronUp, Globe, ExternalLink, BoxSelect, Hand } from 'lucide-react'
 import { api, type Board, type EntityNode, type EntityType, type Project, type Evidence } from '../lib/api'
 import { ENTITY_TYPES } from '../lib/constants'
 import { Icon, EmptyState, Modal } from '../components/ui'
@@ -130,6 +131,7 @@ function GraphInner(): JSX.Element {
   const [menu, setMenu] = useState<{ x: number; y: number; entity: EntityNode } | null>(null)
   const [imgPicker, setImgPicker] = useState(false)
   const [pickEvidence, setPickEvidence] = useState<Evidence[]>([])
+  const [selectMode, setSelectMode] = useState(false)
   const nav = useNavigate()
   const seq = useRef(0)
   const openInBrowser = useOpenInBrowser()
@@ -238,9 +240,13 @@ function GraphInner(): JSX.Element {
     [boardId, setEdges]
   )
 
-  const onNodeDragStop = useCallback((_: unknown, node: Node): void => {
-    const entity = (node.data as { entity: EntityNode }).entity
-    api.boards.saveNode({ ...entity, x: node.position.x, y: node.position.y })
+  const onNodeDragStop = useCallback((_: unknown, node: Node, dragged: Node[]): void => {
+    // When several nodes are selected they move together — persist them all.
+    const list = dragged && dragged.length ? dragged : [node]
+    for (const n of list) {
+      const entity = (n.data as { entity: EntityNode }).entity
+      api.boards.saveNode({ ...entity, x: n.position.x, y: n.position.y })
+    }
   }, [])
 
   // Persist edge/node deletions made via keyboard (select + Delete/Backspace).
@@ -588,12 +594,21 @@ function GraphInner(): JSX.Element {
           </button>
         )}
         {board && (
+          <button
+            className={`btn-ghost ${selectMode ? '!text-brand-glow !border-brand/50 border' : ''}`}
+            onClick={() => setSelectMode((v) => !v)}
+            title={selectMode ? 'Select mode: drag a box to select nodes (click to pan off)' : 'Switch to box-select mode'}
+          >
+            {selectMode ? <BoxSelect size={15} /> : <Hand size={15} />} {selectMode ? 'Select' : 'Pan'}
+          </button>
+        )}
+        {board && (
           <button className="btn-danger" onClick={deleteBoard}>
             <Trash2 size={15} /> Delete board
           </button>
         )}
         <div className="ml-auto text-xs text-slate-500">
-          {nodes.length} entities · {edges.length} links · right-click a node for transforms · drag an edge to link
+          {nodes.length} entities · {edges.length} links · {selectMode ? 'drag a box to select · ' : ''}shift-click for multi-select · Del removes
         </div>
       </div>
 
@@ -631,6 +646,11 @@ function GraphInner(): JSX.Element {
             onNodesDelete={onNodesDelete}
             edgesFocusable
             deleteKeyCode={['Delete', 'Backspace']}
+            multiSelectionKeyCode={['Shift', 'Meta', 'Control']}
+            selectionKeyCode="Shift"
+            selectionOnDrag={selectMode}
+            panOnDrag={selectMode ? [1, 2] : true}
+            selectionMode={SelectionMode.Partial}
             onPaneClick={() => {
               setSelected(null)
               setMenu(null)
