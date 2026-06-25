@@ -17,7 +17,9 @@ import {
   Target,
   FileDown,
   Camera,
-  ExternalLink
+  ExternalLink,
+  Loader2,
+  ChevronDown
 } from 'lucide-react'
 import {
   api,
@@ -63,6 +65,8 @@ export function ProjectDetail(): JSX.Element {
   const [evidence, setEvidence] = useState<Evidence[]>([])
   const [activity, setActivity] = useState<Activity[]>([])
   const [editing, setEditing] = useState(false)
+  const [reportOpen, setReportOpen] = useState(false)
+  const [reportBusy, setReportBusy] = useState(false)
   const [pivot, setPivot] = useState<{ value: string; subject: PivotSubject } | null>(null)
   const [known, setKnown] = useState('')
   const [objectives, setObjectives] = useState('')
@@ -90,9 +94,22 @@ export function ProjectDetail(): JSX.Element {
     setActivity(await api.activity.list(id))
   }
 
-  const exportReport = async (): Promise<void> => {
-    const path = await api.projects.exportReport(id)
-    if (path) flash(`Report saved → ${path}`)
+  const doExport = async (kind: 'pdf' | 'html' | 'md'): Promise<void> => {
+    setReportOpen(false)
+    setReportBusy(true)
+    try {
+      const path =
+        kind === 'pdf'
+          ? await api.projects.exportReportPdf(id)
+          : kind === 'html'
+            ? await api.projects.exportReportHtml(id)
+            : await api.projects.exportReport(id)
+      if (path) flash(`Report saved → ${path}`)
+    } catch (e) {
+      flash(`Export failed: ${String((e as Error)?.message ?? e)}`)
+    } finally {
+      setReportBusy(false)
+    }
   }
   const removeEvidence = async (eid: string): Promise<void> => {
     await api.evidence.remove(eid)
@@ -256,9 +273,34 @@ export function ProjectDetail(): JSX.Element {
               <Crosshair size={15} /> Search target
             </button>
           )}
-          <button className="btn-ghost border border-ink-600" onClick={exportReport} title="Export a Markdown report">
-            <FileDown size={15} /> Report
-          </button>
+          <div className="relative">
+            <button
+              className="btn-ghost border border-ink-600"
+              onClick={() => setReportOpen((v) => !v)}
+              disabled={reportBusy}
+              title="Export a case report"
+            >
+              {reportBusy ? <Loader2 size={15} className="animate-spin" /> : <FileDown size={15} />} Report
+              <ChevronDown size={13} />
+            </button>
+            {reportOpen && (
+              <>
+                <div className="fixed inset-0 z-30" onClick={() => setReportOpen(false)} />
+                <div className="absolute right-0 mt-1 z-40 w-52 card py-1 shadow-2xl">
+                  <div className="px-3 py-1 text-[10px] uppercase tracking-widest text-slate-600">Export report</div>
+                  <button className="w-full text-left px-3 py-1.5 text-sm text-slate-200 hover:bg-ink-700" onClick={() => doExport('pdf')}>
+                    PDF — graph, evidence, timeline
+                  </button>
+                  <button className="w-full text-left px-3 py-1.5 text-sm text-slate-200 hover:bg-ink-700" onClick={() => doExport('html')}>
+                    HTML (self-contained)
+                  </button>
+                  <button className="w-full text-left px-3 py-1.5 text-sm text-slate-200 hover:bg-ink-700" onClick={() => doExport('md')}>
+                    Markdown (for Obsidian)
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
           <button className="btn-ghost !px-2" onClick={() => setEditing(true)} title="Edit details">
             <Pencil size={17} />
           </button>

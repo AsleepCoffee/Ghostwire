@@ -7,6 +7,17 @@ export interface ChangelogEntry {
 /** In-app patch notes. Newest first. Keep in sync with CHANGELOG.md. */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.1.36',
+    date: '2026-06-25',
+    notes: [
+      'Case report export — from an investigation, Report → PDF / HTML / Markdown. PDF & HTML bundle a visual link-chart, evidence (with images, source & SHA-256 hash), notes, personas and the full activity timeline into one shareable file.',
+      'Active investigation — star an investigation to make it active (highlighted in the list). Everything you capture (browser screenshots, evidence) files into it automatically.',
+      'Investigation dock — the right-side slide-out now also shows your active investigation (subject, known data points, objectives, background) with a Persona/Investigation tab switch, so you can reference and copy case info while browsing.',
+      'Browser screenshots are now region-select — click the camera, drag a box to capture just that area (or “Full visible”). Straight into the Evidence Board.',
+      'Reverse image search from the Evidence Board now opens in the in-app browser instead of your system browser.'
+    ]
+  },
+  {
     version: '0.1.35',
     date: '2026-06-25',
     notes: [

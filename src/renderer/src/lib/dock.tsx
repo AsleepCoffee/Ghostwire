@@ -27,7 +27,7 @@ const Ctx = createContext<DockCtx>({
  *  stay available while you're on the Browser tab filling a sign-up form. */
 export function PersonaDockProvider({ children }: { children: ReactNode }): JSX.Element {
   const [persona, setPersona] = useState<Persona | null>(null)
-  const [open, setOpen] = useState(true)
+  const [open, setOpen] = useState(false)
   const pin = (p: Persona): void => {
     setPersona(p)
     setOpen(true)

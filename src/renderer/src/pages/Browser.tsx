@@ -32,7 +32,7 @@ interface WebviewEl extends HTMLElement {
   loadURL(url: string): Promise<void>
   getURL(): string
   executeJavaScript(code: string): Promise<unknown>
-  capturePage(): Promise<{ toDataURL(): string }>
+  capturePage(rect?: { x: number; y: number; width: number; height: number }): Promise<{ toDataURL(): string }>
 }
 
 interface Tab {
@@ -180,31 +180,52 @@ export function Browser(): JSX.Element {
   const { settings } = useSettings()
 
   const active = tabs.find((t) => t.id === activeId) ?? null
+  const [regionMode, setRegionMode] = useState(false)
+  const [sel, setSel] = useState<{ x: number; y: number; w: number; h: number } | null>(null)
+  const dragStart = useRef<{ x: number; y: number } | null>(null)
+  const selRef = useRef<{ x: number; y: number; w: number; h: number } | null>(null)
 
-  const capture = async (): Promise<void> => {
+  const fileCaptured = (label: string): void => {
+    setToast(
+      settings.activeProjectId
+        ? `${label} → filed to the active investigation`
+        : `${label} (set an active investigation to file it)`
+    )
+    setTimeout(() => setToast(''), 2800)
+  }
+
+  const capture = async (rect?: { x: number; y: number; width: number; height: number }): Promise<void> => {
     if (!active) return
     const wv = refs.current.get(active.id)
     if (!wv) return
     try {
-      const img = await wv.capturePage()
-      const ev = await api.evidence.capture({
+      const img = await wv.capturePage(rect)
+      await api.evidence.capture({
         dataUrl: img.toDataURL(),
         sourceUrl: active.url,
-        title: active.title,
+        title: active.title + (rect ? ' (region)' : ''),
         projectId: settings.activeProjectId ?? null
       })
-      setToast(
-        settings.activeProjectId
-          ? 'Evidence captured & filed to the active investigation'
-          : 'Evidence captured (set an active investigation to file it)'
-      )
-      setTimeout(() => setToast(''), 2800)
-      void ev
+      fileCaptured(rect ? 'Region captured' : 'Evidence captured')
     } catch {
       setToast('Capture failed')
       setTimeout(() => setToast(''), 2200)
     }
   }
+
+  // Region-select capture: drag a box over the page; capture just that rect.
+  useEffect(() => {
+    if (!regionMode) return
+    const onKey = (e: KeyboardEvent): void => {
+      if (e.key === 'Escape') {
+        setRegionMode(false)
+        setSel(null)
+        dragStart.current = null
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [regionMode])
 
   const reloadPersonas = (): void => {
     api.personas.list().then(setPersonas)
@@ -370,8 +391,12 @@ export function Browser(): JSX.Element {
 
         <button
           className="btn-ghost !px-2 text-accent"
-          title="Capture page as evidence (URL + timestamp + SHA-256)"
-          onClick={capture}
+          title="Capture a region as evidence — drag a box (or use Full visible)"
+          onClick={() => {
+            setSel(null)
+            selRef.current = null
+            setRegionMode(true)
+          }}
           disabled={!active}
         >
           <Camera size={17} />
@@ -459,6 +484,80 @@ export function Browser(): JSX.Element {
             onExternal={() => api.shell.openExternal(t.url)}
           />
         ))}
+
+        {/* Region-capture overlay */}
+        {regionMode && active && (
+          <div
+            className="absolute inset-0 z-40 cursor-crosshair"
+            style={{ background: 'rgba(2,6,15,0.35)' }}
+            onMouseDown={(e) => {
+              const r = e.currentTarget.getBoundingClientRect()
+              dragStart.current = { x: e.clientX - r.left, y: e.clientY - r.top }
+              const s = { ...dragStart.current, w: 0, h: 0 }
+              selRef.current = s
+              setSel(s)
+            }}
+            onMouseMove={(e) => {
+              if (!dragStart.current) return
+              const r = e.currentTarget.getBoundingClientRect()
+              const cx = e.clientX - r.left
+              const cy = e.clientY - r.top
+              const s = {
+                x: Math.min(cx, dragStart.current.x),
+                y: Math.min(cy, dragStart.current.y),
+                w: Math.abs(cx - dragStart.current.x),
+                h: Math.abs(cy - dragStart.current.y)
+              }
+              selRef.current = s
+              setSel(s)
+            }}
+            onMouseUp={async () => {
+              dragStart.current = null
+              const s = selRef.current
+              setRegionMode(false)
+              setSel(null)
+              selRef.current = null
+              if (s && s.w > 4 && s.h > 4) {
+                await capture({ x: s.x, y: s.y, width: s.w, height: s.h })
+              }
+            }}
+          >
+            {sel && (
+              <div
+                className="absolute border-2 border-accent pointer-events-none"
+                style={{ left: sel.x, top: sel.y, width: sel.w, height: sel.h, background: 'rgba(34,211,238,0.12)' }}
+              />
+            )}
+            <div className="absolute top-3 left-1/2 -translate-x-1/2 flex items-center gap-3 bg-ink-900/95 border border-ink-600 rounded-lg px-3 py-1.5 text-xs text-slate-200 shadow-xl">
+              <span>Drag to select a region</span>
+              <button
+                className="btn-ghost border border-ink-600 !py-1 text-xs"
+                onMouseDown={(e) => {
+                  e.stopPropagation()
+                  e.preventDefault()
+                  setRegionMode(false)
+                  setSel(null)
+                  dragStart.current = null
+                  capture()
+                }}
+              >
+                Full visible
+              </button>
+              <button
+                className="btn-ghost !py-1 text-xs"
+                onMouseDown={(e) => {
+                  e.stopPropagation()
+                  e.preventDefault()
+                  setRegionMode(false)
+                  setSel(null)
+                  dragStart.current = null
+                }}
+              >
+                Cancel (Esc)
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {toast && (

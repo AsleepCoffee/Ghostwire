@@ -1,6 +1,6 @@
-import { ipcMain, dialog, shell, BrowserWindow, clipboard } from 'electron'
+import { ipcMain, dialog, shell, BrowserWindow, clipboard, app } from 'electron'
 import { randomUUID, createHash } from 'crypto'
-import { existsSync, mkdirSync, writeFileSync, copyFileSync } from 'fs'
+import { existsSync, mkdirSync, writeFileSync, copyFileSync, unlinkSync } from 'fs'
 import { join, dirname, basename } from 'path'
 import { all, get, run, encryptionAvailable } from './db'
 import { exportAllNotes, writeNote } from './export'
@@ -9,6 +9,7 @@ import { pickImage, saveDataUrl, resolveMediaPath, importImageFromUrl, readMedia
 import { testAllTools } from './toolcheck'
 import { testApiKey } from './apitest'
 import { createMailbox, listMessages, getMessage } from './mail'
+import { buildHtmlReport, type ReportData } from './report'
 import { applyPersonaProxies } from './vpn'
 import type {
   AppSettings,
@@ -258,6 +259,38 @@ export function putSetting(key: string, value: unknown): void {
   ])
 }
 
+/** Gather everything for a full case report, with evidence images embedded. */
+function gatherReport(id: string): ReportData | null {
+  const pr = get('SELECT * FROM projects WHERE id = ?', [id])
+  if (!pr) return null
+  const project = mapProject(pr)
+  const evidence = all('SELECT * FROM evidence WHERE projectId = ? ORDER BY capturedAt DESC', [id])
+    .map(mapEvidence)
+    .map((e) => {
+      const buf = e.kind !== 'file' ? readMedia(e.path) : null
+      const ext = (e.path.split('.').pop() ?? '').toLowerCase().replace(/[^a-z0-9]/g, '')
+      const mime =
+        ext === 'png' ? 'image/png' : ext === 'webp' ? 'image/webp' : ext === 'gif' ? 'image/gif' : 'image/jpeg'
+      return { ...e, dataUri: buf ? `data:${mime};base64,${buf.toString('base64')}` : null }
+    })
+  const notes = all('SELECT * FROM notes WHERE projectId = ? ORDER BY updatedAt DESC', [id]).map(mapNote)
+  const activity = all('SELECT * FROM activity WHERE projectId = ? ORDER BY at ASC', [id]).map((a) => ({
+    id: String((a as Record<string, unknown>).id),
+    projectId: id,
+    type: String((a as Record<string, unknown>).type ?? ''),
+    message: String((a as Record<string, unknown>).message ?? ''),
+    at: Number((a as Record<string, unknown>).at)
+  }))
+  const personas = all('SELECT * FROM personas WHERE projectId = ?', [id]).map(mapPersona)
+  const boards = all('SELECT * FROM boards WHERE projectId = ?', [id]).map(mapBoard)
+  const graphs = boards.map((b) => ({
+    board: b,
+    entities: all('SELECT * FROM entities WHERE boardId = ?', [b.id]).map(mapNode),
+    edges: all('SELECT * FROM edges WHERE boardId = ?', [b.id]).map(mapEdge)
+  }))
+  return { project, evidence, notes, activity, personas, graphs }
+}
+
 export function registerHandlers(): void {
   // ===== Projects / Investigations =====
   ipcMain.handle('projects:list', () =>
@@ -357,8 +390,54 @@ export function registerHandlers(): void {
     if (!existsSync(dir)) mkdirSync(dir, { recursive: true })
     const file = join(dir, `${safe}.md`)
     writeFileSync(file, buildReport(project, evidence, contents, join(dir, 'evidence')), 'utf-8')
-    logActivity(id, 'report', 'Exported investigation report')
+    logActivity(id, 'report', 'Exported investigation report (Markdown)')
     return file
+  })
+
+  ipcMain.handle('projects:exportReportHtml', async (_e, id: string) => {
+    const data = gatherReport(id)
+    if (!data) return null
+    const safe = data.project.name.replace(/[\\/:*?"<>|]/g, '-').slice(0, 100) || 'investigation'
+    const win = BrowserWindow.getFocusedWindow()
+    const res = await dialog.showSaveDialog(win!, {
+      title: 'Save HTML report',
+      defaultPath: `${safe}.html`,
+      filters: [{ name: 'HTML', extensions: ['html'] }]
+    })
+    if (res.canceled || !res.filePath) return null
+    writeFileSync(res.filePath, buildHtmlReport(data), 'utf-8')
+    logActivity(id, 'report', 'Exported HTML report')
+    return res.filePath
+  })
+
+  ipcMain.handle('projects:exportReportPdf', async (_e, id: string) => {
+    const data = gatherReport(id)
+    if (!data) return null
+    const safe = data.project.name.replace(/[\\/:*?"<>|]/g, '-').slice(0, 100) || 'investigation'
+    const win = BrowserWindow.getFocusedWindow()
+    const res = await dialog.showSaveDialog(win!, {
+      title: 'Save PDF report',
+      defaultPath: `${safe}.pdf`,
+      filters: [{ name: 'PDF', extensions: ['pdf'] }]
+    })
+    if (res.canceled || !res.filePath) return null
+    const tmp = join(app.getPath('temp'), `gw-report-${randomUUID()}.html`)
+    writeFileSync(tmp, buildHtmlReport(data), 'utf-8')
+    const w = new BrowserWindow({ show: false, webPreferences: { sandbox: true, javascript: false } })
+    try {
+      await w.loadFile(tmp)
+      const pdf = await w.webContents.printToPDF({ printBackground: true, pageSize: 'A4' })
+      writeFileSync(res.filePath, pdf)
+    } finally {
+      w.destroy()
+      try {
+        unlinkSync(tmp)
+      } catch {
+        /* temp cleanup best-effort */
+      }
+    }
+    logActivity(id, 'report', 'Exported PDF report')
+    return res.filePath
   })
 
   // ===== Evidence =====

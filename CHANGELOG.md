@@ -1,5 +1,12 @@
 # Changelog
 
+## v0.1.36
+- Case report export — Investigation → Report → PDF / HTML / Markdown. PDF & HTML bundle a visual link-chart (SVG), evidence (images + source + SHA-256), notes, personas and the activity timeline into one shareable file.
+- Active investigation — star one to make it active (highlighted); browser captures and evidence file into it automatically.
+- Investigation dock — the right-side slide-out now also shows the active investigation (subject, known data points, objectives, background) with a Persona/Investigation tab switch.
+- Region screenshots in the in-app Browser — click the camera and drag a box (or "Full visible"); lands in the Evidence Board.
+- Evidence reverse image search now opens in the in-app browser.
+
 ## v0.1.35
 - Open links straight from the graph — double-click an entity (or right-click → Open link) to open its URL in the in-app browser, plus an "Open in system browser" option. Works for social/profile, document, domain (→ https) and location (→ map) nodes.
 

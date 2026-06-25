@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Plus, Search, Drama, NotebookPen, Workflow, Target, Trash2 } from 'lucide-react'
+import { Plus, Search, Drama, NotebookPen, Workflow, Target, Trash2, Star } from 'lucide-react'
 import {
   api,
   type Project,
@@ -12,6 +12,7 @@ import {
 } from '../lib/api'
 import { PROJECT_TYPES, ENTITY_TYPES } from '../lib/constants'
 import { Icon, Modal, StatusBadge, EmptyState } from '../components/ui'
+import { useSettings } from '../lib/settings'
 
 export function Projects(): JSX.Element {
   const [projects, setProjects] = useState<Project[]>([])
@@ -19,6 +20,8 @@ export function Projects(): JSX.Element {
   const [query, setQuery] = useState('')
   const [creating, setCreating] = useState<Partial<Project> | null>(null)
   const nav = useNavigate()
+  const { settings, update } = useSettings()
+  const activeId = settings.activeProjectId ?? null
 
   const load = async (): Promise<void> => {
     setProjects(await api.projects.list())
@@ -80,13 +83,28 @@ export function Projects(): JSX.Element {
             {filtered.map((p) => {
               const cfg = PROJECT_TYPES[p.type]
               const c = counts[p.id] ?? { personas: 0, notes: 0, boards: 0 }
+              const isActive = p.id === activeId
               return (
-                <button
+                <div
                   key={p.id}
                   onClick={() => nav(`/projects/${p.id}`)}
-                  className="card p-4 text-left hover:border-brand/40 hover:shadow-glow transition-all"
+                  className={`card p-4 text-left cursor-pointer relative transition-all ${
+                    isActive ? 'border-brand/70 shadow-glow ring-1 ring-brand/40' : 'hover:border-brand/40 hover:shadow-glow'
+                  }`}
                 >
-                  <div className="flex items-start gap-3">
+                  <button
+                    className={`absolute top-3 right-3 p-1 rounded-md transition-colors ${
+                      isActive ? 'text-amber-400' : 'text-slate-600 hover:text-slate-300'
+                    }`}
+                    title={isActive ? 'Active investigation — new evidence/captures file here' : 'Set as active investigation'}
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      update({ activeProjectId: isActive ? null : p.id })
+                    }}
+                  >
+                    <Star size={18} fill={isActive ? 'currentColor' : 'none'} />
+                  </button>
+                  <div className="flex items-start gap-3 pr-7">
                     <div
                       className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0"
                       style={{ background: `${cfg.color}1f`, border: `1px solid ${cfg.color}44` }}
@@ -94,9 +112,14 @@ export function Projects(): JSX.Element {
                       <Icon name={cfg.icon} size={22} style={{ color: cfg.color }} />
                     </div>
                     <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <h3 className="font-semibold text-slate-100 truncate">{p.name}</h3>
                         <StatusBadge status={p.status} />
+                        {isActive && (
+                          <span className="px-1.5 py-0.5 rounded-md text-[10px] font-semibold uppercase tracking-wider border bg-brand/15 text-brand-glow border-brand/30">
+                            Active
+                          </span>
+                        )}
                       </div>
                       <div className="text-sm text-slate-500 truncate">
                         {cfg.label}
@@ -121,7 +144,7 @@ export function Projects(): JSX.Element {
                       <Workflow size={13} /> {c.boards}
                     </span>
                   </div>
-                </button>
+                </div>
               )
             })}
           </div>

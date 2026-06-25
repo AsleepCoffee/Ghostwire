@@ -18,6 +18,7 @@ import {
 import { api, type Evidence, type Project, type ExifResult } from '../lib/api'
 import { useSettings } from '../lib/settings'
 import { useConfirm } from '../lib/confirm'
+import { useOpenInBrowser } from '../lib/browserBus'
 import { fmtDateTime } from '../lib/format'
 import { EmptyState } from '../components/ui'
 
@@ -328,6 +329,7 @@ function EvidenceDetail({
   onAddToGraph: () => void
   onNote: (note: string) => void
 }): JSX.Element {
+  const openInBrowser = useOpenInBrowser()
   const [exif, setExif] = useState<ExifResult | null>(null)
   const [note, setNote] = useState(ev.note ?? '')
 
@@ -364,8 +366,8 @@ function EvidenceDetail({
               <button
                 key={eng.label}
                 className="btn-ghost border border-ink-600 text-xs"
-                onClick={() => api.shell.openExternal(imageUrl && eng.byUrl ? eng.byUrl(imageUrl) : eng.home)}
-                title={imageUrl && eng.byUrl ? `Search this image on ${eng.label}` : `Open ${eng.label} — then upload the saved image`}
+                onClick={() => openInBrowser([imageUrl && eng.byUrl ? eng.byUrl(imageUrl) : eng.home])}
+                title={imageUrl && eng.byUrl ? `Search this image on ${eng.label} (in-app)` : `Open ${eng.label} in-app — then upload the saved image`}
               >
                 {eng.label}
               </button>

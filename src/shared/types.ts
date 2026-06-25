@@ -284,7 +284,12 @@ export interface OsintApi {
     remove(id: string): Promise<void>
     counts(): Promise<Record<string, ProjectCounts>>
     contents(id: string): Promise<{ personas: Persona[]; notes: Note[]; boards: Board[] }>
+    /** Export a Markdown report (to the vault if set, else a chosen file). */
     exportReport(id: string): Promise<string | null>
+    /** Export a self-contained HTML report (graph + evidence + notes + timeline). */
+    exportReportHtml(id: string): Promise<string | null>
+    /** Export the report rendered to PDF. */
+    exportReportPdf(id: string): Promise<string | null>
   }
   evidence: {
     capture(payload: {
