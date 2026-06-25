@@ -13,10 +13,21 @@ import {
   ImagePlus,
   LogIn,
   Zap,
-  KeyRound,
-  RefreshCw
+  RefreshCw,
+  Mail,
+  Inbox,
+  Loader2
 } from 'lucide-react'
-import { api, type Persona, type PersonaAccount, type PersonaStatus, type Project } from '../lib/api'
+import {
+  api,
+  type Persona,
+  type PersonaAccount,
+  type PersonaStatus,
+  type Project,
+  type PersonaMailbox,
+  type MailMessage,
+  type MailMessageFull
+} from '../lib/api'
 import {
   generateIdentity,
   personaColor,
@@ -291,11 +302,27 @@ function PersonaEditor({
   const [p, setP] = useState<Partial<Persona>>({ ...initial })
   const [tagInput, setTagInput] = useState('')
   const [projects, setProjects] = useState<Project[]>([])
+  const [genMail, setGenMail] = useState(false)
+  const [mailErr, setMailErr] = useState('')
+  const [inboxOpen, setInboxOpen] = useState(false)
   const set = (patch: Partial<Persona>): void => setP((prev) => ({ ...prev, ...patch }))
 
   useEffect(() => {
     api.projects.list().then(setProjects)
   }, [])
+
+  const genMailbox = async (): Promise<void> => {
+    setGenMail(true)
+    setMailErr('')
+    try {
+      const mb = await api.mail.create(p.handle)
+      set({ mailbox: mb, email: mb.address })
+    } catch (e) {
+      setMailErr(`Couldn't create mailbox: ${String((e as Error)?.message ?? e)}`)
+    } finally {
+      setGenMail(false)
+    }
+  }
 
   const fillRandom = (): void => {
     const g = generateIdentity()
@@ -335,6 +362,8 @@ function PersonaEditor({
   }
 
   return (
+    <>
+    {inboxOpen && p.mailbox && <MailboxInbox mailbox={p.mailbox} onClose={() => setInboxOpen(false)} />}
     <Modal open onClose={onClose} title={initial.id ? 'Edit persona' : 'New persona'} wide>
       <div className="space-y-5 max-h-[70vh] overflow-y-auto pr-1">
         <div className="flex items-center justify-between">
@@ -366,6 +395,42 @@ function PersonaEditor({
           <button className="btn-ghost border border-ink-600" onClick={fillRandom}>
             <Wand2 size={15} /> Generate identity
           </button>
+        </div>
+
+        {/* Disposable mailbox */}
+        <div className="card !bg-ink-900 p-3">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2 text-sm min-w-0">
+              <Mail size={15} className="text-brand-glow shrink-0" />
+              {p.mailbox ? (
+                <span className="font-mono text-slate-200 truncate">{p.mailbox.address}</span>
+              ) : (
+                <span className="text-slate-500">Generate a disposable inbox to receive sign-up emails</span>
+              )}
+            </div>
+            <div className="flex gap-1.5 shrink-0">
+              {p.mailbox ? (
+                <>
+                  <button className="btn-ghost !px-2 text-xs" onClick={() => navigator.clipboard.writeText(p.mailbox!.address)}>
+                    <Copy size={13} /> Copy
+                  </button>
+                  <button className="btn-ghost border border-ink-600 text-xs" onClick={() => setInboxOpen(true)}>
+                    <Inbox size={14} /> Inbox
+                  </button>
+                </>
+              ) : (
+                <button className="btn-ghost border border-ink-600 text-xs" disabled={genMail} onClick={genMailbox}>
+                  {genMail ? <Loader2 size={13} className="animate-spin" /> : <Mail size={14} />} Generate mailbox
+                </button>
+              )}
+            </div>
+          </div>
+          {mailErr && <p className="text-xs text-danger mt-2">{mailErr}</p>}
+          {p.mailbox && (
+            <p className="text-[11px] text-slate-600 mt-2">
+              Disposable mail.tm inbox · password stored with the persona · some sites block disposable domains.
+            </p>
+          )}
         </div>
 
         <div className="grid grid-cols-2 gap-4">
@@ -548,6 +613,70 @@ function PersonaEditor({
         <button className="btn-primary" onClick={save}>
           Save persona
         </button>
+      </div>
+    </Modal>
+    </>
+  )
+}
+
+function MailboxInbox({ mailbox, onClose }: { mailbox: PersonaMailbox; onClose: () => void }): JSX.Element {
+  const [msgs, setMsgs] = useState<MailMessage[]>([])
+  const [sel, setSel] = useState<MailMessageFull | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [err, setErr] = useState('')
+
+  const load = async (): Promise<void> => {
+    setLoading(true)
+    setErr('')
+    try {
+      setMsgs(await api.mail.messages(mailbox.token))
+    } catch (e) {
+      setErr(String((e as Error)?.message ?? e))
+    } finally {
+      setLoading(false)
+    }
+  }
+  useEffect(() => {
+    load()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  return (
+    <Modal open onClose={onClose} title={`Inbox — ${mailbox.address}`} wide>
+      <div className="flex items-center justify-between mb-3">
+        <div className="text-xs text-slate-500">{msgs.length} message{msgs.length === 1 ? '' : 's'}</div>
+        <button className="btn-ghost border border-ink-600 text-xs" onClick={load} disabled={loading}>
+          {loading ? <Loader2 size={13} className="animate-spin" /> : <RefreshCw size={13} />} Refresh
+        </button>
+      </div>
+      {err && <p className="text-xs text-danger mb-2">{err}</p>}
+      <div className="grid grid-cols-2 gap-3 max-h-[60vh]">
+        <div className="overflow-y-auto border border-ink-700 rounded-lg divide-y divide-ink-800">
+          {msgs.length === 0 && !loading && (
+            <div className="p-4 text-sm text-slate-500 text-center">No mail yet — register somewhere, then Refresh.</div>
+          )}
+          {msgs.map((m) => (
+            <button
+              key={m.id}
+              onClick={async () => setSel(await api.mail.message(mailbox.token, m.id))}
+              className={`w-full text-left px-3 py-2 hover:bg-ink-800 ${sel?.id === m.id ? 'bg-ink-800' : ''}`}
+            >
+              <div className="text-sm font-medium text-slate-200 truncate">{m.subject}</div>
+              <div className="text-xs text-slate-500 truncate">{m.from}</div>
+            </button>
+          ))}
+        </div>
+        <div className="overflow-y-auto border border-ink-700 rounded-lg p-3">
+          {sel ? (
+            <>
+              <div className="text-sm font-semibold text-slate-100">{sel.subject}</div>
+              <div className="text-xs text-slate-500 mb-2">{sel.from}</div>
+              <pre className="text-xs text-slate-300 whitespace-pre-wrap break-words font-sans">{sel.text || sel.intro || '(no text body)'}</pre>
+            </>
+          ) : (
+            <div className="text-sm text-slate-500 text-center pt-8">Select a message to read it.</div>
+          )}
+        </div>
       </div>
     </Modal>
   )

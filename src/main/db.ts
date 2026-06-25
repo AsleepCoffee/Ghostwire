@@ -54,6 +54,7 @@ CREATE TABLE IF NOT EXISTS personas (
   backstory TEXT,
   accounts TEXT DEFAULT '[]',
   tags TEXT DEFAULT '[]',
+  mailbox TEXT,
   partition TEXT NOT NULL,
   createdAt INTEGER,
   updatedAt INTEGER
@@ -147,7 +148,8 @@ function migrate(): void {
     'ALTER TABLE personas ADD COLUMN projectId TEXT',
     'ALTER TABLE notes ADD COLUMN projectId TEXT',
     'ALTER TABLE boards ADD COLUMN projectId TEXT',
-    "ALTER TABLE projects ADD COLUMN dataPoints TEXT DEFAULT '[]'"
+    "ALTER TABLE projects ADD COLUMN dataPoints TEXT DEFAULT '[]'",
+    'ALTER TABLE personas ADD COLUMN mailbox TEXT'
   ]
   for (const sql of adds) {
     try {

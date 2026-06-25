@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.1.12
+- Sock puppets can generate a disposable mailbox (mail.tm) in one click, with a built-in inbox to read sign-up / verification emails.
+- New graph transform: live username enumeration — probes major platforms and adds only the accounts that actually exist.
+- New free domain transforms: DNS A-record resolve and latest Wayback Machine snapshot (no key needed).
+
 ## v0.1.11
 - Transforms now work like Maltego — they pull entities & data straight INTO the graph and never just open a browser tab. (Opening web tools is the separate "Pivot" action.)
 - Transform results de-duplicate: repeat runs link to existing nodes instead of piling up duplicates.

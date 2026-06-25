@@ -189,9 +189,70 @@ const vtIpResolutions: Transform = {
   }
 }
 
+const dnsResolve: Transform = {
+  id: 'dns-a',
+  label: 'DNS: resolve A records',
+  description: 'Resolve this domain to IPs via Google DNS-over-HTTPS (free). Adds IP entities.',
+  network: true,
+  run: async (label) => {
+    const d = (await api.net.fetchJson(`https://dns.google/resolve?name=${enc(label)}&type=A`)) as {
+      Answer?: { type?: number; data?: string }[]
+    }
+    const ips = Array.from(
+      new Set(arr(d.Answer).filter((a) => (a as { type?: number }).type === 1).map((a) => String((a as { data?: string }).data ?? '')).filter(Boolean))
+    ).slice(0, 20)
+    return { entities: ips.map((ip) => ({ type: 'ip' as EntityType, label: ip })), urls: [], note: `DNS: ${ips.length} A record(s)` }
+  }
+}
+
+const waybackLatest: Transform = {
+  id: 'wayback',
+  label: 'Wayback: latest snapshot',
+  description: 'Find the most recent Internet Archive snapshot (free). Adds a document entity.',
+  network: true,
+  run: async (label) => {
+    const u = /^https?:\/\//i.test(label) ? label : `http://${label}`
+    const d = (await api.net.fetchJson(`https://archive.org/wayback/available?url=${enc(u)}`)) as {
+      archived_snapshots?: { closest?: { url?: string; timestamp?: string } }
+    }
+    const snap = d.archived_snapshots?.closest
+    if (!snap?.url) return { entities: [], urls: [], note: 'No Wayback snapshot found' }
+    return {
+      entities: [{ type: 'document' as EntityType, label: `Wayback ${snap.timestamp ?? ''}`.trim(), props: { url: snap.url } }],
+      urls: [],
+      note: 'Added latest Wayback snapshot'
+    }
+  }
+}
+
+const usernameEnum: Transform = {
+  id: 'username-enum',
+  label: 'Check accounts (live)',
+  description: 'Probe major platforms for this username and add only the ones that exist. Best-effort (some sites soft-404).',
+  network: true,
+  run: async (label) => {
+    const u = label.replace(/^@/, '')
+    const results = await Promise.all(
+      USERNAME_SITES.map(async (s) => {
+        const url = s.url(u)
+        const status = await api.net.httpStatus(url)
+        return { s, url, status }
+      })
+    )
+    const hits = results.filter((r) => r.status >= 200 && r.status < 300)
+    return {
+      entities: hits.map((r) => ({ type: 'social' as EntityType, label: `${r.s.label}: ${u}`, props: { url: r.url, status: 'found' } })),
+      urls: [],
+      note: `Found ${hits.length}/${USERNAME_SITES.length} likely accounts`
+    }
+  }
+}
+
 const TRANSFORMS: Partial<Record<EntityType, Transform[]>> = {
   domain: [
     crtshSubdomains,
+    dnsResolve,
+    waybackLatest,
     vtDomainSubdomains,
     vtDomainResolutions,
     hunterEmails
@@ -231,10 +292,11 @@ const TRANSFORMS: Partial<Record<EntityType, Transform[]>> = {
     }
   ],
   username: [
+    usernameEnum,
     {
       id: 'username-profiles',
-      label: 'Create profile entities',
-      description: 'Add a social entity for the username on 14 major platforms (with profile URLs).',
+      label: 'Add all profile links',
+      description: 'Add a social entity for the username on every major platform (unverified, with profile URLs).',
       run: async (label) => {
         const u = label.replace(/^@/, '')
         return {

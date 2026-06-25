@@ -7,6 +7,15 @@ export interface ChangelogEntry {
 /** In-app patch notes. Newest first. Keep in sync with CHANGELOG.md. */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.1.12',
+    date: '2026-06-24',
+    notes: [
+      'Sock puppets can generate a disposable mailbox (mail.tm) in one click, with a built-in inbox to read sign-up / verification emails.',
+      'New graph transform: live username enumeration — probes major platforms and adds only the accounts that actually exist.',
+      'New free domain transforms: DNS A-record resolve and latest Wayback Machine snapshot (no key needed).'
+    ]
+  },
+  {
     version: '0.1.11',
     date: '2026-06-24',
     notes: [

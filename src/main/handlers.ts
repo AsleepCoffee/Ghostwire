@@ -5,6 +5,7 @@ import { exportAllNotes, writeNote } from './export'
 import { pickImage, saveDataUrl } from './media'
 import { testAllTools } from './toolcheck'
 import { testApiKey } from './apitest'
+import { createMailbox, listMessages, getMessage } from './mail'
 import type {
   AppSettings,
   Board,
@@ -46,6 +47,7 @@ function mapPersona(r: Record<string, unknown>): Persona {
     backstory: (r.backstory as string) ?? '',
     accounts: pj(r.accounts, []),
     tags: pj(r.tags, []),
+    mailbox: r.mailbox ? pj(r.mailbox, null) : null,
     partition: String(r.partition),
     createdAt: Number(r.createdAt),
     updatedAt: Number(r.updatedAt)
@@ -247,13 +249,13 @@ export function registerHandlers(): void {
       ? String((existing as Record<string, unknown>).partition)
       : `persist:persona_${id}`
     run(
-      `INSERT INTO personas (id,name,handle,status,projectId,avatarPath,bio,gender,birthdate,location,nationality,email,phone,occupation,backstory,accounts,tags,partition,createdAt,updatedAt)
-       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+      `INSERT INTO personas (id,name,handle,status,projectId,avatarPath,bio,gender,birthdate,location,nationality,email,phone,occupation,backstory,accounts,tags,mailbox,partition,createdAt,updatedAt)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
        ON CONFLICT(id) DO UPDATE SET
          name=excluded.name, handle=excluded.handle, status=excluded.status, projectId=excluded.projectId, avatarPath=excluded.avatarPath,
          bio=excluded.bio, gender=excluded.gender, birthdate=excluded.birthdate, location=excluded.location,
          nationality=excluded.nationality, email=excluded.email, phone=excluded.phone, occupation=excluded.occupation,
-         backstory=excluded.backstory, accounts=excluded.accounts, tags=excluded.tags, updatedAt=excluded.updatedAt`,
+         backstory=excluded.backstory, accounts=excluded.accounts, tags=excluded.tags, mailbox=excluded.mailbox, updatedAt=excluded.updatedAt`,
       [
         id,
         p.name ?? 'Unnamed persona',
@@ -272,6 +274,7 @@ export function registerHandlers(): void {
         p.backstory ?? '',
         j(p.accounts ?? []),
         j(p.tags ?? []),
+        p.mailbox ? j(p.mailbox) : null,
         partition,
         existing ? Number((existing as Record<string, unknown>).createdAt) : t,
         t
@@ -464,6 +467,29 @@ export function registerHandlers(): void {
     if (!res.ok) throw new Error(`HTTP ${res.status}`)
     return res.json()
   })
+  ipcMain.handle('net:httpStatus', async (_e, url: string) => {
+    if (!/^https?:\/\//i.test(url)) return 0
+    const opts = {
+      redirect: 'follow' as const,
+      headers: {
+        'User-Agent':
+          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36'
+      }
+    }
+    try {
+      let res = await fetch(url, { method: 'HEAD', ...opts })
+      // Some servers don't support HEAD — retry with GET.
+      if (res.status === 405 || res.status === 501) res = await fetch(url, { method: 'GET', ...opts })
+      return res.status
+    } catch {
+      return 0
+    }
+  })
+
+  // ===== Mail (mail.tm disposable mailboxes) =====
+  ipcMain.handle('mail:create', (_e, localPart?: string) => createMailbox(localPart))
+  ipcMain.handle('mail:messages', (_e, token: string) => listMessages(token))
+  ipcMain.handle('mail:message', (_e, token: string, id: string) => getMessage(token, id))
 
   // ===== Settings =====
   ipcMain.handle('settings:get', () => getSettings())

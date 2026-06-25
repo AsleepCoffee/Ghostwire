@@ -54,7 +54,13 @@ const api: OsintApi = {
     openExternal: (url) => ipcRenderer.invoke('shell:openExternal', url)
   },
   net: {
-    fetchJson: (url, headers) => ipcRenderer.invoke('net:fetchJson', url, headers)
+    fetchJson: (url, headers) => ipcRenderer.invoke('net:fetchJson', url, headers),
+    httpStatus: (url) => ipcRenderer.invoke('net:httpStatus', url)
+  },
+  mail: {
+    create: (localPart) => ipcRenderer.invoke('mail:create', localPart),
+    messages: (token) => ipcRenderer.invoke('mail:messages', token),
+    message: (token, id) => ipcRenderer.invoke('mail:message', token, id)
   },
   apiKeys: {
     test: (id, key) => ipcRenderer.invoke('apikeys:test', id, key)

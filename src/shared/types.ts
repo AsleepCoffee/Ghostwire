@@ -45,6 +45,29 @@ export interface PersonaAccount {
   notes?: string
 }
 
+/** A disposable mailbox provisioned for a persona (mail.tm). */
+export interface PersonaMailbox {
+  provider: 'mailtm'
+  address: string
+  password: string
+  token: string
+  createdAt: number
+}
+
+export interface MailMessage {
+  id: string
+  from: string
+  subject: string
+  intro: string
+  seen: boolean
+  date: string
+}
+
+export interface MailMessageFull extends MailMessage {
+  text: string
+  html: string[]
+}
+
 export interface Persona {
   id: string
   name: string
@@ -63,6 +86,8 @@ export interface Persona {
   backstory?: string
   accounts: PersonaAccount[]
   tags: string[]
+  /** A disposable mailbox provisioned for this persona, if any. */
+  mailbox?: PersonaMailbox | null
   /** Unique Electron session partition so each persona has isolated cookies/storage. */
   partition: string
   createdAt: number
@@ -218,6 +243,13 @@ export interface OsintApi {
   }
   net: {
     fetchJson(url: string, headers?: Record<string, string>): Promise<unknown>
+    /** Final HTTP status for a URL (HEAD, falling back to GET). 0 on network error. */
+    httpStatus(url: string): Promise<number>
+  }
+  mail: {
+    create(localPart?: string): Promise<PersonaMailbox>
+    messages(token: string): Promise<MailMessage[]>
+    message(token: string, id: string): Promise<MailMessageFull>
   }
   apiKeys: {
     test(
