@@ -1,4 +1,4 @@
-import { ipcMain, dialog, shell, BrowserWindow, clipboard, app } from 'electron'
+import { ipcMain, dialog, shell, BrowserWindow, clipboard, app, net } from 'electron'
 import { randomUUID, createHash } from 'crypto'
 import { existsSync, mkdirSync, writeFileSync, copyFileSync, unlinkSync } from 'fs'
 import { join, dirname, basename } from 'path'
@@ -832,9 +832,11 @@ export function registerHandlers(): void {
   ipcMain.handle('win:isMaximized', (e) => BrowserWindow.fromWebContents(e.sender)?.isMaximized() ?? false)
 
   // ===== Network (for graph transforms / free APIs; bypasses renderer CORS) =====
+  // Uses Electron's net.fetch so requests honour the default session's proxy —
+  // i.e. the app-wide VPN exit when one is set.
   ipcMain.handle('net:fetchJson', async (_e, url: string, headers?: Record<string, string>) => {
     if (!/^https:\/\//i.test(url)) throw new Error('Only https URLs are allowed')
-    const res = await fetch(url, {
+    const res = await net.fetch(url, {
       headers: { 'User-Agent': 'GhostWire-OSINT', Accept: 'application/json', ...(headers ?? {}) }
     })
     if (!res.ok) throw new Error(`HTTP ${res.status}`)
@@ -850,9 +852,8 @@ export function registerHandlers(): void {
       }
     }
     try {
-      let res = await fetch(url, { method: 'HEAD', ...opts })
-      // Some servers don't support HEAD — retry with GET.
-      if (res.status === 405 || res.status === 501) res = await fetch(url, { method: 'GET', ...opts })
+      let res = await net.fetch(url, { method: 'HEAD', ...opts })
+      if (res.status === 405 || res.status === 501) res = await net.fetch(url, { method: 'GET', ...opts })
       return res.status
     } catch {
       return 0

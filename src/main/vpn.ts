@@ -5,6 +5,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync, unlinkSync, chmodSy
 import { gunzipSync } from 'zlib'
 import { join } from 'path'
 import { all, get, run } from './db'
+import { getSettings } from './handlers'
 import type { Persona, VpnConfig, VpnConfigStatus, VpnState } from '../shared/types'
 
 /** Userspace WireGuard (wireproxy) supervisor.
@@ -282,25 +283,37 @@ function bindWebRtc(ses: Session): void {
   }
 }
 
-/** Re-pin every persona's session partition to its assigned exit, or direct.
- *  Fail-closed: a persona with an exit is pinned even if its tunnel is down. */
+function pin(ses: Session, cfg: VpnConfig | undefined): void {
+  if (cfg) {
+    ses.setProxy({ proxyRules: `socks5://127.0.0.1:${cfg.socksPort}` }).catch(() => {})
+    proxiedSessions.add(ses)
+    bindWebRtc(ses)
+  } else {
+    proxiedSessions.delete(ses)
+    ses.setProxy({ mode: 'direct' }).catch(() => {})
+  }
+}
+
+/** Re-pin sessions to their exit. App-wide sessions (and personas without their
+ *  own exit) follow the global exit when one is set; a persona's own exit wins.
+ *  Fail-closed: a session with an assigned exit is pinned even if its tunnel is down. */
 export function applyPersonaProxies(): void {
-  const personas = all<Persona & Record<string, unknown>>('SELECT partition, vpnConfigId FROM personas')
   const byId = new Map(listConfigs().map((c) => [c.id, c]))
+  const globalCfg = getSettings().globalVpnConfigId ? byId.get(getSettings().globalVpnConfigId!) : undefined
+
+  // App-wide: default session (used by main-process net.fetch too), the default
+  // browser, and the mailbox — all follow the global exit (or direct).
+  pin(session.defaultSession, globalCfg)
+  pin(session.fromPartition('persist:default-browser'), globalCfg)
+  pin(session.fromPartition('persist:gw-mailbox'), globalCfg)
+
+  // Personas: own exit if set, otherwise the global exit, otherwise direct.
+  const personas = all<Persona & Record<string, unknown>>('SELECT partition, vpnConfigId FROM personas')
   for (const p of personas) {
     const partition = String(p.partition)
     if (!partition) continue
-    const ses = session.fromPartition(partition)
     const cfgId = (p.vpnConfigId as string) ?? null
-    const cfg = cfgId ? byId.get(cfgId) : undefined
-    if (cfg) {
-      ses.setProxy({ proxyRules: `socks5://127.0.0.1:${cfg.socksPort}` }).catch(() => {})
-      proxiedSessions.add(ses)
-      bindWebRtc(ses)
-    } else {
-      proxiedSessions.delete(ses)
-      ses.setProxy({ mode: 'direct' }).catch(() => {})
-    }
+    pin(session.fromPartition(partition), cfgId ? byId.get(cfgId) : globalCfg)
   }
 }
 

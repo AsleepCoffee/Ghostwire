@@ -236,6 +236,8 @@ export interface AppSettings {
   worldClocks?: { label: string; tz: string }[]
   /** Harden each persona's browser fingerprint (UA + canvas/WebGL/navigator). Default on. */
   hardenFingerprint?: boolean
+  /** App-wide VPN exit: route the whole app (and personas without their own exit) through this config. */
+  globalVpnConfigId?: string
 }
 
 export interface BackupInfo {

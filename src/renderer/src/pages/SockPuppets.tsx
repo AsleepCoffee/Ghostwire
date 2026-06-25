@@ -518,6 +518,7 @@ function PersonaEditor({
 
   const save = async (): Promise<void> => {
     await api.personas.save(p)
+    api.vpn.apply().catch(() => {}) // bind the persona's session to its VPN exit
     onSaved()
   }
 

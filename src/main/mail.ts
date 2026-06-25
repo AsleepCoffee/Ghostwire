@@ -1,3 +1,4 @@
+import { net } from 'electron'
 import { randomUUID } from 'crypto'
 import type { MailMessage, MailMessageFull, PersonaMailbox } from '../shared/types'
 
@@ -23,7 +24,7 @@ function randomPassword(): string {
 async function tryProvider(base: string, localPart?: string): Promise<PersonaMailbox | null> {
   let domainsData: { 'hydra:member'?: { domain?: string; isActive?: boolean }[] }
   try {
-    domainsData = (await jsonOrThrow(await fetch(`${base}/domains?page=1`, { headers: UA }))) as typeof domainsData
+    domainsData = (await jsonOrThrow(await net.fetch(`${base}/domains?page=1`, { headers: UA }))) as typeof domainsData
   } catch {
     return null // provider unreachable / rate-limited — let the caller try the next one
   }
@@ -43,7 +44,7 @@ async function tryProvider(base: string, localPart?: string): Promise<PersonaMai
   outer: for (const domain of pool) {
     for (const part of locals) {
       const candidate = `${part}@${domain}`
-      const res = await fetch(`${base}/accounts`, {
+      const res = await net.fetch(`${base}/accounts`, {
         method: 'POST',
         headers: { ...UA, 'Content-Type': 'application/json' },
         body: JSON.stringify({ address: candidate, password })
@@ -59,7 +60,7 @@ async function tryProvider(base: string, localPart?: string): Promise<PersonaMai
   if (!address) return null
 
   const tokenData = (await jsonOrThrow(
-    await fetch(`${base}/token`, {
+    await net.fetch(`${base}/token`, {
       method: 'POST',
       headers: { ...UA, 'Content-Type': 'application/json' },
       body: JSON.stringify({ address, password })
@@ -83,7 +84,7 @@ export async function createMailbox(localPart?: string): Promise<PersonaMailbox>
 
 export async function listMessages(token: string, base = PROVIDERS[0]): Promise<MailMessage[]> {
   const data = (await jsonOrThrow(
-    await fetch(`${base}/messages?page=1`, { headers: { ...UA, Authorization: `Bearer ${token}` } })
+    await net.fetch(`${base}/messages?page=1`, { headers: { ...UA, Authorization: `Bearer ${token}` } })
   )) as { 'hydra:member'?: Record<string, unknown>[] }
   return (data['hydra:member'] ?? []).map((m) => ({
     id: String(m.id),
@@ -97,7 +98,7 @@ export async function listMessages(token: string, base = PROVIDERS[0]): Promise<
 
 export async function getMessage(token: string, id: string, base = PROVIDERS[0]): Promise<MailMessageFull> {
   const m = (await jsonOrThrow(
-    await fetch(`${base}/messages/${encodeURIComponent(id)}`, {
+    await net.fetch(`${base}/messages/${encodeURIComponent(id)}`, {
       headers: { ...UA, Authorization: `Bearer ${token}` }
     })
   )) as Record<string, unknown>

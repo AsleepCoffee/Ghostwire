@@ -7,6 +7,7 @@ import {
   buildDorkQuery,
   dorkUrl,
   DORK_TEMPLATES,
+  SEARCH_ENGINES,
   SUBJECT_LABELS,
   type DorkParams,
   type PivotSubject
@@ -27,7 +28,7 @@ export function Dork(): JSX.Element {
   const query = buildDorkQuery(p)
 
   const copy = (): void => {
-    navigator.clipboard.writeText(query)
+    api.clipboard.writeText(query)
     setCopied(true)
     setTimeout(() => setCopied(false), 1500)
   }
@@ -51,7 +52,7 @@ export function Dork(): JSX.Element {
             <Icon name="Binoculars" size={20} className="text-brand-glow" /> Dork & Pivot
           </h1>
           <p className="text-sm text-slate-500">
-            Build Google dorks, fire ready-made templates, or pivot any value across every relevant tool at once.
+            Build a dork, run it across Google, Bing, DuckDuckGo, Yandex, Brave, Baidu and more, fire ready-made templates, or pivot any value across every relevant tool at once.
           </p>
         </div>
 
@@ -86,13 +87,46 @@ export function Dork(): JSX.Element {
               <button className="btn-primary flex-1 justify-center" disabled={!query} onClick={() => openInBrowser([dorkUrl(query)])}>
                 <Search size={15} /> Run in tab
               </button>
-              <button className="btn-ghost border border-ink-600" disabled={!query} onClick={() => api.shell.openExternal(dorkUrl(query))}>
+              <button className="btn-ghost border border-ink-600" disabled={!query} onClick={() => api.shell.openExternal(dorkUrl(query))} title="Open in system browser">
                 <ExternalLink size={15} />
               </button>
-              <button className="btn-ghost border border-ink-600" disabled={!query} onClick={copy}>
+              <button className="btn-ghost border border-ink-600" disabled={!query} onClick={copy} title="Copy query">
                 {copied ? <Check size={15} className="text-ok" /> : <Copy size={15} />}
               </button>
             </div>
+
+            {query && (
+              <div className="mt-3">
+                <label className="label">Run on search engines</label>
+                <div className="flex flex-wrap gap-1.5">
+                  {SEARCH_ENGINES.map((e) => (
+                    <button
+                      key={e.label}
+                      className="btn-ghost border border-ink-600 text-xs"
+                      onClick={() => openInBrowser([e.url(query)])}
+                      onContextMenu={(ev) => {
+                        ev.preventDefault()
+                        api.shell.openExternal(e.url(query))
+                      }}
+                      title={`Open on ${e.label} (right-click = system browser)`}
+                    >
+                      {e.label}
+                    </button>
+                  ))}
+                  <button
+                    className="btn-ghost border border-ink-600 text-xs text-accent"
+                    onClick={() => openInBrowser(SEARCH_ENGINES.map((e) => e.url(query)))}
+                    title="Open the query on every engine"
+                  >
+                    All engines
+                  </button>
+                </div>
+                <p className="text-[11px] text-slate-600 mt-1.5">
+                  Operators like <code>site:</code> and <code>filetype:</code> work on most engines; advanced Google-only
+                  operators may be ignored elsewhere.
+                </p>
+              </div>
+            )}
           </section>
 
           <div className="space-y-5">

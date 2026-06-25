@@ -88,7 +88,7 @@ const BROWSER_UA =
  *  HTML error page as an image. Returns the raw bytes + a file extension. */
 async function downloadImage(url: string): Promise<{ buf: Buffer; ext: string } | null> {
   if (!/^https?:\/\//i.test(url)) return null
-  const res = await fetch(url, {
+  const res = await net.fetch(url, {
     headers: { 'User-Agent': BROWSER_UA, Accept: 'image/avif,image/webp,image/png,image/*,*/*' }
   })
   if (!res.ok) return null
@@ -145,7 +145,7 @@ export async function fetchAvatar(): Promise<string | null> {
 
   // 2) API source that returns a watermarked image — crop the bottom strip.
   try {
-    const meta = await fetch(
+    const meta = await net.fetch(
       'https://this-person-does-not-exist.com/new?new=1&gender=all&age=all&etnic=all',
       { headers: { 'User-Agent': BROWSER_UA, Accept: 'application/json' } }
     )

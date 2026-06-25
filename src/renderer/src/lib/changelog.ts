@@ -7,6 +7,15 @@ export interface ChangelogEntry {
 /** In-app patch notes. Newest first. Keep in sync with CHANGELOG.md. */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.1.44',
+    date: '2026-06-25',
+    notes: [
+      'Search every engine — the Dork builder and pivots now run across Google, Bing, DuckDuckGo, Yandex, Brave, Startpage, Mojeek, Baidu and Yahoo (right-click an engine for the system browser).',
+      'Pivots open in the in-app browser by default now (system browser is a secondary option), and run as the sock puppet assigned to the active investigation — so they exit through that persona\'s VPN.',
+      'App-wide VPN exit — set one exit in Settings → VPN (or the VPN tab) to route the entire app (browsing, lookups, transforms, downloads, mail) through it. A persona\'s own exit still wins; fails closed if the tunnel is down.'
+    ]
+  },
+  {
     version: '0.1.43',
     date: '2026-06-25',
     notes: [

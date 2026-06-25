@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.1.44
+- Multi-engine search — Dork builder + pivots run across Google, Bing, DuckDuckGo, Yandex, Brave, Startpage, Mojeek, Baidu, Yahoo.
+- Pivots open in the in-app browser by default and run as the active investigation's assigned sock puppet (using its VPN exit); system browser is a secondary option.
+- App-wide VPN exit — route the whole app (browsing, lookups, transforms, downloads, mail) through one exit (Settings → VPN). A persona's own exit overrides; fails closed.
+
 ## v0.1.43
 - Evidence shows the full metadata dump — every embedded EXIF/GPS/IPTC/XMP tag, file size, GPS map link, and Copy all. Pairs with right-click → Add image to evidence in the browser.
 

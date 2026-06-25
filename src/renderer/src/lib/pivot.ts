@@ -21,6 +21,28 @@ export interface PivotQuery {
 const enc = encodeURIComponent
 const g = (q: string): string => `https://www.google.com/search?q=${enc(q)}`
 
+/** Web search engines for the dork builder and multi-engine pivots. */
+export const SEARCH_ENGINES: { label: string; url: (q: string) => string }[] = [
+  { label: 'Google', url: (q) => `https://www.google.com/search?q=${enc(q)}` },
+  { label: 'Bing', url: (q) => `https://www.bing.com/search?q=${enc(q)}` },
+  { label: 'DuckDuckGo', url: (q) => `https://duckduckgo.com/?q=${enc(q)}` },
+  { label: 'Yandex', url: (q) => `https://yandex.com/search/?text=${enc(q)}` },
+  { label: 'Brave', url: (q) => `https://search.brave.com/search?q=${enc(q)}` },
+  { label: 'Startpage', url: (q) => `https://www.startpage.com/sp/search?query=${enc(q)}` },
+  { label: 'Mojeek', url: (q) => `https://www.mojeek.com/search?q=${enc(q)}` },
+  { label: 'Baidu', url: (q) => `https://www.baidu.com/s?wd=${enc(q)}` },
+  { label: 'Yahoo', url: (q) => `https://search.yahoo.com/search?p=${enc(q)}` }
+]
+
+/** The same query across every non-Google engine (Google is already covered per-subject). */
+function engineQueries(query: string): PivotQuery[] {
+  return SEARCH_ENGINES.filter((e) => e.label !== 'Google').map((e) => ({
+    group: 'Other search engines',
+    label: e.label,
+    url: e.url(query)
+  }))
+}
+
 /** Map a graph entity type to a pivot subject. */
 export function subjectForEntity(t: EntityType): PivotSubject {
   switch (t) {
@@ -167,9 +189,12 @@ export function generatePivots(subject: PivotSubject, raw: string): PivotQuery[]
     }
     default: {
       out.push({ group: 'Search', label: `Google "${v}"`, url: g(exact) })
-      out.push({ group: 'Search', label: 'DuckDuckGo', url: `https://duckduckgo.com/?q=${enc(v)}` })
-      out.push({ group: 'Search', label: 'Bing', url: `https://www.bing.com/search?q=${enc(v)}` })
     }
+  }
+  // Multi-engine web search for everything except image reverse-search.
+  if (subject !== 'image') {
+    const term = subject === 'name' || subject === 'organization' ? exact : v
+    out.push(...engineQueries(term))
   }
   return out
 }

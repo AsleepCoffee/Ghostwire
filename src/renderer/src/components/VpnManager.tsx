@@ -13,12 +13,14 @@ import {
   Check
 } from 'lucide-react'
 import { api, type VpnState, type VpnConfigStatus } from '../lib/api'
+import { useSettings } from '../lib/settings'
 
 const WIREPROXY_RELEASES = 'https://github.com/pufferffish/wireproxy/releases'
 
 /** Interactive manager for Proton WireGuard tunnels: import configs, start/stop,
  *  rename, remove. Shared by the Settings → VPN section and the VPN page. */
 export function VpnManager({ onChange }: { onChange?: () => void }): JSX.Element {
+  const { settings, update } = useSettings()
   const [state, setState] = useState<VpnState | null>(null)
   const [busy, setBusy] = useState(false)
   const [installing, setInstalling] = useState(false)
@@ -131,6 +133,32 @@ export function VpnManager({ onChange }: { onChange?: () => void }): JSX.Element
               }}
             />
           ))}
+        </div>
+      )}
+
+      {configs.length > 0 && (
+        <div className="rounded-xl border border-ink-700 bg-ink-900/50 p-4">
+          <div className="text-sm text-slate-200 font-medium">App-wide exit</div>
+          <p className="text-xs text-slate-500 mt-1 mb-2">
+            Route the <b>whole app</b> — browsing, lookups, transforms and downloads — through one exit. A persona with its
+            own exit still overrides this. Fails closed if the tunnel is down.
+          </p>
+          <select
+            className="input"
+            value={settings.globalVpnConfigId ?? ''}
+            onChange={async (e) => {
+              await update({ globalVpnConfigId: e.target.value || undefined })
+              api.vpn.apply().catch(() => {})
+            }}
+          >
+            <option value="">Off — use your real connection</option>
+            {configs.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+                {c.running ? '' : ' (tunnel down)'}
+              </option>
+            ))}
+          </select>
         </div>
       )}
     </div>

@@ -32,9 +32,16 @@ export function PivotModal({
     setVal(value)
   }, [subject, value, open])
 
+  // Load personas and default to the sock puppet assigned to the active
+  // investigation — so pivots browse as that persona (and through its VPN exit).
   useEffect(() => {
-    if (open) api.personas.list().then(setPersonas)
-  }, [open])
+    if (!open) return
+    api.personas.list().then((list) => {
+      setPersonas(list)
+      const assigned = list.find((p) => p.projectId && p.projectId === settings.activeProjectId)
+      setPersonaId(assigned?.id ?? '')
+    })
+  }, [open, settings.activeProjectId])
 
   const queries = useMemo(() => {
     const base = generatePivots(subj, val)
@@ -164,19 +171,19 @@ export function PivotModal({
           <div className="ml-auto flex gap-2">
             <button
               className="btn-ghost border border-ink-600"
-              onClick={openSelected}
+              onClick={openExternally}
               disabled={selected.size === 0}
-              title="Open inside GhostWire under the chosen session (some sites block embedding)"
+              title="Open in your system browser instead"
             >
-              <LayoutGrid size={15} /> In-app tabs
+              <ExternalLink size={15} /> System browser
             </button>
             <button
               className="btn-primary"
-              onClick={openExternally}
+              onClick={openSelected}
               disabled={selected.size === 0}
-              title="Open in your system browser — most reliable for research lookups"
+              title="Open inside GhostWire — as the selected persona (and its VPN exit)"
             >
-              <ExternalLink size={15} /> Open {selected.size} in browser
+              <LayoutGrid size={15} /> Open {selected.size} in app
             </button>
           </div>
         </div>
