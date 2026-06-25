@@ -7,6 +7,14 @@ export interface ChangelogEntry {
 /** In-app patch notes. Newest first. Keep in sync with CHANGELOG.md. */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.1.30',
+    date: '2026-06-25',
+    notes: [
+      'Autofill is now disabled entirely on X/Twitter — its sign-up is too fragile to script, so GhostWire leaves it alone (use the Persona Dock to copy details in). This stops the glitching when you click Continue.',
+      'Marking a sock-puppet account as created/validated now saves immediately — the status sticks without needing to hit Save.'
+    ]
+  },
+  {
     version: '0.1.29',
     date: '2026-06-25',
     notes: [

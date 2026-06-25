@@ -295,6 +295,7 @@ export function SockPuppets(): JSX.Element {
             setEditing(null)
             load()
           }}
+          onChanged={load}
           onLogin={editing.id ? (a) => openAccount(editing as Persona, a) : undefined}
         />
       )}
@@ -404,11 +405,13 @@ function PersonaEditor({
   initial,
   onClose,
   onSaved,
+  onChanged,
   onLogin
 }: {
   initial: Partial<Persona>
   onClose: () => void
   onSaved: () => void
+  onChanged?: () => void
   onLogin?: (a: PersonaAccount) => void
 }): JSX.Element {
   const [p, setP] = useState<Partial<Persona>>({ ...initial })
@@ -497,6 +500,19 @@ function PersonaEditor({
     set({ accounts: [...(p.accounts ?? []), { platform: '', username: '', url: '', password: '' }] })
   const removeAccount = (i: number): void =>
     set({ accounts: (p.accounts ?? []).filter((_, idx) => idx !== i) })
+
+  // Toggle an account's planned/created state and persist it right away (when the
+  // persona already exists) so the status sticks without a separate Save.
+  const toggleAccountStatus = async (i: number): Promise<void> => {
+    const accounts = [...(p.accounts ?? [])]
+    accounts[i] = { ...accounts[i], status: accounts[i].status === 'created' ? 'planned' : 'created' }
+    set({ accounts })
+    if (p.id) {
+      const saved = await api.personas.save({ ...p, accounts })
+      setP(saved)
+      onChanged?.()
+    }
+  }
 
   const save = async (): Promise<void> => {
     await api.personas.save(p)
@@ -775,7 +791,7 @@ function PersonaEditor({
                   <button
                     className={`btn-ghost !px-1.5 ${a.status === 'created' ? 'text-ok' : 'text-slate-500'}`}
                     title={a.status === 'created' ? 'Created ✓ — click to mark not made' : 'Not created yet — click when registered'}
-                    onClick={() => updateAccount(i, { status: a.status === 'created' ? 'planned' : 'created' })}
+                    onClick={() => toggleAccountStatus(i)}
                   >
                     {a.status === 'created' ? <CheckCircle2 size={15} /> : <Circle size={15} />}
                   </button>

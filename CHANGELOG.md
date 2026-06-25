@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.1.30
+- Autofill is disabled entirely on X/Twitter — its sign-up is too fragile to script, so GhostWire leaves it alone (use the Persona Dock to copy details). Stops the glitching when clicking Continue.
+- Marking a sock-puppet account as created/validated now saves immediately — the status sticks without hitting Save.
+
 ## v0.1.29
 - Fixed autofill breaking complex sign-ups (notably X/Twitter). Autofill is now gentle: each field is filled once, it never steals focus, it leaves fields you've started typing in alone, and it stops quickly rather than fighting a re-rendering page. The 🔑 button re-fills the current step on demand.
 

@@ -72,6 +72,10 @@ function fillScript(a: Autofill): string {
   })
   return `(function(){
     try {
+      // X/Twitter's sign-up is a fragile SPA that breaks when fields are set
+      // programmatically — never autofill there (use the Persona Dock to copy).
+      var H=(location.hostname||'').toLowerCase();
+      if(/(^|\\.)(x|twitter)\\.com$/.test(H)) return;
       var D=${data};
       var F = (window.__gwFilled = window.__gwFilled || {});
       function visible(el){ return el && el.offsetParent !== null && !el.disabled && !el.readOnly; }
