@@ -26,21 +26,21 @@ Grab the latest Windows installer from the **[Releases page](https://github.com/
 
 ## ✨ Features
 
-- **🎭 Sock Puppet Manager** — build personas with full identity details, avatars, linked accounts, and a one-click identity + password generator. Each persona gets a **fully isolated browser session**, so you can be logged into the same site as several identities at once with zero cross-contamination. Click an account to open that site and auto-fill its credentials.
-- **🌐 Embedded Browser** — a real tabbed Chromium browser with a per-tab persona switcher. Open many tools at once; sites that block embedding fall back to your system browser in one click.
-- **🕵️ Investigations** — a workspace per target (person or company). Capture structured **known information** (emails, usernames, domains, IPs…), pivot on any of it, and drop findings straight onto a link chart. Group personas, notes, and boards under each case.
-- **🕸️ Graph Workspace** — a Maltego-style canvas to map entities and relationships, with **transforms** that expand an entity into related ones (free crt.sh subdomains, IPinfo enrichment, profile expansion, and more).
-- **🎯 Dork & Pivot** — a Google-dork builder plus a pivot engine that generates the right lookups for any value (email, username, domain, IP, name…) and opens them as tabs.
-- **🧰 Tools & API Integrations** — a curated launcher of OSINT tools, plus integrations that unlock when you add a free or paid API key (VirusTotal, Shodan, AbuseIPDB, urlscan, IPinfo, Hunter, Censys, and more). Test any key from Settings.
+- **🎭 Sock Puppet Manager** — build personas with full identity details, **random AI-face avatars**, linked accounts with credential autofill, and a one-click identity + password generator. Each persona gets a **fully isolated browser session** (be logged into the same site as several identities at once), can provision a **disposable mailbox** (mail.tm, with a built-in inbox) or use your own **catch-all domain**, and tracks which accounts are created vs. still to make.
+- **🌐 Embedded Browser** — a real tabbed Chromium browser with a per-tab persona switcher. **Capture any page to evidence** (URL + UTC timestamp + SHA-256, filed to the active investigation). Sites that block embedding fall back to your system browser in one click.
+- **🕵️ Investigations** — a workspace per target (person or company). Capture structured **known information**, pivot on any of it, drop findings onto a link chart, attach **evidence**, keep an **activity log** (methodology trail), and **export a Markdown report**. Group personas, notes, and boards under each case.
+- **🕸️ Graph Workspace** — a Maltego-style canvas with **transforms that pull real data into the graph** (right-click a node): crt.sh subdomains, DNS & Wayback, live username enumeration, EXIF→location, and API-powered enrichment (VirusTotal, Shodan, Hunter, AbuseIPDB, IPinfo). Auto-dedupe, and **export the chart as a PNG**.
+- **🎯 Dork & Pivot** — a Google-dork builder plus a pivot engine that, for any value (email, username, domain, IP, name…), opens the right lookups — including the API tools you hold a key for, deep-linked per data type.
+- **🧰 Tools & API Integrations** — a curated launcher of OSINT tools, plus integrations that unlock when you add a free or paid API key (VirusTotal, Shodan, AbuseIPDB, urlscan, IPinfo, Hunter, Censys, and more) — with a **Test** button for each key.
 - **📝 Notes** — Markdown notes with live preview, folders, tags, and image paste — **one-click export to your Obsidian vault** with YAML frontmatter.
-- **🎨 10 themes** that reskin the whole app, light-touch animations, and a clean dark “command center” UI.
+- **🎨 10 full-app themes**, a custom themed window frame, themed dialogs, and auto-updates from GitHub releases.
 
 All data is stored **locally** in a SQLite database in your app-data folder. Nothing leaves your machine unless you explicitly use a tool or API.
 
 ## 🔒 Privacy & security
 
 - Everything lives locally (SQLite + Markdown). GhostWire has no backend and phones home only to GitHub to check for updates.
-- Persona credentials and API keys are stored **in plaintext** in your local database — keep your device encrypted and secured.
+- Persona credentials, API keys and mailbox passwords are stored **unencrypted** in the local database — enable OS full-disk encryption (e.g. BitLocker) and keep your device secured.
 
 ## ⚖️ Responsible use
 
@@ -62,13 +62,13 @@ GhostWire is **Electron + React + TypeScript** (electron-vite), styled with **Ta
 
 ```
 src/
-  main/        Electron main — window, SQLite DB, IPC, media, updater, API tests, export
+  main/        Electron main — window, SQLite DB, IPC, media, mail, updater, API tests/EXIF, export
   preload/     contextBridge API exposed to the renderer as window.api
   renderer/    React app
     src/
       pages/       Dashboard, Investigations, Graph, Tools, Dork, Browser, Notes, Settings
-      components/  Sidebar, Topbar, dialogs, shared UI
-      lib/         API wrapper, pivot/transform engines, themes, constants
+      components/  TitleBar, Sidebar, Topbar, dialogs, shared UI
+      lib/         API wrapper, pivot/transform engines, themes, settings, constants
   shared/      Types shared between main and renderer
 ```
 

@@ -7,6 +7,14 @@ export interface ChangelogEntry {
 /** In-app patch notes. Newest first. Keep in sync with CHANGELOG.md. */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.1.16',
+    date: '2026-06-24',
+    notes: [
+      'Custom themed window title bar — the minimize / maximize / close controls now match your theme (the window is frameless and draggable).',
+      'Quality pass: full typecheck/build/boot check, no stray debug or unthemed popups; README refreshed for all current features.'
+    ]
+  },
+  {
     version: '0.1.15',
     date: '2026-06-24',
     notes: [

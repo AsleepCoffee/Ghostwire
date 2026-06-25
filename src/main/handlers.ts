@@ -653,6 +653,16 @@ export function registerHandlers(): void {
   // ===== App =====
   ipcMain.handle('app:encryptionStatus', () => encryptionAvailable())
 
+  // ===== Window controls (frameless title bar) =====
+  ipcMain.on('win:minimize', (e) => BrowserWindow.fromWebContents(e.sender)?.minimize())
+  ipcMain.on('win:toggleMaximize', (e) => {
+    const w = BrowserWindow.fromWebContents(e.sender)
+    if (!w) return
+    w.isMaximized() ? w.unmaximize() : w.maximize()
+  })
+  ipcMain.on('win:close', (e) => BrowserWindow.fromWebContents(e.sender)?.close())
+  ipcMain.handle('win:isMaximized', (e) => BrowserWindow.fromWebContents(e.sender)?.isMaximized() ?? false)
+
   // ===== Network (for graph transforms / free APIs; bypasses renderer CORS) =====
   ipcMain.handle('net:fetchJson', async (_e, url: string, headers?: Record<string, string>) => {
     if (!/^https:\/\//i.test(url)) throw new Error('Only https URLs are allowed')

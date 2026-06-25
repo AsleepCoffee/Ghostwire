@@ -82,6 +82,17 @@ const api: OsintApi = {
     version: () => ipcRenderer.invoke('app:version'),
     encryptionStatus: () => ipcRenderer.invoke('app:encryptionStatus')
   },
+  win: {
+    minimize: () => ipcRenderer.send('win:minimize'),
+    toggleMaximize: () => ipcRenderer.send('win:toggleMaximize'),
+    close: () => ipcRenderer.send('win:close'),
+    isMaximized: () => ipcRenderer.invoke('win:isMaximized'),
+    onMaximizeChange: (cb) => {
+      const listener = (_e: unknown, v: boolean): void => cb(v)
+      ipcRenderer.on('win:maximized', listener as never)
+      return () => ipcRenderer.removeListener('win:maximized', listener as never)
+    }
+  },
   updates: {
     check: () => ipcRenderer.invoke('updates:check'),
     download: () => ipcRenderer.invoke('updates:download'),

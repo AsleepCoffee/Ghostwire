@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.1.16
+- Custom themed window title bar — minimize / maximize / close now match your theme (frameless, draggable window).
+- Quality pass (typecheck/build/boot, no stray debug or unthemed popups) and README refreshed for all current features.
+
 ## v0.1.15
 - Export the investigation link chart as a PNG — fits the whole graph and lets you choose where to save it.
 - Privacy note: the local database is intentionally not app-encrypted — a trial of OS-keystore encryption could fail to decrypt across launches (data-loss risk), so we recommend OS full-disk encryption (BitLocker) instead.

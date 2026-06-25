@@ -320,6 +320,13 @@ export interface OsintApi {
     /** Whether the local database is encrypted at rest by the OS keystore. */
     encryptionStatus(): Promise<boolean>
   }
+  win: {
+    minimize(): void
+    toggleMaximize(): void
+    close(): void
+    isMaximized(): Promise<boolean>
+    onMaximizeChange(cb: (maximized: boolean) => void): () => void
+  }
   updates: {
     check(): Promise<void>
     download(): Promise<void>

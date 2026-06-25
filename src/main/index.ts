@@ -18,7 +18,8 @@ function createWindow(): void {
     backgroundColor: '#0a0c10',
     title: 'GhostWire',
     icon: join(__dirname, '../../icon.png'),
-    autoHideMenuBar: true,
+    // Frameless — we draw our own themed title bar in the renderer.
+    frame: false,
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       sandbox: false,
@@ -30,6 +31,10 @@ function createWindow(): void {
   })
 
   win.on('ready-to-show', () => win.show())
+
+  // Keep the renderer's maximize/restore button in sync.
+  win.on('maximize', () => win.webContents.send('win:maximized', true))
+  win.on('unmaximize', () => win.webContents.send('win:maximized', false))
 
   // Open target=_blank / window.open links in the OS browser, not new Electron windows.
   win.webContents.setWindowOpenHandler(({ url }) => {
