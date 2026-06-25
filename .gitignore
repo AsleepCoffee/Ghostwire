@@ -13,3 +13,6 @@ data/
 *.sqlite3
 media/
 ghostwire.db
+
+# Local Claude session state
+.claude/
