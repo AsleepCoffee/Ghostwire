@@ -7,6 +7,13 @@ export interface ChangelogEntry {
 /** In-app patch notes. Newest first. Keep in sync with CHANGELOG.md. */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.1.35',
+    date: '2026-06-25',
+    notes: [
+      'Open links straight from the graph — double-click any entity (or right-click → Open link) to open its URL in the in-app browser, with an “Open in system browser” option too. Works for social/profile nodes, documents, domains, and locations (opens a map).'
+    ]
+  },
+  {
     version: '0.1.34',
     date: '2026-06-25',
     notes: [

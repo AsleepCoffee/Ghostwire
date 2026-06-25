@@ -1,5 +1,8 @@
 # Changelog
 
+## v0.1.35
+- Open links straight from the graph — double-click an entity (or right-click → Open link) to open its URL in the in-app browser, plus an "Open in system browser" option. Works for social/profile, document, domain (→ https) and location (→ map) nodes.
+
 ## v0.1.34
 - New Evidence Board (sidebar) — a per-investigation media locker. Drag images from the desktop, paste screenshots (Ctrl+V), or paste an image URL; each is saved with a capture time and SHA-256 hash.
 - Per-item: source, timestamp, copyable SHA-256, EXIF (GPS → map pin, camera/date), one-click reverse image search (Google Lens/Yandex/Bing/TinEye/PimEyes), add-to-link-chart, save copy, and notes.

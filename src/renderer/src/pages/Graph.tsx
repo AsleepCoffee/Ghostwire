@@ -21,7 +21,7 @@ import {
 } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 import { toPng } from 'html-to-image'
-import { Plus, Trash2, X, ImagePlus, Crosshair, Sparkles, Loader2, ImageDown, Check, AlertTriangle, KeyRound, Minus, ChevronDown, ChevronUp } from 'lucide-react'
+import { Plus, Trash2, X, ImagePlus, Crosshair, Sparkles, Loader2, ImageDown, Check, AlertTriangle, KeyRound, Minus, ChevronDown, ChevronUp, Globe, ExternalLink } from 'lucide-react'
 import { api, type Board, type EntityNode, type EntityType, type Project } from '../lib/api'
 import { ENTITY_TYPES } from '../lib/constants'
 import { Icon, EmptyState, Modal } from '../components/ui'
@@ -86,6 +86,23 @@ function EntityNodeView({ data, selected }: NodeProps<RFNode>): JSX.Element {
 }
 
 const nodeTypes = { entity: EntityNodeView }
+
+/** Best openable URL for an entity: an explicit url/source prop, a domain, a
+ *  social/profile link, or a maps link for a location. Null if nothing to open. */
+function entityUrl(e: EntityNode): string | null {
+  const p = e.props ?? {}
+  if (p.url && /^https?:\/\//i.test(p.url)) return p.url
+  if (p.source && /^https?:\/\//i.test(p.source)) return p.source
+  const label = (e.label ?? '').trim()
+  if (!label) return null
+  if (e.type === 'domain') return `https://${label.replace(/^https?:\/\//i, '').replace(/\/.*$/, '')}`
+  if (e.type === 'location') {
+    if (p.lat && p.lng) return `https://www.google.com/maps?q=${p.lat},${p.lng}`
+    return `https://www.google.com/maps/search/${encodeURIComponent(label)}`
+  }
+  if (e.type === 'email') return `https://www.google.com/search?q=${encodeURIComponent('"' + label + '"')}`
+  return null
+}
 
 export function Graph(): JSX.Element {
   return (
@@ -232,6 +249,22 @@ function GraphInner(): JSX.Element {
     e.preventDefault()
     setMenu({ x: e.clientX, y: e.clientY, entity: (node.data as { entity: EntityNode }).entity })
   }, [])
+
+  const openLink = (entity: EntityNode, external = false): void => {
+    const url = entityUrl(entity)
+    if (!url) {
+      flash('No link on this entity — run a transform or add a “url” property.')
+      return
+    }
+    if (external) api.shell.openExternal(url)
+    else openInBrowser([url])
+  }
+
+  // Double-clicking a node opens its link in the in-app browser.
+  const onNodeDoubleClick = useCallback((_: unknown, node: Node): void => {
+    openLink((node.data as { entity: EntityNode }).entity)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [openInBrowser])
 
   const updateSelected = (patch: Partial<EntityNode>): void => {
     if (!selected) return
@@ -547,6 +580,7 @@ function GraphInner(): JSX.Element {
             onConnect={onConnect}
             onNodeDragStop={onNodeDragStop}
             onNodeClick={onNodeClick}
+            onNodeDoubleClick={onNodeDoubleClick}
             onNodeContextMenu={onNodeContextMenu}
             onPaneClick={() => {
               setSelected(null)
@@ -647,6 +681,8 @@ function GraphInner(): JSX.Element {
             transforms={transformsFor(selected.type)}
             busyTransform={busyTransform}
             apiKeys={settings.apiKeys ?? {}}
+            linkUrl={entityUrl(selected)}
+            onOpenLink={() => openLink(selected)}
             onTransform={(t) => runTransform(selected, t)}
             onRunAll={() => runAllTransforms(selected)}
             onAddToNotes={() => addEntityToNotes(selected)}
@@ -681,6 +717,29 @@ function GraphInner(): JSX.Element {
             <div className="px-3 py-1.5 text-[10px] uppercase tracking-widest text-slate-500 truncate">
               {ENTITY_TYPES[menu.entity.type].label}: {menu.entity.label || '—'}
             </div>
+            {entityUrl(menu.entity) && (
+              <>
+                <button
+                  className="w-full flex items-center gap-2 px-3 py-1.5 text-sm text-slate-200 hover:bg-ink-700"
+                  onClick={() => {
+                    openLink(menu.entity)
+                    setMenu(null)
+                  }}
+                >
+                  <Globe size={14} /> Open link in browser
+                </button>
+                <button
+                  className="w-full flex items-center gap-2 px-3 py-1.5 text-sm text-slate-200 hover:bg-ink-700"
+                  onClick={() => {
+                    openLink(menu.entity, true)
+                    setMenu(null)
+                  }}
+                >
+                  <ExternalLink size={14} /> Open in system browser
+                </button>
+                <div className="border-t border-ink-700 my-1" />
+              </>
+            )}
             <button
               className="w-full flex items-center gap-2 px-3 py-1.5 text-sm text-slate-200 hover:bg-ink-700"
               onClick={() => {
@@ -757,6 +816,8 @@ function EntityInspector({
   transforms,
   busyTransform,
   apiKeys,
+  linkUrl,
+  onOpenLink,
   onTransform,
   onRunAll,
   onAddToNotes
@@ -769,6 +830,8 @@ function EntityInspector({
   transforms: Transform[]
   busyTransform: string | null
   apiKeys: Record<string, string>
+  linkUrl: string | null
+  onOpenLink: () => void
   onTransform: (t: Transform) => void
   onRunAll: () => void
   onAddToNotes: () => void
@@ -815,6 +878,11 @@ function EntityInspector({
           <input className="input" value={entity.label} onChange={(e) => onChange({ label: e.target.value })} />
         </div>
 
+        {linkUrl && (
+          <button className="btn-ghost border border-ink-600 w-full justify-center" onClick={onOpenLink} title={linkUrl}>
+            <Globe size={15} /> Open link in browser
+          </button>
+        )}
         <div className="grid grid-cols-2 gap-2">
           <button className="btn-primary justify-center" disabled={!entity.label.trim()} onClick={onPivot}>
             <Crosshair size={15} /> Pivot
