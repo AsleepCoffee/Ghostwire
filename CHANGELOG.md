@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.1.41
+- Command palette (Ctrl/⌘+K) — jump to any page/investigation/persona/tool and export the active investigation's report.
+- Graph intelligence — find/highlight nodes, Tidy (auto-arrange by type), and Merge duplicates.
+- Per-persona fingerprint hardening — stable, unique UA/canvas/WebGL/hardware per sock puppet (toggle in Settings → VPN).
+- New PORP Exam Prep page (Training) — requirements, methodology checklist, and a one-click report template.
+
 ## v0.1.40
 - Multi-select in the graph — toggle Pan/Select to box-select nodes, or shift-click to add; move the selection together (saved) or Delete them all at once.
 

@@ -5,6 +5,7 @@ import { TitleBar } from './components/TitleBar'
 import { UpdateNotice } from './components/UpdateNotice'
 import { PersonaDock, InvestigationDock } from './components/PersonaDock'
 import { PersonaDockProvider } from './lib/dock'
+import { CommandPalette } from './components/CommandPalette'
 import { Dashboard } from './pages/Dashboard'
 import { Projects } from './pages/Projects'
 import { ProjectDetail } from './pages/ProjectDetail'
@@ -18,6 +19,7 @@ import { Mailbox } from './pages/Mailbox'
 import { EvidencePage } from './pages/Evidence'
 import { Enumerate } from './pages/Enumerate'
 import { Timeline } from './pages/Timeline'
+import { ExamPrep } from './pages/ExamPrep'
 import { Vpn } from './pages/Vpn'
 import { WhatsNew } from './pages/WhatsNew'
 import { Settings } from './pages/Settings'
@@ -51,6 +53,7 @@ export default function App(): JSX.Element {
               <Route path="/evidence" element={<EvidencePage />} />
               <Route path="/enumerate" element={<Enumerate />} />
               <Route path="/timeline" element={<Timeline />} />
+              <Route path="/exam-prep" element={<ExamPrep />} />
               <Route path="/graph" element={<Graph />} />
               <Route path="/vpn" element={<Vpn />} />
               <Route path="/whats-new" element={<WhatsNew />} />
@@ -66,6 +69,7 @@ export default function App(): JSX.Element {
       </div>
       <PersonaDock />
       <InvestigationDock />
+      <CommandPalette />
     </div>
     </PersonaDockProvider>
   )

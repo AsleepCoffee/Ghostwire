@@ -7,6 +7,16 @@ export interface ChangelogEntry {
 /** In-app patch notes. Newest first. Keep in sync with CHANGELOG.md. */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.1.41',
+    date: '2026-06-25',
+    notes: [
+      'Command palette — press Ctrl/⌘+K anywhere to jump to any page, investigation, persona or tool, and export the active investigation\'s report (PDF/HTML/Markdown).',
+      'Graph intelligence — find/highlight nodes on the chart, one-click Tidy (auto-arrange by type), and Merge duplicates (rewires links onto a single node).',
+      'Per-persona fingerprint hardening — each sock puppet gets a stable, unique browser fingerprint (user-agent, canvas, WebGL, hardware) so personas and your real browser don\'t look alike. Toggle in Settings → VPN.',
+      'New PORP Exam Prep page (Training) — the pass requirements, a step-by-step methodology checklist that jumps to the right tool, and a one-click professional report template.'
+    ]
+  },
+  {
     version: '0.1.40',
     date: '2026-06-25',
     notes: [

@@ -1,6 +1,6 @@
 {
   "name": "ghostwire",
-  "version": "0.1.40",
+  "version": "0.1.41",
   "description": "GhostWire — OSINT workbench: sock puppet manager, notes, tool launcher, and entity graph for OSINT investigations.",
   "main": "./out/main/index.js",
   "author": "Michael Morin",

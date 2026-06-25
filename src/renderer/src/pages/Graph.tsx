@@ -22,7 +22,7 @@ import {
 } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 import { toPng } from 'html-to-image'
-import { Plus, Trash2, X, ImagePlus, Crosshair, Sparkles, Loader2, ImageDown, Check, AlertTriangle, KeyRound, Minus, ChevronDown, ChevronUp, Globe, ExternalLink, BoxSelect, Hand } from 'lucide-react'
+import { Plus, Trash2, X, ImagePlus, Crosshair, Sparkles, Loader2, ImageDown, Check, AlertTriangle, KeyRound, Minus, ChevronDown, ChevronUp, Globe, ExternalLink, BoxSelect, Hand, Search, LayoutGrid, Combine } from 'lucide-react'
 import { api, type Board, type EntityNode, type EntityType, type Project, type Evidence } from '../lib/api'
 import { ENTITY_TYPES } from '../lib/constants'
 import { Icon, EmptyState, Modal } from '../components/ui'
@@ -132,6 +132,7 @@ function GraphInner(): JSX.Element {
   const [imgPicker, setImgPicker] = useState(false)
   const [pickEvidence, setPickEvidence] = useState<Evidence[]>([])
   const [selectMode, setSelectMode] = useState(false)
+  const [findQuery, setFindQuery] = useState('')
   const nav = useNavigate()
   const seq = useRef(0)
   const openInBrowser = useOpenInBrowser()
@@ -269,6 +270,70 @@ function GraphInner(): JSX.Element {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [setEdges])
 
+  // Tidy the board: group nodes into columns by type and persist positions.
+  const tidyLayout = (): void => {
+    const byType = new Map<string, RFNode[]>()
+    for (const n of nodes) {
+      const t = (n.data as { entity: EntityNode }).entity.type
+      if (!byType.has(t)) byType.set(t, [])
+      byType.get(t)!.push(n)
+    }
+    const COLW = 240
+    const ROWH = 92
+    let col = 0
+    const updates: { id: string; x: number; y: number }[] = []
+    for (const [, group] of byType) {
+      group.forEach((n, i) => updates.push({ id: n.id, x: 80 + col * COLW, y: 80 + i * ROWH }))
+      col++
+    }
+    const posById = new Map(updates.map((u) => [u.id, u]))
+    setNodes((nds) =>
+      nds.map((n) => {
+        const u = posById.get(n.id)
+        return u ? { ...n, position: { x: u.x, y: u.y } } : n
+      })
+    )
+    for (const u of updates) {
+      const ent = (nodes.find((n) => n.id === u.id)!.data as { entity: EntityNode }).entity
+      api.boards.saveNode({ ...ent, x: u.x, y: u.y })
+    }
+    flash('Tidied layout')
+  }
+
+  // Merge entities that share the same type + label: keep one, rewire edges.
+  const mergeDuplicates = async (): Promise<void> => {
+    const keep = new Map<string, string>() // type:label -> kept nodeId
+    const remap = new Map<string, string>() // dupId -> keptId
+    for (const n of nodes) {
+      const e = (n.data as { entity: EntityNode }).entity
+      const key = `${e.type}:${e.label.trim().toLowerCase()}`
+      if (!e.label.trim()) continue
+      if (keep.has(key)) remap.set(n.id, keep.get(key)!)
+      else keep.set(key, n.id)
+    }
+    if (remap.size === 0) {
+      flash('No duplicate entities found')
+      return
+    }
+    const edgeKeys = new Set<string>()
+    for (const e of edges) edgeKeys.add(`${e.source}->${e.target}`)
+    // Rewire edges off duplicates onto the kept node.
+    for (const e of edges) {
+      const src = remap.get(e.source) ?? e.source
+      const tgt = remap.get(e.target) ?? e.target
+      if (src === e.source && tgt === e.target) continue
+      await api.boards.removeEdge(e.id)
+      if (src !== tgt && !edgeKeys.has(`${src}->${tgt}`)) {
+        await api.boards.saveEdge({ boardId, source: src, target: tgt, label: e.label as string })
+        edgeKeys.add(`${src}->${tgt}`)
+      }
+    }
+    for (const dupId of remap.keys()) await api.boards.removeNode(dupId)
+    await loadGraph(boardId)
+    setSelected(null)
+    flash(`Merged ${remap.size} duplicate${remap.size === 1 ? '' : 's'}`)
+  }
+
   const onNodeClick = useCallback((_: unknown, node: Node): void => {
     setSelected((node.data as { entity: EntityNode }).entity)
     setMenu(null)
@@ -278,6 +343,17 @@ function GraphInner(): JSX.Element {
     e.preventDefault()
     setMenu({ x: e.clientX, y: e.clientY, entity: (node.data as { entity: EntityNode }).entity })
   }, [])
+
+  // Dim non-matching nodes while searching the board.
+  const viewNodes = useMemo(() => {
+    const s = findQuery.trim().toLowerCase()
+    if (!s) return nodes
+    return nodes.map((n) => {
+      const e = (n.data as { entity: EntityNode }).entity
+      const hay = `${e.label} ${e.type} ${Object.values(e.props ?? {}).join(' ')}`.toLowerCase()
+      return { ...n, style: { ...(n.style ?? {}), opacity: hay.includes(s) ? 1 : 0.18 } }
+    })
+  }, [nodes, findQuery])
 
   const openImagePicker = (): void => {
     const pid = board?.projectId ?? null
@@ -593,6 +669,17 @@ function GraphInner(): JSX.Element {
             <ImageDown size={15} /> Export PNG
           </button>
         )}
+        {board && nodes.length > 0 && (
+          <div className="relative">
+            <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-500" />
+            <input
+              className="input !w-44 pl-8 !py-1.5 text-sm"
+              placeholder="Find on chart…"
+              value={findQuery}
+              onChange={(e) => setFindQuery(e.target.value)}
+            />
+          </div>
+        )}
         {board && (
           <button
             className={`btn-ghost ${selectMode ? '!text-brand-glow !border-brand/50 border' : ''}`}
@@ -601,6 +688,16 @@ function GraphInner(): JSX.Element {
           >
             {selectMode ? <BoxSelect size={15} /> : <Hand size={15} />} {selectMode ? 'Select' : 'Pan'}
           </button>
+        )}
+        {board && nodes.length > 1 && (
+          <>
+            <button className="btn-ghost" onClick={tidyLayout} title="Auto-arrange nodes by type">
+              <LayoutGrid size={15} /> Tidy
+            </button>
+            <button className="btn-ghost" onClick={mergeDuplicates} title="Merge entities with the same type & label">
+              <Combine size={15} /> Merge dupes
+            </button>
+          </>
         )}
         {board && (
           <button className="btn-danger" onClick={deleteBoard}>
@@ -632,7 +729,7 @@ function GraphInner(): JSX.Element {
       <div className="flex-1 min-h-0 flex">
         <div className="flex-1 min-w-0 relative">
           <ReactFlow
-            nodes={nodes}
+            nodes={viewNodes}
             edges={edges}
             onNodesChange={onNodesChange}
             onEdgesChange={onEdgesChange}

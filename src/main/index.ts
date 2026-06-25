@@ -6,6 +6,7 @@ import { registerMediaScheme, registerMediaProtocol } from './media'
 import { initUpdater } from './updater'
 import { initVpn, shutdownVpn } from './vpn'
 import { registerBackupHandlers, maybeAutoBackup } from './backup'
+import { hardenWebContents } from './fingerprint'
 
 // Must run before app is ready.
 registerMediaScheme()
@@ -62,6 +63,9 @@ app.whenReady().then(async () => {
 
   app.on('web-contents-created', (_e, contents) => {
     if (contents.getType() !== 'webview') return
+
+    // Per-persona browser fingerprint hardening (UA + canvas/WebGL/navigator spoof).
+    hardenWebContents(contents)
 
     // Neutralize WebAuthn/passkeys inside embedded sign-up flows (e.g. X/Twitter)
     // so sites don't pop the Windows Hello / security-key dialog and instead

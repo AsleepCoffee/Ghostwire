@@ -255,6 +255,17 @@ export function Settings(): JSX.Element {
                 location at the same time. The <b>VPN</b> tab in the sidebar has the full setup guide and live status.
               </p>
               <VpnManager />
+
+              <label className="flex items-center justify-between py-3 mt-4 border-t border-ink-700">
+                <div>
+                  <div className="text-sm text-slate-200 font-medium">Harden persona fingerprints</div>
+                  <div className="text-xs text-slate-500">
+                    Give each sock puppet a stable, unique browser fingerprint (user-agent, canvas, WebGL, hardware) so
+                    personas — and your real browser — don't look identical. Applies to in-app browsing.
+                  </div>
+                </div>
+                <Toggle on={settings.hardenFingerprint !== false} onChange={(v) => update({ hardenFingerprint: v })} />
+              </label>
             </section>
           )}
 

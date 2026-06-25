@@ -234,6 +234,8 @@ export interface AppSettings {
   lastBackupAt?: number
   /** Extra world clocks pinned to the dashboard. */
   worldClocks?: { label: string; tz: string }[]
+  /** Harden each persona's browser fingerprint (UA + canvas/WebGL/navigator). Default on. */
+  hardenFingerprint?: boolean
 }
 
 export interface BackupInfo {

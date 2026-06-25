@@ -45,7 +45,10 @@ const GROUPS: { heading?: string; items: NavItem[]; toggle?: 'courseNotes' }[] =
   {
     heading: 'Training',
     toggle: 'courseNotes',
-    items: [{ to: '/notes?folder=Course', label: 'Course Notes', icon: 'GraduationCap' }]
+    items: [
+      { to: '/exam-prep', label: 'PORP Exam Prep', icon: 'GraduationCap' },
+      { to: '/notes?folder=Course', label: 'Course Notes', icon: 'BookOpen' }
+    ]
   },
   {
     heading: 'App',
