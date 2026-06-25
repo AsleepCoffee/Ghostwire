@@ -21,7 +21,7 @@ import {
 } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 import { toPng } from 'html-to-image'
-import { Plus, Trash2, X, ImagePlus, Crosshair, Sparkles, Loader2, ImageDown } from 'lucide-react'
+import { Plus, Trash2, X, ImagePlus, Crosshair, Sparkles, Loader2, ImageDown, Check, AlertTriangle, KeyRound, Minus, ChevronDown, ChevronUp } from 'lucide-react'
 import { api, type Board, type EntityNode, type EntityType, type Project } from '../lib/api'
 import { ENTITY_TYPES } from '../lib/constants'
 import { Icon, EmptyState, Modal } from '../components/ui'
@@ -33,6 +33,19 @@ import { useSettings } from '../lib/settings'
 import { useConfirm } from '../lib/confirm'
 
 type RFNode = Node<{ entity: EntityNode }>
+
+/** A record of one transform execution, shown live in the run log. */
+interface TransformRun {
+  id: string
+  label: string
+  target: string
+  targetType: EntityType
+  status: 'running' | 'done' | 'empty' | 'skipped' | 'error'
+  summary?: string
+  added?: number
+  error?: string
+  at: number
+}
 
 // ---------- Custom entity node ----------
 function EntityNodeView({ data, selected }: NodeProps<RFNode>): JSX.Element {
@@ -95,6 +108,8 @@ function GraphInner(): JSX.Element {
   const [projects, setProjects] = useState<Project[]>([])
   const [toast, setToast] = useState('')
   const [busyTransform, setBusyTransform] = useState<string | null>(null)
+  const [runs, setRuns] = useState<TransformRun[]>([])
+  const [logOpen, setLogOpen] = useState(true)
   const [menu, setMenu] = useState<{ x: number; y: number; entity: EntityNode } | null>(null)
   const seq = useRef(0)
   const openInBrowser = useOpenInBrowser()
@@ -297,23 +312,53 @@ function GraphInner(): JSX.Element {
     return added
   }
 
-  const runTransform = async (entity: EntityNode, t: Transform): Promise<void> => {
-    if (t.needsKey && !(settings.apiKeys ?? {})[t.needsKey]) {
-      flash(`Add your ${t.needsKey} API key in Settings to use this transform.`)
-      return
+  const pushRun = (r: Omit<TransformRun, 'id' | 'at'>): string => {
+    const id = `run_${Date.now()}_${seq.current++}`
+    setRuns((prev) => [{ ...r, id, at: Date.now() }, ...prev].slice(0, 60))
+    setLogOpen(true)
+    return id
+  }
+  const patchRun = (id: string, patch: Partial<TransformRun>): void =>
+    setRuns((prev) => prev.map((r) => (r.id === id ? { ...r, ...patch } : r)))
+
+  // Run one transform, recording its lifecycle in the log. Returns nodes added.
+  const executeOne = async (
+    entity: EntityNode,
+    t: Transform,
+    existing: Map<string, string>,
+    edgeKeys: Set<string>,
+    spread: { i: number }
+  ): Promise<number> => {
+    const runId = pushRun({ label: t.label, target: entity.label, targetType: entity.type, status: 'running' })
+    const keys = settings.apiKeys ?? {}
+    if (t.needsKey && !keys[t.needsKey]) {
+      patchRun(runId, { status: 'skipped', summary: `Needs a ${t.needsKey} API key (Settings)` })
+      return 0
     }
-    setBusyTransform(t.id)
     try {
-      const out = await t.run(entity.label, entity.props ?? {}, { apiKeys: settings.apiKeys ?? {} })
-      const { existing, edgeKeys } = buildDedupe()
-      const added = await applyOutput(entity, t, out, existing, edgeKeys, { i: 0 })
+      const out = await t.run(entity.label, entity.props ?? {}, { apiKeys: keys })
+      const added = await applyOutput(entity, t, out, existing, edgeKeys, spread)
       const dupes = out.entities.filter((e) => e.label.trim()).length - added
+      patchRun(runId, {
+        status: added > 0 || out.updateSource ? 'done' : 'empty',
+        added,
+        summary: out.note ? `${out.note}${dupes > 0 ? ` · ${dupes} already on board` : ''}` : `${added} node(s) added`
+      })
       if (board?.projectId) {
         api.activity.log(board.projectId, 'transform', `${t.label} on “${entity.label}”${added > 0 ? ` → +${added} node(s)` : ''}`)
       }
-      flash(out.note ? `${out.note}${dupes > 0 ? ` (${dupes} already on board)` : ''}` : `${t.label} done`)
+      return added
     } catch (e) {
-      flash(`Transform failed: ${String((e as Error)?.message ?? e)}`)
+      patchRun(runId, { status: 'error', error: String((e as Error)?.message ?? e) })
+      return 0
+    }
+  }
+
+  const runTransform = async (entity: EntityNode, t: Transform): Promise<void> => {
+    setBusyTransform(t.id)
+    try {
+      const { existing, edgeKeys } = buildDedupe()
+      await executeOne(entity, t, existing, edgeKeys, { i: 0 })
     } finally {
       setBusyTransform(null)
     }
@@ -331,21 +376,10 @@ function GraphInner(): JSX.Element {
     setBusyTransform('__all__')
     const { existing, edgeKeys } = buildDedupe()
     const spread = { i: 0 }
-    let total = 0
-    const fails: string[] = []
     try {
-      for (const t of ts) {
-        try {
-          const out = await t.run(entity.label, entity.props ?? {}, { apiKeys: keys })
-          total += await applyOutput(entity, t, out, existing, edgeKeys, spread)
-        } catch (e) {
-          fails.push(`${t.label}: ${String((e as Error)?.message ?? e)}`)
-        }
-      }
-      if (board?.projectId) {
-        api.activity.log(board.projectId, 'transform', `Ran ${ts.length} transforms on “${entity.label}” → +${total} node(s)`)
-      }
-      flash(`Ran ${ts.length} transform${ts.length === 1 ? '' : 's'} → +${total} node(s)${fails.length ? ` · ${fails.length} failed` : ''}`)
+      let total = 0
+      for (const t of ts) total += await executeOne(entity, t, existing, edgeKeys, spread)
+      flash(`Ran ${ts.length} transform${ts.length === 1 ? '' : 's'} → +${total} node(s)`)
     } finally {
       setBusyTransform(null)
     }
@@ -504,7 +538,7 @@ function GraphInner(): JSX.Element {
 
       {/* Canvas + inspector */}
       <div className="flex-1 min-h-0 flex">
-        <div className="flex-1 min-w-0">
+        <div className="flex-1 min-w-0 relative">
           <ReactFlow
             nodes={nodes}
             edges={edges}
@@ -531,6 +565,71 @@ function GraphInner(): JSX.Element {
               nodeColor={(n) => ENTITY_TYPES[(n.data as { entity: EntityNode }).entity.type].color}
             />
           </ReactFlow>
+
+          {/* Live transform run log */}
+          {runs.length > 0 && (
+            <div className="absolute left-3 bottom-3 z-20 w-[22rem] max-w-[calc(100%-1.5rem)] card !bg-ink-900/95 backdrop-blur shadow-2xl">
+              <div className="flex items-center justify-between px-3 py-2 border-b border-ink-700">
+                <div className="flex items-center gap-2 text-sm font-semibold text-slate-200">
+                  <Sparkles size={14} className="text-accent" /> Transform log
+                  {runs.some((r) => r.status === 'running') && <Loader2 size={12} className="animate-spin text-accent" />}
+                  <span className="text-xs text-slate-500 font-normal">({runs.length})</span>
+                </div>
+                <div className="flex gap-1">
+                  <button className="btn-ghost !p-1" title="Clear log" onClick={() => setRuns([])}>
+                    <Trash2 size={13} />
+                  </button>
+                  <button className="btn-ghost !p-1" title={logOpen ? 'Collapse' : 'Expand'} onClick={() => setLogOpen((v) => !v)}>
+                    {logOpen ? <ChevronDown size={14} /> : <ChevronUp size={14} />}
+                  </button>
+                </div>
+              </div>
+              {logOpen && (
+                <div className="max-h-64 overflow-y-auto divide-y divide-ink-800">
+                  {runs.map((r) => {
+                    const cfg = ENTITY_TYPES[r.targetType]
+                    const icon =
+                      r.status === 'running' ? <Loader2 size={14} className="animate-spin text-accent shrink-0" />
+                      : r.status === 'done' ? <Check size={14} className="text-ok shrink-0" />
+                      : r.status === 'empty' ? <Minus size={14} className="text-slate-500 shrink-0" />
+                      : r.status === 'skipped' ? <KeyRound size={14} className="text-warn shrink-0" />
+                      : <AlertTriangle size={14} className="text-danger shrink-0" />
+                    return (
+                      <button
+                        key={r.id}
+                        onClick={() => {
+                          const n = nodes.find((nn) => {
+                            const e = (nn.data as { entity: EntityNode }).entity
+                            return e.label === r.target && e.type === r.targetType
+                          })
+                          if (n) setSelected((n.data as { entity: EntityNode }).entity)
+                        }}
+                        className="w-full flex items-start gap-2 px-3 py-2 text-left hover:bg-ink-800"
+                      >
+                        {icon}
+                        <div className="min-w-0 flex-1">
+                          <div className="text-xs text-slate-200 flex items-center gap-1.5">
+                            <span className="font-medium truncate">{r.label}</span>
+                            {r.status === 'done' && r.added != null && r.added > 0 && (
+                              <span className="text-[10px] text-ok border border-ok/30 rounded px-1 shrink-0">+{r.added}</span>
+                            )}
+                          </div>
+                          <div className="text-[11px] text-slate-500 truncate">
+                            <span style={{ color: cfg.color }}>{cfg.label}</span> · {r.target || '—'}
+                          </div>
+                          {(r.summary || r.error) && (
+                            <div className={`text-[11px] truncate mt-0.5 ${r.status === 'error' ? 'text-danger' : 'text-slate-400'}`}>
+                              {r.error ?? r.summary}
+                            </div>
+                          )}
+                        </div>
+                      </button>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {selected && (

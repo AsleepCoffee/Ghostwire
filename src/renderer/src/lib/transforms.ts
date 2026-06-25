@@ -307,17 +307,25 @@ const TRANSFORMS: Partial<Record<EntityType, Transform[]>> = {
       run: async (label, _p, { apiKeys }) => {
         const r = (await api.net.fetchJson(
           `https://api.hunter.io/v2/email-verifier?email=${enc(label)}&api_key=${enc(apiKeys.hunter)}`
-        )) as { data?: { status?: string; score?: number; result?: string } }
+        )) as { data?: { status?: string; score?: number; result?: string; regexp?: boolean; mx_records?: boolean; smtp_check?: boolean } }
         const d = r.data ?? {}
+        const bits = [
+          d.result ? `result: ${d.result}` : '',
+          d.score != null ? `score ${d.score}` : '',
+          d.smtp_check != null ? `SMTP ${d.smtp_check ? 'ok' : 'fail'}` : '',
+          d.mx_records != null ? `MX ${d.mx_records ? 'ok' : 'none'}` : ''
+        ].filter(Boolean)
         return {
           entities: [],
           urls: [],
           updateSource: {
             ...(d.result ? { verification: d.result } : {}),
             ...(d.status ? { status: d.status } : {}),
-            ...(d.score != null ? { score: String(d.score) } : {})
+            ...(d.score != null ? { score: String(d.score) } : {}),
+            ...(d.smtp_check != null ? { smtp_check: String(d.smtp_check) } : {}),
+            ...(d.mx_records != null ? { mx_records: String(d.mx_records) } : {})
           },
-          note: `Hunter: ${d.result ?? d.status ?? 'checked'}`
+          note: `Hunter — ${bits.join(', ') || 'checked'}`
         }
       }
     }

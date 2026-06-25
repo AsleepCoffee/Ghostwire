@@ -7,6 +7,14 @@ export interface ChangelogEntry {
 /** In-app patch notes. Newest first. Keep in sync with CHANGELOG.md. */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.1.33',
+    date: '2026-06-25',
+    notes: [
+      'New live Transform Log on the link chart — every transform/pivot you run shows up with its status (running, added N nodes, nothing new, needs a key, or failed with the exact error). Click an entry to jump to that entity; clear or collapse the panel anytime.',
+      'Hunter results are clearer: email verification now reports the result, score, SMTP and MX checks (not just “deliverable”), and the domain-email lookup reports how many it found.'
+    ]
+  },
+  {
     version: '0.1.32',
     date: '2026-06-25',
     notes: [

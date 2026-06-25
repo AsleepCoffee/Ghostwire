@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.1.33
+- New live Transform Log on the link chart — every transform shows its status (running, +N nodes, nothing new, needs a key, or failed with the exact error). Click an entry to jump to that entity; clear/collapse anytime.
+- Hunter results are clearer: email verification reports result, score, SMTP and MX checks; domain-email lookup reports the count found.
+
 ## v0.1.32
 - Maltego-style "Run all transforms" — right-click a graph node (or use the entity panel) to fire every available transform at once and pull all results in as connected nodes. Skips transforms missing an API key, dedupes across the whole batch, reports nodes added.
 - Transform engine reviewed end-to-end (network layer, dedupe, edge/prop writes, activity log).
