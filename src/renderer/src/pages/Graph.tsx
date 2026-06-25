@@ -241,31 +241,55 @@ function GraphInner(): JSX.Element {
     setBusyTransform(t.id)
     try {
       const out = await t.run(entity.label, entity.props ?? {}, { apiKeys: settings.apiKeys ?? {} })
+
+      // Dedupe against existing nodes/edges so repeat transforms don't pile up.
+      const existing = new Map<string, string>() // type:label -> nodeId
+      for (const n of nodes) {
+        const e = (n.data as { entity: EntityNode }).entity
+        existing.set(`${e.type}:${e.label.trim().toLowerCase()}`, n.id)
+      }
+      const edgeKeys = new Set(edges.map((e) => `${e.source}->${e.target}`))
+
+      const fresh = out.entities.filter((ne) => ne.label.trim())
+      let added = 0
       let i = 0
-      for (const ne of out.entities) {
-        const saved = await api.boards.saveNode({
-          boardId,
-          type: ne.type,
-          label: ne.label,
-          props: ne.props ?? {},
-          x: entity.x + 240,
-          y: entity.y + (i - (out.entities.length - 1) / 2) * 70
-        })
-        setNodes((nds) => [
-          ...nds,
-          { id: saved.id, type: 'entity', position: { x: saved.x, y: saved.y }, data: { entity: saved } }
-        ])
-        const edge = await api.boards.saveEdge({ boardId, source: entity.id, target: saved.id, label: t.label })
-        setEdges((eds) =>
-          addEdge({ id: edge.id, source: entity.id, target: saved.id, animated: true, style: { stroke: '#3a4456' } }, eds)
-        )
-        i++
+      for (const ne of fresh) {
+        const key = `${ne.type}:${ne.label.trim().toLowerCase()}`
+        let targetId = existing.get(key)
+        if (!targetId) {
+          const saved = await api.boards.saveNode({
+            boardId,
+            type: ne.type,
+            label: ne.label.trim(),
+            props: ne.props ?? {},
+            x: entity.x + 260,
+            y: entity.y + (i - (fresh.length - 1) / 2) * 80
+          })
+          setNodes((nds) => [
+            ...nds,
+            { id: saved.id, type: 'entity', position: { x: saved.x, y: saved.y }, data: { entity: saved } }
+          ])
+          existing.set(key, saved.id)
+          targetId = saved.id
+          added++
+          i++
+        }
+        if (targetId !== entity.id && !edgeKeys.has(`${entity.id}->${targetId}`)) {
+          const edge = await api.boards.saveEdge({ boardId, source: entity.id, target: targetId, label: t.label })
+          edgeKeys.add(`${entity.id}->${targetId}`)
+          setEdges((eds) =>
+            addEdge({ id: edge.id, source: entity.id, target: targetId!, animated: true, style: { stroke: '#3a4456' } }, eds)
+          )
+        }
       }
       if (out.updateSource && Object.keys(out.updateSource).length) {
-        updateSelected({ props: { ...(entity.props ?? {}), ...out.updateSource } })
+        const updated = { ...entity, props: { ...(entity.props ?? {}), ...out.updateSource } }
+        setNodes((nds) => nds.map((n) => (n.id === entity.id ? { ...n, data: { entity: updated } } : n)))
+        if (selected?.id === entity.id) setSelected(updated)
+        api.boards.saveNode(updated)
       }
-      if (out.urls.length) openInBrowser(out.urls)
-      flash(out.note || `${t.label} done`)
+      const dupes = fresh.length - added
+      flash(out.note ? `${out.note}${dupes > 0 ? ` (${dupes} already on board)` : ''}` : `${t.label} done`)
     } catch (e) {
       flash(`Transform failed: ${String((e as Error)?.message ?? e)}`)
     } finally {
@@ -492,6 +516,9 @@ function GraphInner(): JSX.Element {
             </button>
             <div className="border-t border-ink-700 my-1" />
             <div className="px-3 py-1 text-[10px] uppercase tracking-widest text-slate-600">Transforms</div>
+            {transformsFor(menu.entity.type).length === 0 && (
+              <div className="px-3 py-1.5 text-xs text-slate-500">None for this type — use Pivot</div>
+            )}
             {transformsFor(menu.entity.type).map((t) => {
               const locked = !!t.needsKey && !(settings.apiKeys ?? {})[t.needsKey]
               return (
@@ -605,8 +632,13 @@ function EntityInspector({
             <label className="label !mb-0">Transforms</label>
           </div>
           <p className="text-[11px] text-slate-500 mb-2">
-            Expand this entity into related entities or open the right lookups — one click.
+            Pull related entities & data into the graph. Locked ones need an API key (Settings).
           </p>
+          {transforms.length === 0 && (
+            <p className="text-[11px] text-slate-500 mb-2">
+              No transforms for this type yet — use <b>Pivot</b> to search the web.
+            </p>
+          )}
           <div className="space-y-1.5">
             {transforms.map((t) => {
               const locked = !!t.needsKey && !apiKeys[t.needsKey]

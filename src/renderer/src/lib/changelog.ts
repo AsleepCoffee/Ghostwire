@@ -7,6 +7,16 @@ export interface ChangelogEntry {
 /** In-app patch notes. Newest first. Keep in sync with CHANGELOG.md. */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.1.11',
+    date: '2026-06-24',
+    notes: [
+      'Transforms now work like Maltego — they pull entities & data straight INTO the graph and never just open a browser tab. (Opening web tools is the separate “Pivot” action.)',
+      'Transform results de-duplicate: repeat runs link to existing nodes instead of piling up duplicates.',
+      'Entity types with no data transform now point you to Pivot instead of showing tab-openers.',
+      'Added a Hunter “verify email” transform (deliverability/score onto the email).'
+    ]
+  },
+  {
     version: '0.1.10',
     date: '2026-06-24',
     notes: [

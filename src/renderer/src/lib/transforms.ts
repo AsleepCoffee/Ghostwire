@@ -1,5 +1,5 @@
 import { api, type EntityType } from './api'
-import { generatePivots, subjectForEntity, USERNAME_SITES, type PivotSubject } from './pivot'
+import { USERNAME_SITES } from './pivot'
 
 /** A transform turns one entity into related entities and/or browser lookups —
  *  the GhostWire take on Maltego's "transforms". */
@@ -31,11 +31,6 @@ export interface Transform {
     ctx: { apiKeys: Record<string, string> }
   ) => Promise<TransformOutput>
 }
-
-const openLookups = (subject: PivotSubject): Transform['run'] => async (label) => ({
-  entities: [],
-  urls: generatePivots(subject, label).map((q) => q.url)
-})
 
 /** crt.sh subdomain enumeration — free, no key. */
 const crtshSubdomains: Transform = {
@@ -199,13 +194,7 @@ const TRANSFORMS: Partial<Record<EntityType, Transform[]>> = {
     crtshSubdomains,
     vtDomainSubdomains,
     vtDomainResolutions,
-    hunterEmails,
-    {
-      id: 'domain-recon',
-      label: 'Open recon tools',
-      description: 'Open crt.sh, Shodan, Wayback, BuiltWith, exposed-file dorks in browser tabs.',
-      run: openLookups('domain')
-    }
+    hunterEmails
   ],
   email: [
     {
@@ -214,14 +203,31 @@ const TRANSFORMS: Partial<Record<EntityType, Transform[]>> = {
       description: 'Create a domain entity from the email’s domain.',
       run: async (label) => {
         const d = label.split('@')[1]?.trim().toLowerCase()
-        return { entities: d ? [{ type: 'domain', label: d }] : [], urls: [], note: d ? '' : 'No domain in address' }
+        return { entities: d ? [{ type: 'domain', label: d }] : [], urls: [], note: d ? `Added ${d}` : 'No domain in address' }
       }
     },
     {
-      id: 'email-lookups',
-      label: 'Open breach & footprint lookups',
-      description: 'HIBP, Epieos, IntelX, paste/doc dorks.',
-      run: openLookups('email')
+      id: 'hunter-verify',
+      label: 'Hunter: verify email',
+      description: 'Check deliverability/score and attach the result to this email.',
+      needsKey: 'hunter',
+      network: true,
+      run: async (label, _p, { apiKeys }) => {
+        const r = (await api.net.fetchJson(
+          `https://api.hunter.io/v2/email-verifier?email=${enc(label)}&api_key=${enc(apiKeys.hunter)}`
+        )) as { data?: { status?: string; score?: number; result?: string } }
+        const d = r.data ?? {}
+        return {
+          entities: [],
+          urls: [],
+          updateSource: {
+            ...(d.result ? { verification: d.result } : {}),
+            ...(d.status ? { status: d.status } : {}),
+            ...(d.score != null ? { score: String(d.score) } : {})
+          },
+          note: `Hunter: ${d.result ?? d.status ?? 'checked'}`
+        }
+      }
     }
   ],
   username: [
@@ -241,12 +247,6 @@ const TRANSFORMS: Partial<Record<EntityType, Transform[]>> = {
           note: `Added ${USERNAME_SITES.length} profile entities`
         }
       }
-    },
-    {
-      id: 'username-lookups',
-      label: 'Open profile checks',
-      description: 'WhatsMyName + Google username search.',
-      run: openLookups('username')
     }
   ],
   ip: [
@@ -278,27 +278,12 @@ const TRANSFORMS: Partial<Record<EntityType, Transform[]>> = {
           note: `IPinfo: ${data.org ?? ''} ${data.country ?? ''}`.trim()
         }
       }
-    },
-    { id: 'ip-recon', label: 'Open recon tools', description: 'Shodan, Censys, AbuseIPDB, reverse IP.', run: openLookups('ip') }
-  ],
-  person: [{ id: 'person-search', label: 'Open searches', description: 'Google, LinkedIn, docs, contact dorks.', run: openLookups('name') }],
-  phone: [{ id: 'phone-lookups', label: 'Open lookups', description: 'Epieos, Truecaller, social dorks.', run: openLookups('phone') }],
-  organization: [{ id: 'org-search', label: 'Open searches', description: 'LinkedIn, employees, OpenCorporates.', run: openLookups('organization') }],
-  location: [{ id: 'loc-maps', label: 'Open maps', description: 'Google/Bing/OSM maps.', run: openLookups('location') }],
-  social: [{ id: 'social-search', label: 'Open search', description: 'Search this handle on the web.', run: openLookups('username') }],
-  image: [{ id: 'image-reverse', label: 'Open reverse-image search', description: 'Yandex, Google Images, TinEye, PimEyes.', run: openLookups('image') }]
-}
-
-/** Transforms available for an entity type (always includes a generic "open lookups"). */
-export function transformsFor(type: EntityType): Transform[] {
-  const list = TRANSFORMS[type]
-  if (list && list.length) return list
-  return [
-    {
-      id: 'generic-open',
-      label: 'Open lookups',
-      description: 'Search this value on the web.',
-      run: openLookups(subjectForEntity(type))
     }
   ]
+}
+
+/** Transforms that pull data INTO the graph for this entity type.
+ *  (Opening web tools is the separate "Pivot" action.) Empty = none yet. */
+export function transformsFor(type: EntityType): Transform[] {
+  return TRANSFORMS[type] ?? []
 }

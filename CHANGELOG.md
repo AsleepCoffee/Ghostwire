@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.1.11
+- Transforms now work like Maltego — they pull entities & data straight INTO the graph and never just open a browser tab. (Opening web tools is the separate "Pivot" action.)
+- Transform results de-duplicate: repeat runs link to existing nodes instead of piling up duplicates.
+- Entity types with no data transform now point you to Pivot instead of showing tab-openers.
+- Added a Hunter "verify email" transform (deliverability/score onto the email).
+
 ## v0.1.10
 - API-powered graph transforms — pull real data straight into the link chart: VirusTotal (subdomains, resolved IPs, domains-on-IP), Shodan (ports/hostnames/org), Hunter (emails on a domain), AbuseIPDB (reputation).
 - Right-click any graph node for a menu: run transforms, pivot, or add to notes.
