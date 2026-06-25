@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.1.24
+- Sock puppet accounts now open the real sign-up page (not login) when the account hasn't been created yet, so the persona's details autofill on the registration form. Once marked "created", the button opens the login page instead.
+- New click-to-copy Identity panel in the persona editor — copy any detail (name, first/last, username, email, phone, birthday + split day/month/year, age, gender, location, nationality) individually or all at once, for sites where autofill misses fields.
+
 ## v0.1.23
 - Fixed the Mailbox tab showing a black screen — the new auto-fill could crash the view if it ran before the webmail page was ready. It now fails safely and retries once the page loads.
 

@@ -187,6 +187,38 @@ export function loginUrlFor(platform: string, fallbackUrl?: string): string {
   return PLATFORM_LOGIN[key] || fallbackUrl || `https://www.google.com/search?q=${encodeURIComponent(platform + ' login')}`
 }
 
+/** Registration / sign-up pages — used when an account hasn't been created yet,
+ *  so the persona's details land on the account-creation form (not login). */
+export const PLATFORM_SIGNUP: Record<string, string> = {
+  email: 'https://accounts.google.com/signup',
+  gmail: 'https://accounts.google.com/signup',
+  google: 'https://accounts.google.com/signup',
+  youtube: 'https://accounts.google.com/signup',
+  proton: 'https://account.proton.me/signup',
+  protonmail: 'https://account.proton.me/signup',
+  outlook: 'https://signup.live.com/',
+  hotmail: 'https://signup.live.com/',
+  facebook: 'https://www.facebook.com/r.php',
+  instagram: 'https://www.instagram.com/accounts/emailsignup/',
+  'x / twitter': 'https://twitter.com/i/flow/signup',
+  twitter: 'https://twitter.com/i/flow/signup',
+  x: 'https://twitter.com/i/flow/signup',
+  reddit: 'https://www.reddit.com/register/',
+  linkedin: 'https://www.linkedin.com/signup',
+  tiktok: 'https://www.tiktok.com/signup',
+  discord: 'https://discord.com/register',
+  telegram: 'https://web.telegram.org/',
+  github: 'https://github.com/signup',
+  pinterest: 'https://www.pinterest.com/',
+  snapchat: 'https://accounts.snapchat.com/accounts/signup',
+  quora: 'https://www.quora.com/'
+}
+
+export function signupUrlFor(platform: string, fallbackUrl?: string): string {
+  const key = platform.trim().toLowerCase()
+  return PLATFORM_SIGNUP[key] || fallbackUrl || `https://www.google.com/search?q=${encodeURIComponent(platform + ' sign up')}`
+}
+
 /** Build a starter set of accounts (with generated passwords) for a new persona. */
 export function buildStarterAccounts(handle: string, email: string): import('./api').PersonaAccount[] {
   const platforms = ['Email', 'Facebook', 'Instagram', 'Reddit', 'X / Twitter']

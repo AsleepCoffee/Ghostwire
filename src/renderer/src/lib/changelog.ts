@@ -7,6 +7,14 @@ export interface ChangelogEntry {
 /** In-app patch notes. Newest first. Keep in sync with CHANGELOG.md. */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.1.24',
+    date: '2026-06-25',
+    notes: [
+      'Sock puppet accounts now open the real sign-up page (not the login page) when the account hasn’t been created yet — so the persona’s name, birthday, email, etc. autofill on the registration form. Once you mark an account “created”, the button switches to opening the login page instead.',
+      'New click-to-copy Identity panel in the persona editor — copy any detail (name, first/last, username, email, phone, birthday + split day/month/year, age, gender, location, nationality) with one click, or “Copy all”, for sites where autofill doesn’t catch every field.'
+    ]
+  },
+  {
     version: '0.1.23',
     date: '2026-06-25',
     notes: [

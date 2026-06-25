@@ -12,12 +12,14 @@ import {
   Crosshair,
   ImagePlus,
   LogIn,
+  UserPlus,
   Zap,
   RefreshCw,
   Mail,
   Inbox,
   Loader2,
   CheckCircle2,
+  Check,
   Circle,
   Dices
 } from 'lucide-react'
@@ -38,6 +40,7 @@ import {
   buildStarterAccounts,
   generatePassword,
   loginUrlFor,
+  signupUrlFor,
   COUNTRIES
 } from '../lib/constants'
 import { Modal, StatusBadge, EmptyState } from '../components/ui'
@@ -68,6 +71,118 @@ function personaAutofill(p: Persona, a: PersonaAccount): Autofill {
   }
 }
 
+const DOB_MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
+
+/** Whole years between a YYYY-MM-DD birthdate and today (''. if unparseable). */
+function ageFrom(bd?: string): string {
+  if (!bd) return ''
+  const d = new Date(bd)
+  if (isNaN(d.getTime())) return ''
+  const now = new Date()
+  let a = now.getFullYear() - d.getFullYear()
+  const m = now.getMonth() - d.getMonth()
+  if (m < 0 || (m === 0 && now.getDate() < d.getDate())) a--
+  return a >= 0 && a < 130 ? String(a) : ''
+}
+
+/** A click-to-copy chip for one persona detail. Renders nothing when empty. */
+function CopyField({ label, value }: { label: string; value?: string }): JSX.Element | null {
+  const [copied, setCopied] = useState(false)
+  if (!value) return null
+  const copy = async (): Promise<void> => {
+    try {
+      await navigator.clipboard.writeText(value)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 1200)
+    } catch {
+      /* clipboard blocked */
+    }
+  }
+  return (
+    <button
+      type="button"
+      onClick={copy}
+      title={`Copy ${label}`}
+      className="group flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-ink-900 border border-ink-700 hover:border-accent/40 transition-colors text-left min-w-0"
+    >
+      <div className="min-w-0 flex-1">
+        <div className="text-[10px] uppercase tracking-wider text-slate-500">{label}</div>
+        <div className="text-sm text-slate-200 truncate font-mono">{value}</div>
+      </div>
+      {copied ? (
+        <Check size={13} className="text-ok shrink-0" />
+      ) : (
+        <Copy size={13} className="text-slate-600 group-hover:text-accent shrink-0" />
+      )}
+    </button>
+  )
+}
+
+/** A grid of click-to-copy persona details for filling sign-up forms by hand
+ *  when a site's autofill doesn't catch every field. */
+function IdentityCopyPanel({ p }: { p: Partial<Persona> }): JSX.Element {
+  const [copiedAll, setCopiedAll] = useState(false)
+  const parts = (p.name ?? '').trim().split(/\s+/).filter(Boolean)
+  const first = parts[0] ?? ''
+  const last = parts.length > 1 ? parts.slice(1).join(' ') : ''
+  const [y, m, dd] = (p.birthdate ?? '').split('-')
+  const age = ageFrom(p.birthdate)
+
+  const copyAll = async (): Promise<void> => {
+    const lines = [
+      ['Name', p.name],
+      ['First name', first],
+      ['Last name', last],
+      ['Username', p.handle],
+      ['Email', p.email],
+      ['Phone', p.phone],
+      ['Date of birth', p.birthdate ? `${p.birthdate}${age ? ` (age ${age})` : ''}` : ''],
+      ['Gender', p.gender],
+      ['Location', p.location],
+      ['Nationality', p.nationality],
+      ['Occupation', p.occupation]
+    ]
+      .filter(([, v]) => v)
+      .map(([k, v]) => `${k}: ${v}`)
+      .join('\n')
+    try {
+      await navigator.clipboard.writeText(lines)
+      setCopiedAll(true)
+      setTimeout(() => setCopiedAll(false), 1400)
+    } catch {
+      /* clipboard blocked */
+    }
+  }
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-2">
+        <label className="label !mb-0">Identity — click any field to copy</label>
+        <button type="button" className="btn-ghost text-xs" onClick={copyAll}>
+          {copiedAll ? <Check size={14} className="text-ok" /> : <Copy size={14} />} Copy all
+        </button>
+      </div>
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
+        <CopyField label="Full name" value={p.name} />
+        <CopyField label="First name" value={first} />
+        <CopyField label="Last name" value={last} />
+        <CopyField label="Username" value={p.handle} />
+        <CopyField label="Email" value={p.email} />
+        <CopyField label="Phone" value={p.phone} />
+        <CopyField label="Gender" value={p.gender} />
+        <CopyField label="Birthdate" value={p.birthdate} />
+        <CopyField label="DOB day" value={dd ? String(Number(dd)) : ''} />
+        <CopyField label="DOB month" value={m ? DOB_MONTHS[Number(m) - 1] : ''} />
+        <CopyField label="DOB year" value={y} />
+        <CopyField label="Age" value={age} />
+        <CopyField label="Location" value={p.location} />
+        <CopyField label="Nationality" value={p.nationality} />
+        <CopyField label="Occupation" value={p.occupation} />
+      </div>
+    </div>
+  )
+}
+
 const EMPTY: Partial<Persona> = {
   name: '',
   handle: '',
@@ -94,10 +209,12 @@ export function SockPuppets(): JSX.Element {
 
   const browseAs = (p: Persona): void => openInBrowser(['https://duckduckgo.com/'], p.id)
 
-  const loginToAccount = (p: Persona, a: PersonaAccount): void =>
+  // Not created yet → open the sign-up page; already created → open login.
+  // Either way the persona's details (name, DOB, email, password…) are autofilled.
+  const openAccount = (p: Persona, a: PersonaAccount): void =>
     openTabs([
       {
-        url: loginUrlFor(a.platform, a.url),
+        url: a.status === 'created' ? loginUrlFor(a.platform, a.url) : signupUrlFor(a.platform, a.url),
         personaId: p.id,
         autofill: personaAutofill(p, a)
       }
@@ -230,7 +347,7 @@ export function SockPuppets(): JSX.Element {
                 onEdit={() => setEditing(p)}
                 onDelete={() => remove(p)}
                 onBrowse={() => browseAs(p)}
-                onLogin={(a) => loginToAccount(p, a)}
+                onLogin={(a) => openAccount(p, a)}
                 onPivot={() =>
                   setPivot({ value: p.handle || p.name, subject: p.handle ? 'username' : 'name' })
                 }
@@ -248,7 +365,7 @@ export function SockPuppets(): JSX.Element {
             setEditing(null)
             load()
           }}
-          onLogin={editing.id ? (a) => loginToAccount(editing as Persona, a) : undefined}
+          onLogin={editing.id ? (a) => openAccount(editing as Persona, a) : undefined}
         />
       )}
 
@@ -667,6 +784,9 @@ function PersonaEditor({
           />
         </div>
 
+        {/* Quick-copy identity for manual sign-up forms */}
+        <IdentityCopyPanel p={p} />
+
         {/* Accounts */}
         <div>
           <div className="flex items-center justify-between mb-2">
@@ -733,11 +853,17 @@ function PersonaEditor({
                   </button>
                   <button
                     className="btn-ghost !px-1.5 text-accent disabled:opacity-30"
-                    title={onLogin ? 'Open the site to register / log in (autofills credentials)' : 'Save the persona first, then open the site'}
+                    title={
+                      !onLogin
+                        ? 'Save the persona first, then open the site'
+                        : a.status === 'created'
+                          ? 'Open the login page & autofill credentials'
+                          : 'Open the sign-up page & autofill the persona’s details'
+                    }
                     disabled={!onLogin}
                     onClick={() => onLogin?.(a)}
                   >
-                    <LogIn size={15} />
+                    {a.status === 'created' ? <LogIn size={15} /> : <UserPlus size={15} />}
                   </button>
                   <button className="btn-danger !px-1.5" onClick={() => removeAccount(i)}>
                     <Trash2 size={15} />
