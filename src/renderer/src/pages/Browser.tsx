@@ -13,11 +13,13 @@ import {
   ExternalLink,
   Loader2,
   AlertTriangle,
-  KeyRound
+  KeyRound,
+  Camera
 } from 'lucide-react'
 import { api, type Persona } from '../lib/api'
 import { personaColor } from '../lib/constants'
 import { consumePending, subscribeOpen, type OpenRequest, type Autofill } from '../lib/browserBus'
+import { useSettings } from '../lib/settings'
 
 const HOME = 'https://duckduckgo.com/'
 
@@ -29,6 +31,7 @@ interface WebviewEl extends HTMLElement {
   loadURL(url: string): Promise<void>
   getURL(): string
   executeJavaScript(code: string): Promise<unknown>
+  capturePage(): Promise<{ toDataURL(): string }>
 }
 
 interface Tab {
@@ -81,9 +84,36 @@ export function Browser(): JSX.Element {
   const [tabs, setTabs] = useState<Tab[]>([])
   const [activeId, setActiveId] = useState<string>('')
   const [address, setAddress] = useState('')
+  const [toast, setToast] = useState('')
   const refs = useRef<Map<string, WebviewEl>>(new Map())
+  const { settings } = useSettings()
 
   const active = tabs.find((t) => t.id === activeId) ?? null
+
+  const capture = async (): Promise<void> => {
+    if (!active) return
+    const wv = refs.current.get(active.id)
+    if (!wv) return
+    try {
+      const img = await wv.capturePage()
+      const ev = await api.evidence.capture({
+        dataUrl: img.toDataURL(),
+        sourceUrl: active.url,
+        title: active.title,
+        projectId: settings.activeProjectId ?? null
+      })
+      setToast(
+        settings.activeProjectId
+          ? 'Evidence captured & filed to the active investigation'
+          : 'Evidence captured (set an active investigation to file it)'
+      )
+      setTimeout(() => setToast(''), 2800)
+      void ev
+    } catch {
+      setToast('Capture failed')
+      setTimeout(() => setToast(''), 2200)
+    }
+  }
 
   const reloadPersonas = (): void => {
     api.personas.list().then(setPersonas)
@@ -152,7 +182,7 @@ export function Browser(): JSX.Element {
   const persona = personas.find((p) => p.id === active?.personaId)
 
   return (
-    <div className="h-full flex flex-col">
+    <div className="h-full flex flex-col relative">
       {/* Tab strip */}
       <div className="flex items-center gap-1 px-2 pt-2 bg-ink-900 border-b border-ink-700 overflow-x-auto">
         {tabs.map((t) => {
@@ -239,6 +269,15 @@ export function Browser(): JSX.Element {
         )}
 
         <button
+          className="btn-ghost !px-2 text-accent"
+          title="Capture page as evidence (URL + timestamp + SHA-256)"
+          onClick={capture}
+          disabled={!active}
+        >
+          <Camera size={17} />
+        </button>
+
+        <button
           className="btn-ghost !px-2"
           title="Open in system browser"
           onClick={() => active && api.shell.openExternal(active.url)}
@@ -313,6 +352,12 @@ export function Browser(): JSX.Element {
           />
         ))}
       </div>
+
+      {toast && (
+        <div className="absolute bottom-5 right-5 z-50 card px-4 py-2.5 text-sm text-slate-200 border-accent/40 shadow-xl">
+          {toast}
+        </div>
+      )}
     </div>
   )
 }

@@ -1,5 +1,12 @@
 # Changelog
 
+## v0.1.13
+- Screenshot-to-evidence: a Capture button in the browser snapshots the page with its URL, a UTC timestamp and a SHA-256 hash, filed under the active investigation (pick it in the top bar).
+- Investigation report export: one-click Markdown rollup of subject, known data, evidence (with hashes) and linked items.
+- Catch-all email provider: set your own domain in Settings to give personas durable handle@yourdomain addresses alongside mail.tm.
+- Persona accounts now track created vs. not-yet-made, with a created count and a clearer "open site to register/log in" action.
+- Fixed the mail.tm "no domains available" error (now tries multiple domains).
+
 ## v0.1.12
 - Sock puppets can generate a disposable mailbox (mail.tm) in one click, with a built-in inbox to read sign-up / verification emails.
 - New graph transform: live username enumeration — probes major platforms and adds only the accounts that actually exist.

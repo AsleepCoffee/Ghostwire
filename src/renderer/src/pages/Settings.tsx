@@ -208,6 +208,28 @@ export function Settings(): JSX.Element {
           </label>
         </section>
 
+        {/* Persona email */}
+        <section className="card p-5">
+          <h2 className="font-semibold text-slate-100 mb-1 flex items-center gap-2">
+            <Icon name="Mail" size={16} className="text-brand-glow" /> Persona email
+          </h2>
+          <p className="text-sm text-slate-500 mb-3">
+            Personas can use a free disposable mailbox (mail.tm) out of the box. If you own a domain with{' '}
+            <b>catch-all email</b> (e.g. Cloudflare Email Routing — free), set it here to give personas durable
+            addresses like <code className="text-accent">handle@yourdomain.com</code> that won’t be blocked as disposable.
+          </p>
+          <label className="label">Catch-all domain (optional)</label>
+          <input
+            className="input max-w-sm"
+            placeholder="yourdomain.com"
+            value={settings.catchAllDomain ?? ''}
+            onChange={(e) => update({ catchAllDomain: e.target.value.trim().replace(/^@/, '') })}
+          />
+          <p className="text-[11px] text-slate-600 mt-2">
+            Catch-all addresses are receive-only here — verification mail lands in whatever inbox your domain forwards to.
+          </p>
+        </section>
+
         {/* API keys */}
         <section className="card p-5">
           <h2 className="font-semibold text-slate-100 mb-1 flex items-center gap-2">

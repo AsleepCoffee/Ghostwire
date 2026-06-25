@@ -14,7 +14,10 @@ import {
   Unlink,
   Fingerprint,
   Lightbulb,
-  Target
+  Target,
+  FileDown,
+  Camera,
+  ExternalLink
 } from 'lucide-react'
 import {
   api,
@@ -24,7 +27,8 @@ import {
   type Board,
   type ProjectStatus,
   type DataPoint,
-  type EntityType
+  type EntityType,
+  type Evidence
 } from '../lib/api'
 import { PROJECT_TYPES, ENTITY_TYPES, personaColor } from '../lib/constants'
 import { Icon, StatusBadge } from '../components/ui'
@@ -54,6 +58,7 @@ export function ProjectDetail(): JSX.Element {
   const [allPersonas, setAllPersonas] = useState<Persona[]>([])
   const [allNotes, setAllNotes] = useState<Note[]>([])
   const [allBoards, setAllBoards] = useState<Board[]>([])
+  const [evidence, setEvidence] = useState<Evidence[]>([])
   const [editing, setEditing] = useState(false)
   const [pivot, setPivot] = useState<{ value: string; subject: PivotSubject } | null>(null)
   const [known, setKnown] = useState('')
@@ -78,6 +83,16 @@ export function ProjectDetail(): JSX.Element {
     setAllPersonas(await api.personas.list())
     setAllNotes(await api.notes.list())
     setAllBoards(await api.boards.list())
+    setEvidence(await api.evidence.list(id))
+  }
+
+  const exportReport = async (): Promise<void> => {
+    const path = await api.projects.exportReport(id)
+    if (path) flash(`Report saved → ${path}`)
+  }
+  const removeEvidence = async (eid: string): Promise<void> => {
+    await api.evidence.remove(eid)
+    setEvidence((ev) => ev.filter((e) => e.id !== eid))
   }
   useEffect(() => {
     load()
@@ -237,6 +252,9 @@ export function ProjectDetail(): JSX.Element {
               <Crosshair size={15} /> Search target
             </button>
           )}
+          <button className="btn-ghost border border-ink-600" onClick={exportReport} title="Export a Markdown report">
+            <FileDown size={15} /> Report
+          </button>
           <button className="btn-ghost !px-2" onClick={() => setEditing(true)} title="Edit details">
             <Pencil size={17} />
           </button>
@@ -359,6 +377,46 @@ export function ProjectDetail(): JSX.Element {
             />
           </div>
         </div>
+
+        {/* Evidence */}
+        <section className="card">
+          <header className="flex items-center justify-between px-4 py-3 border-b border-ink-700">
+            <div className="font-semibold text-slate-100 text-sm flex items-center gap-2">
+              <Camera size={16} className="text-brand-glow" /> Evidence <span className="text-slate-500">({evidence.length})</span>
+            </div>
+            <span className="text-[11px] text-slate-500">Capture from the Browser with this set as the active investigation</span>
+          </header>
+          {evidence.length === 0 ? (
+            <div className="px-4 py-4 text-sm text-slate-500">
+              No evidence yet. In the Browser, set this as the active investigation (top bar) and hit the camera button.
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-3 p-4">
+              {evidence.map((e) => (
+                <div key={e.id} className="card overflow-hidden group relative">
+                  <img src={e.path} alt={e.title || 'evidence'} className="w-full h-32 object-cover object-top bg-ink-950" />
+                  <div className="p-2.5">
+                    <div className="text-xs font-medium text-slate-200 truncate">{e.title || e.sourceUrl || 'Capture'}</div>
+                    <div className="text-[11px] text-slate-500 truncate">{new Date(e.capturedAt).toLocaleString()}</div>
+                    <div className="text-[10px] text-slate-600 font-mono truncate" title={e.sha256}>
+                      sha256 {e.sha256.slice(0, 16)}…
+                    </div>
+                  </div>
+                  <div className="absolute top-1.5 right-1.5 hidden group-hover:flex gap-1">
+                    {e.sourceUrl && (
+                      <button className="btn-ghost !p-1 bg-ink-900/80" onClick={() => api.shell.openExternal(e.sourceUrl!)} title="Open source URL">
+                        <ExternalLink size={13} />
+                      </button>
+                    )}
+                    <button className="btn-danger !p-1 bg-ink-900/80" onClick={() => removeEvidence(e.id)} title="Delete">
+                      <Trash2 size={13} />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
 
         {/* Linked items */}
         <LinkSection

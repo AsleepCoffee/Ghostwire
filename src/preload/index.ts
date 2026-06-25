@@ -8,7 +8,13 @@ const api: OsintApi = {
     save: (p) => ipcRenderer.invoke('projects:save', p),
     remove: (id) => ipcRenderer.invoke('projects:remove', id),
     counts: () => ipcRenderer.invoke('projects:counts'),
-    contents: (id) => ipcRenderer.invoke('projects:contents', id)
+    contents: (id) => ipcRenderer.invoke('projects:contents', id),
+    exportReport: (id) => ipcRenderer.invoke('projects:exportReport', id)
+  },
+  evidence: {
+    capture: (payload) => ipcRenderer.invoke('evidence:capture', payload),
+    list: (projectId) => ipcRenderer.invoke('evidence:list', projectId),
+    remove: (id) => ipcRenderer.invoke('evidence:remove', id)
   },
   personas: {
     list: () => ipcRenderer.invoke('personas:list'),

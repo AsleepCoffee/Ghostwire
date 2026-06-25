@@ -16,7 +16,9 @@ import {
   RefreshCw,
   Mail,
   Inbox,
-  Loader2
+  Loader2,
+  CheckCircle2,
+  Circle
 } from 'lucide-react'
 import {
   api,
@@ -39,6 +41,7 @@ import { Modal, StatusBadge, EmptyState } from '../components/ui'
 import { PivotModal } from '../components/PivotModal'
 import { useOpenInBrowser, useOpenTabs } from '../lib/browserBus'
 import { useConfirm } from '../lib/confirm'
+import { useSettings } from '../lib/settings'
 import type { PivotSubject } from '../lib/pivot'
 
 const EMPTY: Partial<Persona> = {
@@ -305,6 +308,7 @@ function PersonaEditor({
   const [genMail, setGenMail] = useState(false)
   const [mailErr, setMailErr] = useState('')
   const [inboxOpen, setInboxOpen] = useState(false)
+  const { settings } = useSettings()
   const set = (patch: Partial<Persona>): void => setP((prev) => ({ ...prev, ...patch }))
 
   useEffect(() => {
@@ -322,6 +326,20 @@ function PersonaEditor({
     } finally {
       setGenMail(false)
     }
+  }
+
+  const genCatchAll = (): void => {
+    const domain = settings.catchAllDomain
+    if (!domain) return
+    const local = (p.handle || `gw${Math.random().toString(36).slice(2, 8)}`)
+      .toLowerCase()
+      .replace(/[^a-z0-9._-]/g, '')
+    const address = `${local}@${domain}`
+    set({
+      mailbox: { provider: 'catchall', address, password: generatePassword(), createdAt: Date.now() },
+      email: address
+    })
+    setMailErr('')
   }
 
   const fillRandom = (): void => {
@@ -414,21 +432,35 @@ function PersonaEditor({
                   <button className="btn-ghost !px-2 text-xs" onClick={() => navigator.clipboard.writeText(p.mailbox!.address)}>
                     <Copy size={13} /> Copy
                   </button>
-                  <button className="btn-ghost border border-ink-600 text-xs" onClick={() => setInboxOpen(true)}>
-                    <Inbox size={14} /> Inbox
+                  {p.mailbox.provider === 'mailtm' && (
+                    <button className="btn-ghost border border-ink-600 text-xs" onClick={() => setInboxOpen(true)}>
+                      <Inbox size={14} /> Inbox
+                    </button>
+                  )}
+                  <button className="btn-ghost !px-2 text-xs text-slate-500" onClick={() => set({ mailbox: null })} title="Clear mailbox">
+                    <X size={13} />
                   </button>
                 </>
               ) : (
-                <button className="btn-ghost border border-ink-600 text-xs" disabled={genMail} onClick={genMailbox}>
-                  {genMail ? <Loader2 size={13} className="animate-spin" /> : <Mail size={14} />} Generate mailbox
-                </button>
+                <>
+                  <button className="btn-ghost border border-ink-600 text-xs" disabled={genMail} onClick={genMailbox}>
+                    {genMail ? <Loader2 size={13} className="animate-spin" /> : <Mail size={14} />} mail.tm
+                  </button>
+                  {settings.catchAllDomain && (
+                    <button className="btn-ghost border border-ink-600 text-xs" onClick={genCatchAll}>
+                      <Mail size={14} /> @{settings.catchAllDomain}
+                    </button>
+                  )}
+                </>
               )}
             </div>
           </div>
           {mailErr && <p className="text-xs text-danger mt-2">{mailErr}</p>}
           {p.mailbox && (
             <p className="text-[11px] text-slate-600 mt-2">
-              Disposable mail.tm inbox · password stored with the persona · some sites block disposable domains.
+              {p.mailbox.provider === 'mailtm'
+                ? 'Disposable mail.tm inbox · readable here · some sites block disposable domains.'
+                : 'Catch-all address on your domain · durable · verification mail lands in your domain’s inbox.'}
             </p>
           )}
         </div>
@@ -533,7 +565,12 @@ function PersonaEditor({
         {/* Accounts */}
         <div>
           <div className="flex items-center justify-between mb-2">
-            <label className="label !mb-0">Linked accounts & credentials</label>
+            <label className="label !mb-0">
+              Linked accounts & credentials{' '}
+              <span className="text-slate-500 normal-case">
+                ({(p.accounts ?? []).filter((a) => a.status === 'created').length}/{(p.accounts ?? []).length} created)
+              </span>
+            </label>
             <div className="flex gap-2">
               <button
                 className="btn-ghost text-xs"
@@ -563,7 +600,7 @@ function PersonaEditor({
                   onChange={(e) => updateAccount(i, { username: e.target.value })}
                 />
                 <input
-                  className="input col-span-3"
+                  className="input col-span-2"
                   placeholder="Password"
                   value={a.password ?? ''}
                   onChange={(e) => updateAccount(i, { password: e.target.value })}
@@ -574,7 +611,14 @@ function PersonaEditor({
                   value={a.url ?? ''}
                   onChange={(e) => updateAccount(i, { url: e.target.value })}
                 />
-                <div className="col-span-2 flex items-center gap-1 justify-end">
+                <div className="col-span-3 flex items-center gap-1 justify-end">
+                  <button
+                    className={`btn-ghost !px-1.5 ${a.status === 'created' ? 'text-ok' : 'text-slate-500'}`}
+                    title={a.status === 'created' ? 'Created ✓ — click to mark not made' : 'Not created yet — click when registered'}
+                    onClick={() => updateAccount(i, { status: a.status === 'created' ? 'planned' : 'created' })}
+                  >
+                    {a.status === 'created' ? <CheckCircle2 size={15} /> : <Circle size={15} />}
+                  </button>
                   <button
                     className="btn-ghost !px-1.5"
                     title="Generate password"
@@ -584,7 +628,7 @@ function PersonaEditor({
                   </button>
                   <button
                     className="btn-ghost !px-1.5 text-accent disabled:opacity-30"
-                    title={onLogin ? 'Open & log in as this persona' : 'Save persona first to log in'}
+                    title={onLogin ? 'Open the site to register / log in (autofills credentials)' : 'Save the persona first, then open the site'}
                     disabled={!onLogin}
                     onClick={() => onLogin?.(a)}
                   >
@@ -629,7 +673,7 @@ function MailboxInbox({ mailbox, onClose }: { mailbox: PersonaMailbox; onClose: 
     setLoading(true)
     setErr('')
     try {
-      setMsgs(await api.mail.messages(mailbox.token))
+      setMsgs(await api.mail.messages(mailbox.token ?? ''))
     } catch (e) {
       setErr(String((e as Error)?.message ?? e))
     } finally {
@@ -658,7 +702,7 @@ function MailboxInbox({ mailbox, onClose }: { mailbox: PersonaMailbox; onClose: 
           {msgs.map((m) => (
             <button
               key={m.id}
-              onClick={async () => setSel(await api.mail.message(mailbox.token, m.id))}
+              onClick={async () => setSel(await api.mail.message(mailbox.token ?? '', m.id))}
               className={`w-full text-left px-3 py-2 hover:bg-ink-800 ${sel?.id === m.id ? 'bg-ink-800' : ''}`}
             >
               <div className="text-sm font-medium text-slate-200 truncate">{m.subject}</div>

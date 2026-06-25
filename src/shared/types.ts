@@ -43,14 +43,17 @@ export interface PersonaAccount {
   username?: string
   password?: string
   notes?: string
+  /** Whether the account has actually been registered yet. */
+  status?: 'planned' | 'created'
 }
 
-/** A disposable mailbox provisioned for a persona (mail.tm). */
+/** A mailbox provisioned for a persona — disposable (mail.tm) or a catch-all on your own domain. */
 export interface PersonaMailbox {
-  provider: 'mailtm'
+  provider: 'mailtm' | 'catchall'
   address: string
   password: string
-  token: string
+  /** mail.tm auth token (disposable provider only). */
+  token?: string
   createdAt: number
 }
 
@@ -182,6 +185,23 @@ export interface AppSettings {
   showTraining?: boolean
   /** API keys keyed by service id. */
   apiKeys?: Record<string, string>
+  /** Your catch-all email domain (e.g. example.com) for persona mailboxes. */
+  catchAllDomain?: string
+  /** The investigation new evidence/captures are filed under. */
+  activeProjectId?: string | null
+}
+
+export interface Evidence {
+  id: string
+  projectId: string | null
+  kind: 'screenshot' | 'image' | 'file'
+  /** gwmedia:// url to the stored artifact. */
+  path: string
+  sourceUrl?: string
+  title?: string
+  sha256: string
+  capturedAt: number
+  note?: string
 }
 
 export interface UpdateStatus {
@@ -200,6 +220,18 @@ export interface OsintApi {
     remove(id: string): Promise<void>
     counts(): Promise<Record<string, ProjectCounts>>
     contents(id: string): Promise<{ personas: Persona[]; notes: Note[]; boards: Board[] }>
+    exportReport(id: string): Promise<string | null>
+  }
+  evidence: {
+    capture(payload: {
+      dataUrl: string
+      sourceUrl?: string
+      title?: string
+      projectId?: string | null
+      kind?: Evidence['kind']
+    }): Promise<Evidence>
+    list(projectId: string | null): Promise<Evidence[]>
+    remove(id: string): Promise<void>
   }
   personas: {
     list(): Promise<Persona[]>

@@ -19,36 +19,42 @@ function randomPassword(): string {
 /** Provision a fresh mail.tm mailbox; returns address/password/token. */
 export async function createMailbox(localPart?: string): Promise<PersonaMailbox> {
   const domainsData = (await jsonOrThrow(await fetch(`${BASE}/domains?page=1`, { headers: UA }))) as {
-    'hydra:member'?: { domain: string; isActive?: boolean }[]
+    'hydra:member'?: { domain?: string; isActive?: boolean }[]
   }
-  const domains = (domainsData['hydra:member'] ?? []).filter((d) => d.isActive !== false)
-  if (domains.length === 0) throw new Error('No mail.tm domains available right now')
-  const domain = domains[0].domain
-  const password = randomPassword()
+  const members = (domainsData['hydra:member'] ?? []).filter((d) => d.domain)
+  // Prefer active domains, but fall back to whatever is returned (the active flag is flaky).
+  const active = members.filter((d) => d.isActive !== false).map((d) => d.domain as string)
+  const pool = active.length ? active : members.map((d) => d.domain as string)
+  if (pool.length === 0) {
+    throw new Error('mail.tm has no public domains right now — try again shortly, or use a catch-all domain (Settings).')
+  }
 
-  // Try the requested local part, then fall back to random if taken/invalid.
-  const candidates = [
+  const password = randomPassword()
+  const localCandidates = [
     ...(localPart ? [localPart.toLowerCase().replace(/[^a-z0-9._-]/g, '')] : []),
     randomPart(),
     randomPart()
   ].filter(Boolean)
 
+  // Try each domain × local-part until one is accepted.
   let address = ''
-  for (const part of candidates) {
-    address = `${part}@${domain}`
-    const res = await fetch(`${BASE}/accounts`, {
-      method: 'POST',
-      headers: { ...UA, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ address, password })
-    })
-    if (res.ok) break
-    if (res.status === 422) {
-      address = '' // taken/invalid — try next candidate
-      continue
+  outer: for (const domain of pool) {
+    for (const part of localCandidates) {
+      const candidate = `${part}@${domain}`
+      const res = await fetch(`${BASE}/accounts`, {
+        method: 'POST',
+        headers: { ...UA, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ address: candidate, password })
+      })
+      if (res.ok) {
+        address = candidate
+        break outer
+      }
+      if (res.status === 422) continue // taken/invalid — try next
+      throw new Error(`mail.tm account error HTTP ${res.status}`)
     }
-    throw new Error(`mail.tm account error HTTP ${res.status}`)
   }
-  if (!address) throw new Error('Could not create a mail.tm address (all candidates taken)')
+  if (!address) throw new Error('Could not create a mail.tm address — try again or use a catch-all domain.')
 
   const tokenData = (await jsonOrThrow(
     await fetch(`${BASE}/token`, {

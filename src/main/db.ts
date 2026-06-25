@@ -115,6 +115,18 @@ CREATE TABLE IF NOT EXISTS tools (
   checkedAt INTEGER
 );
 
+CREATE TABLE IF NOT EXISTS evidence (
+  id TEXT PRIMARY KEY,
+  projectId TEXT,
+  kind TEXT DEFAULT 'screenshot',
+  path TEXT NOT NULL,
+  sourceUrl TEXT,
+  title TEXT,
+  sha256 TEXT,
+  capturedAt INTEGER,
+  note TEXT
+);
+
 CREATE TABLE IF NOT EXISTS settings (
   key TEXT PRIMARY KEY,
   value TEXT
