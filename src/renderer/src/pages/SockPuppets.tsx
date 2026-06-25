@@ -13,6 +13,7 @@ import {
   ImagePlus,
   LogIn,
   UserPlus,
+  Pin,
   Zap,
   RefreshCw,
   Mail,
@@ -48,6 +49,9 @@ import { PivotModal } from '../components/PivotModal'
 import { useOpenInBrowser, useOpenTabs, type Autofill } from '../lib/browserBus'
 import { useConfirm } from '../lib/confirm'
 import { useSettings } from '../lib/settings'
+import { usePersonaDock } from '../lib/dock'
+import { identityFields, identityText } from '../lib/identity'
+import { CopyField } from '../components/CopyField'
 import type { PivotSubject } from '../lib/pivot'
 
 /** Build a full autofill payload from a persona + the specific account being opened.
@@ -71,87 +75,16 @@ function personaAutofill(p: Persona, a: PersonaAccount): Autofill {
   }
 }
 
-const DOB_MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
-
-/** Whole years between a YYYY-MM-DD birthdate and today (''. if unparseable). */
-function ageFrom(bd?: string): string {
-  if (!bd) return ''
-  const d = new Date(bd)
-  if (isNaN(d.getTime())) return ''
-  const now = new Date()
-  let a = now.getFullYear() - d.getFullYear()
-  const m = now.getMonth() - d.getMonth()
-  if (m < 0 || (m === 0 && now.getDate() < d.getDate())) a--
-  return a >= 0 && a < 130 ? String(a) : ''
-}
-
-/** A click-to-copy chip for one persona detail. Renders nothing when empty. */
-function CopyField({ label, value }: { label: string; value?: string }): JSX.Element | null {
-  const [copied, setCopied] = useState(false)
-  if (!value) return null
-  const copy = async (): Promise<void> => {
-    try {
-      await navigator.clipboard.writeText(value)
-      setCopied(true)
-      setTimeout(() => setCopied(false), 1200)
-    } catch {
-      /* clipboard blocked */
-    }
-  }
-  return (
-    <button
-      type="button"
-      onClick={copy}
-      title={`Copy ${label}`}
-      className="group flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-ink-900 border border-ink-700 hover:border-accent/40 transition-colors text-left min-w-0"
-    >
-      <div className="min-w-0 flex-1">
-        <div className="text-[10px] uppercase tracking-wider text-slate-500">{label}</div>
-        <div className="text-sm text-slate-200 truncate font-mono">{value}</div>
-      </div>
-      {copied ? (
-        <Check size={13} className="text-ok shrink-0" />
-      ) : (
-        <Copy size={13} className="text-slate-600 group-hover:text-accent shrink-0" />
-      )}
-    </button>
-  )
-}
-
 /** A grid of click-to-copy persona details for filling sign-up forms by hand
  *  when a site's autofill doesn't catch every field. */
 function IdentityCopyPanel({ p }: { p: Partial<Persona> }): JSX.Element {
   const [copiedAll, setCopiedAll] = useState(false)
-  const parts = (p.name ?? '').trim().split(/\s+/).filter(Boolean)
-  const first = parts[0] ?? ''
-  const last = parts.length > 1 ? parts.slice(1).join(' ') : ''
-  const [y, m, dd] = (p.birthdate ?? '').split('-')
-  const age = ageFrom(p.birthdate)
+  const fields = identityFields(p)
 
   const copyAll = async (): Promise<void> => {
-    const lines = [
-      ['Name', p.name],
-      ['First name', first],
-      ['Last name', last],
-      ['Username', p.handle],
-      ['Email', p.email],
-      ['Phone', p.phone],
-      ['Date of birth', p.birthdate ? `${p.birthdate}${age ? ` (age ${age})` : ''}` : ''],
-      ['Gender', p.gender],
-      ['Location', p.location],
-      ['Nationality', p.nationality],
-      ['Occupation', p.occupation]
-    ]
-      .filter(([, v]) => v)
-      .map(([k, v]) => `${k}: ${v}`)
-      .join('\n')
-    try {
-      await navigator.clipboard.writeText(lines)
-      setCopiedAll(true)
-      setTimeout(() => setCopiedAll(false), 1400)
-    } catch {
-      /* clipboard blocked */
-    }
+    await api.clipboard.writeText(identityText(p))
+    setCopiedAll(true)
+    setTimeout(() => setCopiedAll(false), 1400)
   }
 
   return (
@@ -163,21 +96,9 @@ function IdentityCopyPanel({ p }: { p: Partial<Persona> }): JSX.Element {
         </button>
       </div>
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
-        <CopyField label="Full name" value={p.name} />
-        <CopyField label="First name" value={first} />
-        <CopyField label="Last name" value={last} />
-        <CopyField label="Username" value={p.handle} />
-        <CopyField label="Email" value={p.email} />
-        <CopyField label="Phone" value={p.phone} />
-        <CopyField label="Gender" value={p.gender} />
-        <CopyField label="Birthdate" value={p.birthdate} />
-        <CopyField label="DOB day" value={dd ? String(Number(dd)) : ''} />
-        <CopyField label="DOB month" value={m ? DOB_MONTHS[Number(m) - 1] : ''} />
-        <CopyField label="DOB year" value={y} />
-        <CopyField label="Age" value={age} />
-        <CopyField label="Location" value={p.location} />
-        <CopyField label="Nationality" value={p.nationality} />
-        <CopyField label="Occupation" value={p.occupation} />
+        {fields.map((f) => (
+          <CopyField key={f.label} label={f.label} value={f.value} />
+        ))}
       </div>
     </div>
   )
@@ -201,6 +122,7 @@ export function SockPuppets(): JSX.Element {
   const openTabs = useOpenTabs()
   const confirm = useConfirm()
   const { settings } = useSettings()
+  const dock = usePersonaDock()
 
   const load = async (): Promise<void> => setPersonas(await api.personas.list())
   useEffect(() => {
@@ -210,8 +132,10 @@ export function SockPuppets(): JSX.Element {
   const browseAs = (p: Persona): void => openInBrowser(['https://duckduckgo.com/'], p.id)
 
   // Not created yet → open the sign-up page; already created → open login.
-  // Either way the persona's details (name, DOB, email, password…) are autofilled.
-  const openAccount = (p: Persona, a: PersonaAccount): void =>
+  // Either way the persona's details (name, DOB, email, password…) are autofilled,
+  // and we pin the persona to the side dock so its info stays handy on the Browser tab.
+  const openAccount = (p: Persona, a: PersonaAccount): void => {
+    dock.pin(p)
     openTabs([
       {
         url: a.status === 'created' ? loginUrlFor(a.platform, a.url) : signupUrlFor(a.platform, a.url),
@@ -219,6 +143,7 @@ export function SockPuppets(): JSX.Element {
         autofill: personaAutofill(p, a)
       }
     ])
+  }
 
   const quickCreate = async (): Promise<void> => {
     const g = generateIdentity(country)
@@ -348,6 +273,7 @@ export function SockPuppets(): JSX.Element {
                 onDelete={() => remove(p)}
                 onBrowse={() => browseAs(p)}
                 onLogin={(a) => openAccount(p, a)}
+                onPin={() => dock.pin(p)}
                 onPivot={() =>
                   setPivot({ value: p.handle || p.name, subject: p.handle ? 'username' : 'name' })
                 }
@@ -385,7 +311,8 @@ function PersonaCard({
   onDelete,
   onBrowse,
   onLogin,
-  onPivot
+  onPivot,
+  onPin
 }: {
   p: Persona
   onEdit: () => void
@@ -393,6 +320,7 @@ function PersonaCard({
   onBrowse: () => void
   onLogin: (a: PersonaAccount) => void
   onPivot: () => void
+  onPin: () => void
 }): JSX.Element {
   const color = personaColor(p.id)
   return (
@@ -450,6 +378,9 @@ function PersonaCard({
       <div className="mt-4 flex items-center gap-1.5 pt-3 border-t border-ink-700">
         <button className="btn-primary flex-1 justify-center" onClick={onBrowse}>
           <Globe size={15} /> Browse as
+        </button>
+        <button className="btn-ghost !px-2" onClick={onPin} title="Pin details to the side dock (stays visible while you browse)">
+          <Pin size={16} />
         </button>
         <button className="btn-ghost !px-2" onClick={onPivot} title="Search this persona everywhere">
           <Crosshair size={16} />

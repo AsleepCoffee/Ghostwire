@@ -85,6 +85,7 @@ function fillScript(a: Autofill): string {
       function first(sel){ try { return document.querySelector(sel); } catch(e){ return null; } }
       function all(sel){ try { return Array.prototype.slice.call(document.querySelectorAll(sel)); } catch(e){ return []; } }
 
+      function tick(){
       // ---- Name fields ----
       setVal(first('input[autocomplete="given-name"], input[name*="first" i], input[id*="first" i], input[name="firstname"], input[aria-label*="first name" i]'), D.firstName);
       setVal(first('input[autocomplete="family-name"], input[name*="last" i], input[id*="last" i], input[name="lastname"], input[aria-label*="last name" i]'), D.lastName);
@@ -148,6 +149,16 @@ function fillScript(a: Autofill): string {
           if(opt){ gsel.value = opt.value; gsel.dispatchEvent(new Event('change',{bubbles:true})); }
         }
       }
+      }
+      // Re-arm: sign-up wizards reveal fields on later steps, so keep filling
+      // empty fields as the DOM changes (and via a backup poll) for ~60s.
+      if (window.__gwFillObs) { try { window.__gwFillObs.disconnect(); } catch(e){} }
+      if (window.__gwFillInt) clearInterval(window.__gwFillInt);
+      window.__gwFillObs = new MutationObserver(tick);
+      window.__gwFillObs.observe(document.documentElement, { childList:true, subtree:true, attributes:true, attributeFilter:['type','style','class'] });
+      var __n = 0;
+      window.__gwFillInt = setInterval(function(){ __n++; tick(); if (__n > 120) { clearInterval(window.__gwFillInt); try { window.__gwFillObs.disconnect(); } catch(e){} } }, 500);
+      tick();
     } catch(e){}
   })();`
 }
@@ -488,23 +499,37 @@ function BrowserView({
     const onStop = (): void => onState({ loading: false })
     const onTitle = (e: Event): void => onState({ title: (e as unknown as { title: string }).title })
     const onFinish = (): void => {
-      // Idempotent autofill (only fills empty fields) — handles single & two-step logins.
-      if (tab.autofill) wv.executeJavaScript(fillScript(tab.autofill)).catch(() => {})
+      // Idempotent autofill (only fills empty fields). executeJavaScript throws
+      // synchronously if the guest isn't ready, so guard it (a .catch only
+      // handles the promise rejection).
+      if (!tab.autofill) return
+      try {
+        const r = wv.executeJavaScript(fillScript(tab.autofill)) as Promise<unknown> | undefined
+        if (r && typeof r.catch === 'function') r.catch(() => {})
+      } catch {
+        /* not dom-ready yet — a later event retries */
+      }
     }
     const onFail = (e: Event): void => {
       const ev = e as unknown as { errorCode: number; isMainFrame: boolean }
       if (ev.isMainFrame && ev.errorCode !== -3) onState({ loading: false, failed: true })
     }
-    wv.addEventListener('did-navigate', onNav as EventListener)
-    wv.addEventListener('did-navigate-in-page', onNav as EventListener)
+    const onNavFill = (e: Event): void => {
+      onNav(e)
+      onFinish()
+    }
+    wv.addEventListener('did-navigate', onNavFill as EventListener)
+    wv.addEventListener('did-navigate-in-page', onNavFill as EventListener)
+    wv.addEventListener('dom-ready', onFinish)
     wv.addEventListener('did-start-loading', onStart)
     wv.addEventListener('did-stop-loading', onStop)
     wv.addEventListener('did-finish-load', onFinish)
     wv.addEventListener('page-title-updated', onTitle as EventListener)
     wv.addEventListener('did-fail-load', onFail as EventListener)
     return () => {
-      wv.removeEventListener('did-navigate', onNav as EventListener)
-      wv.removeEventListener('did-navigate-in-page', onNav as EventListener)
+      wv.removeEventListener('did-navigate', onNavFill as EventListener)
+      wv.removeEventListener('did-navigate-in-page', onNavFill as EventListener)
+      wv.removeEventListener('dom-ready', onFinish)
       wv.removeEventListener('did-start-loading', onStart)
       wv.removeEventListener('did-stop-loading', onStop)
       wv.removeEventListener('did-finish-load', onFinish)

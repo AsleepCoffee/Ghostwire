@@ -1,4 +1,4 @@
-import { ipcMain, dialog, shell, BrowserWindow } from 'electron'
+import { ipcMain, dialog, shell, BrowserWindow, clipboard } from 'electron'
 import { randomUUID, createHash } from 'crypto'
 import { existsSync, mkdirSync, writeFileSync, copyFileSync } from 'fs'
 import { join, dirname, basename } from 'path'
@@ -677,6 +677,9 @@ export function registerHandlers(): void {
   ipcMain.handle('shell:openExternal', async (_e, url: string) => {
     if (/^https?:\/\//i.test(url)) await shell.openExternal(url)
   })
+
+  // ===== Clipboard (the web Clipboard API is unavailable under file://) =====
+  ipcMain.handle('clipboard:write', (_e, text: string) => clipboard.writeText(String(text ?? '')))
 
   // ===== App =====
   ipcMain.handle('app:encryptionStatus', () => encryptionAvailable())

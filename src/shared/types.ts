@@ -338,6 +338,9 @@ export interface OsintApi {
   shell: {
     openExternal(url: string): Promise<void>
   }
+  clipboard: {
+    writeText(text: string): Promise<void>
+  }
   net: {
     fetchJson(url: string, headers?: Record<string, string>): Promise<unknown>
     /** Final HTTP status for a URL (HEAD, falling back to GET). 0 on network error. */

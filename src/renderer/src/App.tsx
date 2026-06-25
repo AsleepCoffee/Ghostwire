@@ -3,6 +3,8 @@ import { Sidebar } from './components/Sidebar'
 import { Topbar } from './components/Topbar'
 import { TitleBar } from './components/TitleBar'
 import { UpdateNotice } from './components/UpdateNotice'
+import { PersonaDock } from './components/PersonaDock'
+import { PersonaDockProvider } from './lib/dock'
 import { Dashboard } from './pages/Dashboard'
 import { Projects } from './pages/Projects'
 import { ProjectDetail } from './pages/ProjectDetail'
@@ -22,6 +24,7 @@ export default function App(): JSX.Element {
   const onBrowser = loc.pathname === '/browser'
 
   return (
+    <PersonaDockProvider>
     <div className="flex flex-col h-full w-full overflow-hidden">
       <TitleBar />
       <div className="flex flex-1 min-h-0 w-full overflow-hidden">
@@ -55,6 +58,8 @@ export default function App(): JSX.Element {
           </main>
         </div>
       </div>
+      <PersonaDock />
     </div>
+    </PersonaDockProvider>
   )
 }

@@ -7,6 +7,16 @@ export interface ChangelogEntry {
 /** In-app patch notes. Newest first. Keep in sync with CHANGELOG.md. */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.1.25',
+    date: '2026-06-25',
+    notes: [
+      'New Persona Dock — a pinnable side panel that keeps a sock puppet’s details and account credentials visible across every tab (including the in-app Browser), so you can copy-paste them into sign-up forms without losing the card. Pin it from a persona’s 📌 button, or it opens automatically when you launch a sign-up/login.',
+      'Copy buttons now actually copy — switched to the OS clipboard (the web clipboard is blocked in the packaged app), so the identity fields and dock copy reliably.',
+      'Sign-up autofill is more thorough — it now keeps filling fields that appear later in multi-step registration wizards, not just the first screen.',
+      'Mailbox no longer pops out a separate window when signing into webmail — the login stays inline in the tab so auto sign-in can fill it.'
+    ]
+  },
+  {
     version: '0.1.24',
     date: '2026-06-25',
     notes: [

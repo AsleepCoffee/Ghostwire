@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.1.25
+- New Persona Dock — a pinnable side panel that keeps a sock puppet's details and account credentials visible across every tab (including the in-app Browser), so you can copy-paste into sign-up forms without losing the card. Pin from a persona's 📌 button, or it opens automatically when you launch a sign-up/login.
+- Copy buttons now actually copy — switched to the OS clipboard (the web Clipboard API is blocked in the packaged file:// app).
+- Sign-up autofill is more thorough — keeps filling fields that appear on later steps of multi-step registration wizards, not just the first screen.
+- Mailbox no longer pops out a separate window when signing into webmail — the login stays inline so auto sign-in can fill it.
+
 ## v0.1.24
 - Sock puppet accounts now open the real sign-up page (not login) when the account hasn't been created yet, so the persona's details autofill on the registration form. Once marked "created", the button opens the login page instead.
 - New click-to-copy Identity panel in the persona editor — copy any detail (name, first/last, username, email, phone, birthday + split day/month/year, age, gender, location, nationality) individually or all at once, for sites where autofill misses fields.
