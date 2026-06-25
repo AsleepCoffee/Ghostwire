@@ -1,4 +1,4 @@
-import { app, protocol, net, dialog, BrowserWindow } from 'electron'
+import { app, protocol, net, dialog, BrowserWindow, nativeImage } from 'electron'
 import { randomUUID } from 'crypto'
 import { join, extname, basename } from 'path'
 import { existsSync, mkdirSync, copyFileSync, writeFileSync, readFileSync } from 'fs'
@@ -84,9 +84,9 @@ export function readMedia(url: string): Buffer | null {
 const BROWSER_UA =
   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36'
 
-/** Download an image from a URL into app media; returns a gwmedia:// url (or null).
- *  Guards on content-type so we never save an HTML error page as an image. */
-export async function importImageFromUrl(kind: string, url: string): Promise<string | null> {
+/** Download an image from a URL, guarding on content-type so we never treat an
+ *  HTML error page as an image. Returns the raw bytes + a file extension. */
+async function downloadImage(url: string): Promise<{ buf: Buffer; ext: string } | null> {
   if (!/^https?:\/\//i.test(url)) return null
   const res = await fetch(url, {
     headers: { 'User-Agent': BROWSER_UA, Accept: 'image/avif,image/webp,image/png,image/*,*/*' }
@@ -97,14 +97,53 @@ export async function importImageFromUrl(kind: string, url: string): Promise<str
   const ext = ct.includes('png') ? 'png' : ct.includes('webp') ? 'webp' : ct.includes('gif') ? 'gif' : 'jpg'
   const buf = Buffer.from(await res.arrayBuffer())
   if (buf.length < 256) return null
+  return { buf, ext }
+}
+
+function saveBuffer(kind: string, buf: Buffer, ext: string): string {
   const file = `${randomUUID()}.${ext}`
   writeFileSync(join(kindDir(kind), file), buf)
   return mediaUrl(kind, file)
 }
 
+/** Download an image from a URL into app media; returns a gwmedia:// url (or null). */
+export async function importImageFromUrl(kind: string, url: string): Promise<string | null> {
+  const got = await downloadImage(url)
+  return got ? saveBuffer(kind, got.buf, got.ext) : null
+}
+
+/** Trim the bottom strip off an image (where this-person-does-not-exist.com
+ *  stamps its "thispersondoesnotexist.com" watermark). Falls back to the
+ *  original bytes if decoding fails. Re-encodes as PNG. */
+function trimWatermark(buf: Buffer, fraction = 0.07): { buf: Buffer; ext: string } {
+  try {
+    const img = nativeImage.createFromBuffer(buf)
+    const { width, height } = img.getSize()
+    if (width > 0 && height > 0) {
+      const cropped = img.crop({ x: 0, y: 0, width, height: Math.max(1, Math.round(height * (1 - fraction))) })
+      const png = cropped.toPNG()
+      if (png.length > 256) return { buf: png, ext: 'png' }
+    }
+  } catch {
+    /* fall through */
+  }
+  return { buf, ext: 'jpg' }
+}
+
 /** Fetch a random AI-generated face for a persona avatar.
- *  Primary: this-person-does-not-exist.com (real AI faces). Fallback: pravatar. */
+ *  Primary: thispersondoesnotexist.com (clean, no watermark).
+ *  Fallback: this-person-does-not-exist.com (watermark cropped off).
+ *  Last resort: pravatar (stock portrait). */
 export async function fetchAvatar(): Promise<string | null> {
+  // 1) Clean StyleGAN source — no watermark, so no crop needed.
+  try {
+    const clean = await importImageFromUrl('avatars', `https://thispersondoesnotexist.com/?${Date.now()}`)
+    if (clean) return clean
+  } catch {
+    /* try next */
+  }
+
+  // 2) API source that returns a watermarked image — crop the bottom strip.
   try {
     const meta = await fetch(
       'https://this-person-does-not-exist.com/new?new=1&gender=all&age=all&etnic=all',
@@ -113,14 +152,18 @@ export async function fetchAvatar(): Promise<string | null> {
     if (meta.ok) {
       const j = (await meta.json()) as { src?: string }
       if (j.src) {
-        const got = await importImageFromUrl('avatars', `https://this-person-does-not-exist.com${j.src}`)
-        if (got) return got
+        const got = await downloadImage(`https://this-person-does-not-exist.com${j.src}`)
+        if (got) {
+          const trimmed = trimWatermark(got.buf)
+          return saveBuffer('avatars', trimmed.buf, trimmed.ext)
+        }
       }
     }
   } catch {
     /* fall through to fallback */
   }
-  // Reliable fallback (stock portrait) if the AI-face service is unavailable.
+
+  // 3) Reliable stock-portrait fallback.
   return importImageFromUrl('avatars', `https://i.pravatar.cc/512?u=${randomUUID()}`)
 }
 

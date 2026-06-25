@@ -393,6 +393,8 @@ export interface OsintApi {
     startAll(): Promise<void>
     /** Re-pin every persona's browser session to its assigned exit (or direct). */
     apply(): Promise<void>
+    /** One-click: download the latest wireproxy build for this OS into the app's bin folder. */
+    installEngine(): Promise<{ ok: boolean; path?: string; error?: string }>
     onStatus(cb: (s: VpnState) => void): () => void
   }
 }

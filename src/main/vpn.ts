@@ -1,7 +1,8 @@
 import { app, dialog, ipcMain, session, webContents, BrowserWindow, type Session } from 'electron'
 import { spawn, spawnSync, type ChildProcess } from 'child_process'
 import { randomUUID } from 'crypto'
-import { existsSync, mkdirSync, readFileSync, writeFileSync, unlinkSync } from 'fs'
+import { existsSync, mkdirSync, readFileSync, writeFileSync, unlinkSync, chmodSync } from 'fs'
+import { gunzipSync } from 'zlib'
 import { join } from 'path'
 import { all, get, run } from './db'
 import type { Persona, VpnConfig, VpnConfigStatus, VpnState } from '../shared/types'
@@ -44,6 +45,70 @@ function findBinary(): string | null {
     /* not on PATH */
   }
   return null
+}
+
+function binDir(): string {
+  const dir = join(app.getPath('userData'), 'bin')
+  if (!existsSync(dir)) mkdirSync(dir, { recursive: true })
+  return dir
+}
+
+/** Pull a single file out of a .tar.gz buffer by basename (no tar dependency). */
+function extractFromTarGz(gz: Buffer, wantBasename: string): Buffer | null {
+  const tar = gunzipSync(gz)
+  let off = 0
+  while (off + 512 <= tar.length) {
+    const header = tar.subarray(off, off + 512)
+    const name = header.subarray(0, 100).toString('utf-8').replace(/\0.*$/, '')
+    if (!name) break // zero block = end of archive
+    const size = parseInt(header.subarray(124, 136).toString('utf-8').replace(/\0.*$/, '').trim(), 8) || 0
+    const dataStart = off + 512
+    const base = name.split('/').pop() ?? name
+    if (base.toLowerCase() === wantBasename.toLowerCase()) return tar.subarray(dataStart, dataStart + size)
+    off = dataStart + Math.ceil(size / 512) * 512
+  }
+  return null
+}
+
+/** One-click: download the latest wireproxy release for this OS and drop the
+ *  binary into the app's bin folder, so users don't touch PATHs or archives. */
+async function installEngine(): Promise<{ ok: boolean; path?: string; error?: string }> {
+  try {
+    const relRes = await fetch('https://api.github.com/repos/pufferffish/wireproxy/releases/latest', {
+      headers: { 'User-Agent': 'GhostWire', Accept: 'application/vnd.github+json' }
+    })
+    if (!relRes.ok) return { ok: false, error: `GitHub API error (${relRes.status})` }
+    const rel = (await relRes.json()) as { assets?: { name: string; browser_download_url: string }[] }
+    const assets = rel.assets ?? []
+    const plat = process.platform
+    const osWord = plat === 'win32' ? 'windows' : plat === 'darwin' ? 'darwin' : 'linux'
+    const wantExe = exe('wireproxy')
+    const archRe = process.arch === 'arm64' ? /(arm64|aarch64)/i : /(amd64|x86_64|x64)/i
+    const asset =
+      assets.find((a) => new RegExp(osWord, 'i').test(a.name) && archRe.test(a.name) && /\.tar\.gz$/i.test(a.name)) ??
+      assets.find((a) => new RegExp(osWord, 'i').test(a.name) && /\.tar\.gz$/i.test(a.name))
+    if (!asset) return { ok: false, error: `No ${osWord} build in the latest wireproxy release.` }
+
+    const dl = await fetch(asset.browser_download_url, { headers: { 'User-Agent': 'GhostWire' } })
+    if (!dl.ok) return { ok: false, error: `Download failed (${dl.status})` }
+    const gz = Buffer.from(await dl.arrayBuffer())
+    const bin = extractFromTarGz(gz, wantExe)
+    if (!bin || bin.length < 1024) return { ok: false, error: 'Could not find the binary inside the release archive.' }
+
+    const dest = join(binDir(), wantExe)
+    writeFileSync(dest, bin)
+    if (plat !== 'win32') {
+      try {
+        chmodSync(dest, 0o755)
+      } catch {
+        /* best effort */
+      }
+    }
+    cachedBinary = dest
+    return { ok: true, path: dest }
+  } catch (e) {
+    return { ok: false, error: String((e as Error)?.message ?? e) }
+  }
 }
 
 // ---------- config storage ----------
@@ -302,6 +367,22 @@ function registerVpnHandlers(): void {
     broadcast()
   })
   ipcMain.handle('vpn:apply', () => applyPersonaProxies())
+
+  ipcMain.handle('vpn:installEngine', async () => {
+    const r = await installEngine()
+    if (r.ok) {
+      for (const c of listConfigs()) {
+        try {
+          startConfig(c.id)
+        } catch {
+          /* reported via status */
+        }
+      }
+      applyPersonaProxies()
+    }
+    broadcast()
+    return r
+  })
 }
 
 /** Stop all tunnels (called on quit). */

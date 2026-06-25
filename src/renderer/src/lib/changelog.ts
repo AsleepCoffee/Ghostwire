@@ -7,6 +7,16 @@ export interface ChangelogEntry {
 /** In-app patch notes. Newest first. Keep in sync with CHANGELOG.md. */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.1.26',
+    date: '2026-06-25',
+    notes: [
+      'One-click VPN engine install — the VPN tab can now download and set up the wireproxy helper for you automatically (no more downloading archives or fiddling with PATHs/folders).',
+      'Clearer Proton setup — the guide now tells you exactly what to pick on Proton’s WireGuard page (Platform: GNU/Linux, Moderate NAT off, NAT-PMP off, VPN Accelerator on, then pick a country and Create).',
+      'The pinned Persona Dock now updates instantly when you edit and save a sock puppet.',
+      'Generated avatars no longer carry the small “this person does not exist” watermark — it’s cropped off (and a clean source is preferred).'
+    ]
+  },
+  {
     version: '0.1.25',
     date: '2026-06-25',
     notes: [

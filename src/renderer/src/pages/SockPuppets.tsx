@@ -124,7 +124,11 @@ export function SockPuppets(): JSX.Element {
   const { settings } = useSettings()
   const dock = usePersonaDock()
 
-  const load = async (): Promise<void> => setPersonas(await api.personas.list())
+  const load = async (): Promise<void> => {
+    const list = await api.personas.list()
+    setPersonas(list)
+    dock.refresh(list) // keep the pinned dock in sync after edits/saves/deletes
+  }
   useEffect(() => {
     load()
   }, [])

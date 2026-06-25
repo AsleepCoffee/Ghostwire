@@ -8,7 +8,9 @@ import {
   Pencil,
   AlertTriangle,
   ExternalLink,
-  ShieldCheck
+  ShieldCheck,
+  DownloadCloud,
+  Check
 } from 'lucide-react'
 import { api, type VpnState, type VpnConfigStatus } from '../lib/api'
 
@@ -19,6 +21,8 @@ const WIREPROXY_RELEASES = 'https://github.com/pufferffish/wireproxy/releases'
 export function VpnManager({ onChange }: { onChange?: () => void }): JSX.Element {
   const [state, setState] = useState<VpnState | null>(null)
   const [busy, setBusy] = useState(false)
+  const [installing, setInstalling] = useState(false)
+  const [installMsg, setInstallMsg] = useState('')
   const [editing, setEditing] = useState<string | null>(null)
   const [editName, setEditName] = useState('')
 
@@ -29,6 +33,19 @@ export function VpnManager({ onChange }: { onChange?: () => void }): JSX.Element
     refresh()
     return api.vpn.onStatus((s) => setState(s))
   }, [])
+
+  const installEngine = async (): Promise<void> => {
+    setInstalling(true)
+    setInstallMsg('')
+    try {
+      const r = await api.vpn.installEngine()
+      setInstallMsg(r.ok ? 'Engine installed ✓' : r.error ?? 'Install failed')
+      if (r.ok) onChange?.()
+    } finally {
+      setInstalling(false)
+      refresh()
+    }
+  }
 
   const doImport = async (): Promise<void> => {
     setBusy(true)
@@ -55,17 +72,26 @@ export function VpnManager({ onChange }: { onChange?: () => void }): JSX.Element
       {binaryMissing && (
         <div className="rounded-xl border border-warn/40 bg-warn/10 p-4">
           <div className="flex items-center gap-2 text-warn font-medium text-sm">
-            <AlertTriangle size={16} /> The <code className="text-warn">wireproxy</code> engine isn’t installed
+            <AlertTriangle size={16} /> The tunnel engine isn’t installed yet
           </div>
           <p className="text-sm text-slate-400 mt-2">
-            Tunnels can’t run until the small <b>wireproxy</b> helper is present. Download the build for your OS,
-            rename it to <code className="text-accent">wireproxy.exe</code>, and drop it in GhostWire’s{' '}
-            <code className="text-accent">bin</code> folder (or anywhere on your PATH). You can still import configs
-            now — they’ll start automatically once the engine is found.
+            GhostWire routes personas through a tiny userspace helper called <b>wireproxy</b>. Click below and GhostWire
+            grabs the right build and installs it for you — no downloads, PATHs, or folders to fuss with.
           </p>
-          <button className="btn-ghost border border-ink-600 mt-3 text-xs" onClick={() => api.shell.openExternal(WIREPROXY_RELEASES)}>
-            <ExternalLink size={14} /> Get wireproxy
-          </button>
+          <div className="flex flex-wrap items-center gap-2 mt-3">
+            <button className="btn-primary" onClick={installEngine} disabled={installing}>
+              {installing ? <Loader2 size={15} className="animate-spin" /> : <DownloadCloud size={15} />}
+              {installing ? 'Installing…' : 'Download & install engine'}
+            </button>
+            <button className="btn-ghost border border-ink-600 text-xs" onClick={() => api.shell.openExternal(WIREPROXY_RELEASES)}>
+              <ExternalLink size={14} /> Install manually instead
+            </button>
+          </div>
+          {installMsg && (
+            <p className={`text-xs mt-2 flex items-center gap-1 ${installMsg.includes('✓') ? 'text-ok' : 'text-danger'}`}>
+              {installMsg.includes('✓') && <Check size={13} />} {installMsg}
+            </p>
+          )}
         </div>
       )}
 

@@ -9,16 +9,20 @@ const PROTON_WG = 'https://account.protonvpn.com/downloads'
 
 const STEPS = [
   {
-    title: 'Open your Proton account → Downloads',
-    body: 'Go to the WireGuard configuration section. You’ll generate one config file per country you want to exit from.'
+    title: 'Open Proton → WireGuard configuration',
+    body: 'In your Proton account go to Downloads → WireGuard configuration (the “Open Proton downloads” button below). You’ll generate one config file per country you want to exit from.'
   },
   {
-    title: 'Create a config per country',
-    body: 'Pick a server (e.g. Germany, Canada), generate the configuration, and download the .conf file. Repeat for each exit location — you can run several at once (up to your plan’s device limit).'
+    title: 'Set the options exactly like this',
+    body: 'Device/certificate name: anything (e.g. ghostwire-germany). Platform: choose GNU/Linux (gives the cleanest config for GhostWire — Windows also works). NetShield: your choice (e.g. “Block malware only”). Moderate NAT: OFF. NAT-PMP (Port Forwarding): OFF. VPN Accelerator: ON (default). These last three are the defaults, so usually you only need to set the Platform.'
   },
   {
-    title: 'Import them here',
-    body: 'Use “Import .conf” below to add each file. GhostWire runs a userspace tunnel per config and exposes it as a local SOCKS5 proxy — no admin rights, no change to your system connection.'
+    title: 'Pick a country and click Create',
+    body: 'Under “Select a server to connect to”, expand a country and pick a server (or use the recommended one at the top), then click Create and download the .conf. Repeat for each exit location — you can run several at once (up to your plan’s device limit).'
+  },
+  {
+    title: 'Install the engine & import the configs here',
+    body: 'If prompted below, click “Download & install engine” (one click — GhostWire fetches the helper for you). Then click “Import .conf” and select your downloaded file(s). GhostWire runs a userspace tunnel per config as a local SOCKS5 proxy — no admin rights, no change to your system connection.'
   },
   {
     title: 'Assign a country to each persona',
@@ -66,7 +70,7 @@ export function Vpn(): JSX.Element {
         {!ready && (
           <section className="card p-5">
             <h2 className="font-semibold text-slate-100 mb-1 flex items-center gap-2">
-              <Globe2 size={16} className="text-brand-glow" /> Set up in four steps
+              <Globe2 size={16} className="text-brand-glow" /> Set up in a few steps
             </h2>
             <p className="text-sm text-slate-500 mb-4">
               You’ll need a Proton VPN subscription. Configs are WireGuard files you download from your account.

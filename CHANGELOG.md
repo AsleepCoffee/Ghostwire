@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.1.26
+- One-click VPN engine install — the VPN tab downloads and sets up the wireproxy helper for you automatically (no archives, PATHs, or folders to fuss with).
+- Clearer Proton setup — the guide now states exactly what to pick on Proton's WireGuard page (Platform: GNU/Linux, Moderate NAT off, NAT-PMP off, VPN Accelerator on, pick a country, Create).
+- The pinned Persona Dock updates instantly when you edit and save a sock puppet.
+- Generated avatars no longer carry the small "this person does not exist" watermark — cropped off, and a clean source is preferred.
+
 ## v0.1.25
 - New Persona Dock — a pinnable side panel that keeps a sock puppet's details and account credentials visible across every tab (including the in-app Browser), so you can copy-paste into sign-up forms without losing the card. Pin from a persona's 📌 button, or it opens automatically when you launch a sign-up/login.
 - Copy buttons now actually copy — switched to the OS clipboard (the web Clipboard API is blocked in the packaged file:// app).

@@ -123,6 +123,7 @@ const api: OsintApi = {
     stop: (id) => ipcRenderer.invoke('vpn:stop', id),
     startAll: () => ipcRenderer.invoke('vpn:startAll'),
     apply: () => ipcRenderer.invoke('vpn:apply'),
+    installEngine: () => ipcRenderer.invoke('vpn:installEngine'),
     onStatus: (cb) => {
       const listener = (_e: unknown, payload: unknown): void => cb(payload as Parameters<typeof cb>[0])
       ipcRenderer.on('vpn:status', listener as never)

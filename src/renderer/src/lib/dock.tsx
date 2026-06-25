@@ -9,6 +9,9 @@ interface DockCtx {
   pin: (p: Persona) => void
   setOpen: (v: boolean) => void
   unpin: () => void
+  /** Refresh the pinned persona's data from a fresh list (after an edit/save).
+   *  Drops the pin if the persona no longer exists. Preserves open state. */
+  refresh: (list: Persona[]) => void
 }
 
 const Ctx = createContext<DockCtx>({
@@ -16,7 +19,8 @@ const Ctx = createContext<DockCtx>({
   open: false,
   pin: () => {},
   setOpen: () => {},
-  unpin: () => {}
+  unpin: () => {},
+  refresh: () => {}
 })
 
 /** Holds the persona pinned to the always-on-top reference dock, so its details
@@ -29,7 +33,9 @@ export function PersonaDockProvider({ children }: { children: ReactNode }): JSX.
     setOpen(true)
   }
   const unpin = (): void => setPersona(null)
-  return <Ctx.Provider value={{ persona, open, pin, setOpen, unpin }}>{children}</Ctx.Provider>
+  const refresh = (list: Persona[]): void =>
+    setPersona((prev) => (prev ? list.find((x) => x.id === prev.id) ?? null : null))
+  return <Ctx.Provider value={{ persona, open, pin, setOpen, unpin, refresh }}>{children}</Ctx.Provider>
 }
 
 export function usePersonaDock(): DockCtx {
