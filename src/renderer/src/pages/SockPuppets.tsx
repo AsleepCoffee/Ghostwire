@@ -36,14 +36,36 @@ import {
   personaColor,
   buildStarterAccounts,
   generatePassword,
-  loginUrlFor
+  loginUrlFor,
+  COUNTRIES
 } from '../lib/constants'
 import { Modal, StatusBadge, EmptyState } from '../components/ui'
 import { PivotModal } from '../components/PivotModal'
-import { useOpenInBrowser, useOpenTabs } from '../lib/browserBus'
+import { useOpenInBrowser, useOpenTabs, type Autofill } from '../lib/browserBus'
 import { useConfirm } from '../lib/confirm'
 import { useSettings } from '../lib/settings'
 import type { PivotSubject } from '../lib/pivot'
+
+/** Build a full autofill payload from a persona + the specific account being opened.
+ *  Powers both logins and sign-up forms (name, email, birthday, gender, …). */
+function personaAutofill(p: Persona, a: PersonaAccount): Autofill {
+  const parts = (p.name ?? '').trim().split(/\s+/).filter(Boolean)
+  const firstName = parts[0] ?? ''
+  const lastName = parts.length > 1 ? parts.slice(1).join(' ') : ''
+  // For the Email account itself, the "username" is usually the address; otherwise prefer the handle.
+  const username = a.username || (a.platform.toLowerCase() === 'email' ? p.email ?? '' : p.handle ?? '')
+  return {
+    username,
+    password: a.password,
+    email: p.email ?? (username.includes('@') ? username : undefined),
+    firstName,
+    lastName,
+    fullName: p.name,
+    birthdate: p.birthdate,
+    gender: p.gender,
+    phone: p.phone
+  }
+}
 
 const EMPTY: Partial<Persona> = {
   name: '',
@@ -58,6 +80,7 @@ export function SockPuppets(): JSX.Element {
   const [query, setQuery] = useState('')
   const [editing, setEditing] = useState<Partial<Persona> | null>(null)
   const [pivot, setPivot] = useState<{ value: string; subject: PivotSubject } | null>(null)
+  const [country, setCountry] = useState<string>('any')
   const openInBrowser = useOpenInBrowser()
   const openTabs = useOpenTabs()
   const confirm = useConfirm()
@@ -75,12 +98,12 @@ export function SockPuppets(): JSX.Element {
       {
         url: loginUrlFor(a.platform, a.url),
         personaId: p.id,
-        autofill: { username: a.username, password: a.password }
+        autofill: personaAutofill(p, a)
       }
     ])
 
   const quickCreate = async (): Promise<void> => {
-    const g = generateIdentity()
+    const g = generateIdentity(country)
     let avatarPath: string | null = null
     try {
       avatarPath = await api.files.randomAvatar()
@@ -100,6 +123,8 @@ export function SockPuppets(): JSX.Element {
       gender: g.gender,
       birthdate: g.birthdate,
       location: g.location,
+      nationality: g.nationality,
+      phone: g.phone,
       occupation: g.occupation,
       email,
       backstory: g.backstory,
@@ -147,9 +172,24 @@ export function SockPuppets(): JSX.Element {
           </p>
         </div>
         <div className="flex gap-2">
-          <button className="btn-ghost border border-ink-600" onClick={quickCreate} title="Generate a full persona with accounts & passwords">
-            <Zap size={16} /> Quick create
-          </button>
+          <div className="flex rounded-lg border border-ink-600 overflow-hidden">
+            <button className="btn-ghost !rounded-none border-0" onClick={quickCreate} title="Generate a full persona with accounts, passwords & a localised identity">
+              <Zap size={16} /> Quick create
+            </button>
+            <select
+              className="bg-ink-850 border-0 border-l border-ink-600 text-sm text-slate-300 px-2 focus:outline-none focus:ring-0 cursor-pointer"
+              value={country}
+              onChange={(e) => setCountry(e.target.value)}
+              title="Country for the generated location, nationality & phone"
+            >
+              <option value="any">🌍 Any country</option>
+              {Object.entries(COUNTRIES).map(([k, c]) => (
+                <option key={k} value={k}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+          </div>
           <button className="btn-primary" onClick={() => setEditing({ ...EMPTY })}>
             <Plus size={16} /> New Persona
           </button>

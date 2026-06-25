@@ -49,10 +49,72 @@ export function personaColor(id: string): string {
 const FIRST_M = ['James', 'Liam', 'Noah', 'Ethan', 'Lucas', 'Mason', 'Logan', 'Owen', 'Caleb', 'Ryan', 'Daniel', 'Marcus', 'Victor', 'Adrian', 'Felix']
 const FIRST_F = ['Emma', 'Olivia', 'Ava', 'Sophia', 'Mia', 'Isla', 'Chloe', 'Grace', 'Nora', 'Lily', 'Hannah', 'Clara', 'Maya', 'Elena', 'Iris']
 const LAST = ['Carter', 'Bennett', 'Hayes', 'Morgan', 'Reed', 'Fisher', 'Walsh', 'Brooks', 'Coleman', 'Foster', 'Hughes', 'Porter', 'Sawyer', 'Vaughn', 'Quinn']
-const CITIES = ['Austin, TX', 'Portland, OR', 'Manchester, UK', 'Toronto, ON', 'Denver, CO', 'Dublin, IE', 'Brisbane, AU', 'Lyon, FR', 'Seattle, WA', 'Glasgow, UK']
 const JOBS = ['Freelance designer', 'Marketing coordinator', 'Software tester', 'Photographer', 'Barista', 'Content writer', 'Student', 'Sales associate', 'Data entry clerk', 'Customer support']
 const INTERESTS = ['hiking', 'indie music', 'photography', 'gaming', 'cooking', 'cycling', 'true crime podcasts', 'thrifting', 'coffee', 'travel', 'sketching', 'plants']
 const MAIL = ['proton.me', 'gmail.com', 'outlook.com', 'tutanota.com']
+
+/** Country presets — drive the random location, nationality and phone format. */
+export interface CountryPreset {
+  name: string
+  nationality: string
+  cities: string[]
+  /** Builds a plausible (fake) phone number for the country. */
+  phone: (rnd: (n: number) => number) => string
+}
+
+const d = (rnd: (n: number) => number, len: number): string =>
+  Array.from({ length: len }, () => String(rnd(10))).join('')
+
+export const COUNTRIES: Record<string, CountryPreset> = {
+  us: {
+    name: 'United States',
+    nationality: 'American',
+    cities: ['Austin, TX', 'Denver, CO', 'Seattle, WA', 'Portland, OR', 'Columbus, OH', 'Nashville, TN', 'Raleigh, NC', 'Phoenix, AZ', 'Minneapolis, MN', 'Tampa, FL'],
+    phone: (r) => `+1 (${d(r, 3)}) ${d(r, 3)}-${d(r, 4)}`
+  },
+  ca: {
+    name: 'Canada',
+    nationality: 'Canadian',
+    cities: ['Toronto, ON', 'Vancouver, BC', 'Calgary, AB', 'Ottawa, ON', 'Montreal, QC', 'Halifax, NS', 'Winnipeg, MB', 'Victoria, BC'],
+    phone: (r) => `+1 (${d(r, 3)}) ${d(r, 3)}-${d(r, 4)}`
+  },
+  uk: {
+    name: 'United Kingdom',
+    nationality: 'British',
+    cities: ['Manchester', 'Leeds', 'Bristol', 'Glasgow', 'Birmingham', 'Liverpool', 'Sheffield', 'Edinburgh', 'Cardiff', 'Nottingham'],
+    phone: (r) => `+44 7${d(r, 3)} ${d(r, 6)}`
+  },
+  au: {
+    name: 'Australia',
+    nationality: 'Australian',
+    cities: ['Brisbane, QLD', 'Melbourne, VIC', 'Perth, WA', 'Adelaide, SA', 'Sydney, NSW', 'Hobart, TAS', 'Canberra, ACT'],
+    phone: (r) => `+61 4${d(r, 2)} ${d(r, 3)} ${d(r, 3)}`
+  },
+  ie: {
+    name: 'Ireland',
+    nationality: 'Irish',
+    cities: ['Dublin', 'Cork', 'Galway', 'Limerick', 'Waterford', 'Kilkenny'],
+    phone: (r) => `+353 8${d(r, 1)} ${d(r, 3)} ${d(r, 4)}`
+  },
+  de: {
+    name: 'Germany',
+    nationality: 'German',
+    cities: ['Berlin', 'Munich', 'Hamburg', 'Cologne', 'Frankfurt', 'Stuttgart', 'Leipzig', 'Dresden'],
+    phone: (r) => `+49 1${d(r, 2)} ${d(r, 7)}`
+  },
+  fr: {
+    name: 'France',
+    nationality: 'French',
+    cities: ['Lyon', 'Paris', 'Marseille', 'Toulouse', 'Bordeaux', 'Nantes', 'Lille', 'Nice'],
+    phone: (r) => `+33 6 ${d(r, 2)} ${d(r, 2)} ${d(r, 2)} ${d(r, 2)}`
+  },
+  nl: {
+    name: 'Netherlands',
+    nationality: 'Dutch',
+    cities: ['Amsterdam', 'Rotterdam', 'Utrecht', 'Eindhoven', 'The Hague', 'Groningen'],
+    phone: (r) => `+31 6 ${d(r, 4)} ${d(r, 4)}`
+  }
+}
 
 function pick<T>(arr: T[]): T {
   return arr[Math.floor(Math.random() * arr.length)]
@@ -64,6 +126,8 @@ export interface GeneratedIdentity {
   gender: string
   birthdate: string
   location: string
+  nationality: string
+  phone: string
   occupation: string
   email: string
   backstory: string
@@ -135,7 +199,10 @@ export function buildStarterAccounts(handle: string, email: string): import('./a
   }))
 }
 
-export function generateIdentity(): GeneratedIdentity {
+/** Generate a persona. Pass a country key from COUNTRIES to localise the
+ *  location / nationality / phone; omit it (or pass 'any') for a random country. */
+export function generateIdentity(countryKey?: string): GeneratedIdentity {
+  const rnd = (n: number): number => Math.floor(Math.random() * n)
   const female = Math.random() > 0.5
   const first = female ? pick(FIRST_F) : pick(FIRST_M)
   const last = pick(LAST)
@@ -144,7 +211,10 @@ export function generateIdentity(): GeneratedIdentity {
   const day = String(1 + Math.floor(Math.random() * 28)).padStart(2, '0')
   const num = Math.floor(Math.random() * 900 + 100)
   const handle = `${first.toLowerCase()}.${last.toLowerCase()}${num}`
-  const location = pick(CITIES)
+  const keys = Object.keys(COUNTRIES)
+  const key = countryKey && countryKey !== 'any' && COUNTRIES[countryKey] ? countryKey : pick(keys)
+  const country = COUNTRIES[key]
+  const location = pick(country.cities)
   const job = pick(JOBS)
   const i1 = pick(INTERESTS)
   let i2 = pick(INTERESTS)
@@ -155,6 +225,8 @@ export function generateIdentity(): GeneratedIdentity {
     gender: female ? 'Female' : 'Male',
     birthdate: `${year}-${month}-${day}`,
     location,
+    nationality: country.nationality,
+    phone: country.phone(rnd),
     occupation: job,
     email: `${handle}@${pick(MAIL)}`,
     backstory: `${first} is a ${job.toLowerCase()} based in ${location}. Into ${i1} and ${i2}. Keeps a low-key online presence and mostly lurks. Use this persona for ${pick(['social media recon', 'forum access', 'marketplace browsing', 'general account creation'])}.`

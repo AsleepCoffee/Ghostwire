@@ -19,6 +19,7 @@ import { api, type Persona, type Note, type ToolLink, type Project } from '../li
 import { personaColor, PROJECT_TYPES } from '../lib/constants'
 import { Icon, StatusBadge, Panel } from '../components/ui'
 import { useOpenInBrowser } from '../lib/browserBus'
+import { fmtDate } from '../lib/format'
 import { PivotModal } from '../components/PivotModal'
 import { SUBJECT_LABELS, type PivotSubject } from '../lib/pivot'
 
@@ -202,7 +203,7 @@ export function Dashboard(): JSX.Element {
                     <div className="min-w-0 flex-1">
                       <div className="text-sm font-medium text-slate-200 truncate">{n.title}</div>
                       <div className="text-xs text-slate-500 truncate">
-                        {n.folder} · {new Date(n.updatedAt).toLocaleDateString()}
+                        {n.folder} · {fmtDate(n.updatedAt)}
                       </div>
                     </div>
                   </button>

@@ -4,6 +4,16 @@ import { useNavigate } from 'react-router-dom'
 export interface Autofill {
   username?: string
   password?: string
+  /** Richer profile fields, used to fill sign-up / registration forms. */
+  email?: string
+  firstName?: string
+  lastName?: string
+  fullName?: string
+  /** ISO birthdate (YYYY-MM-DD). */
+  birthdate?: string
+  /** 'Male' | 'Female' | other freeform. */
+  gender?: string
+  phone?: string
 }
 
 export interface TabRequest {

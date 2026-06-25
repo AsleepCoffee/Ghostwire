@@ -19,6 +19,7 @@ import {
 import { api, type Note, type Project } from '../lib/api'
 import { EmptyState } from '../components/ui'
 import { useConfirm } from '../lib/confirm'
+import { fmtDate } from '../lib/format'
 
 export function Notes(): JSX.Element {
   const [params] = useSearchParams()
@@ -170,7 +171,7 @@ export function Notes(): JSX.Element {
                 <div className="flex items-center gap-2 mt-1">
                   <span className="text-[10px] chip">{n.folder}</span>
                   <span className="text-[11px] text-slate-600">
-                    {new Date(n.updatedAt).toLocaleDateString()}
+                    {fmtDate(n.updatedAt)}
                   </span>
                 </div>
               </button>

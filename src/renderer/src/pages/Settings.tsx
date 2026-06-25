@@ -20,6 +20,7 @@ import { Icon } from '../components/ui'
 import { useSettings, THEMES } from '../lib/settings'
 import { FREE_SERVICES, PAID_SERVICES, type ApiService } from '../lib/apiServices'
 import { CHANGELOG } from '../lib/changelog'
+import { fmtDate } from '../lib/format'
 
 export function Settings(): JSX.Element {
   const { settings, update } = useSettings()
@@ -29,6 +30,7 @@ export function Settings(): JSX.Element {
   const [encrypted, setEncrypted] = useState<boolean | null>(null)
   const [upd, setUpd] = useState<UpdateStatus | null>(null)
   const [revealed, setRevealed] = useState<Record<string, boolean>>({})
+  const [showMailPass, setShowMailPass] = useState(false)
   const [tests, setTests] = useState<
     Record<string, { loading?: boolean; status?: 'valid' | 'invalid' | 'error' | 'untestable'; msg?: string }>
   >({})
@@ -231,18 +233,39 @@ export function Settings(): JSX.Element {
               />
             </div>
             <div>
-              <label className="label">Personal inbox (forwards here)</label>
+              <label className="label">Dedicated receiving account</label>
               <input
                 className="input"
-                placeholder="you@gmail.com"
+                placeholder="yourcrew.osint@gmail.com"
                 value={settings.personalEmail ?? ''}
                 onChange={(e) => update({ personalEmail: e.target.value.trim() })}
               />
             </div>
+            <div className="sm:col-span-2">
+              <label className="label">Receiving account password (optional — auto sign-in)</label>
+              <div className="relative max-w-md">
+                <input
+                  className="input pr-10"
+                  type={showMailPass ? 'text' : 'password'}
+                  placeholder="Re-fills the webmail login if you get signed out"
+                  value={settings.personalEmailPassword ?? ''}
+                  onChange={(e) => update({ personalEmailPassword: e.target.value })}
+                />
+                <button
+                  type="button"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300"
+                  onClick={() => setShowMailPass((v) => !v)}
+                  title={showMailPass ? 'Hide' : 'Show'}
+                >
+                  {showMailPass ? <EyeOff size={15} /> : <Eye size={15} />}
+                </button>
+              </div>
+            </div>
           </div>
           <p className="text-[11px] text-slate-600 mt-2">
-            Catch-all aliases forward to your personal inbox — open it from the <b>Mailbox</b> tab (which also has a
-            step-by-step setup guide).
+            Use a <b>dedicated</b> account (e.g. a throwaway Gmail), not your personal inbox — catch-all aliases all forward
+            there, and you read them from the <b>Mailbox</b> tab (which also has a step-by-step setup guide). The optional
+            password is stored locally in plaintext and only auto-fills that account’s webmail login.
           </p>
         </section>
 
@@ -353,7 +376,7 @@ export function Settings(): JSX.Element {
                   {version === c.version && (
                     <span className="text-[9px] px-1.5 py-0.5 rounded bg-brand/15 text-brand-glow">installed</span>
                   )}
-                  <span className="text-xs text-slate-500">{c.date}</span>
+                  <span className="text-xs text-slate-500">{fmtDate(c.date)}</span>
                 </div>
                 <ul className="mt-1.5 space-y-1">
                   {c.notes.map((n, i) => (

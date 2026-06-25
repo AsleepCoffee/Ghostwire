@@ -165,6 +165,18 @@ function mapEvidence(r: Record<string, unknown>): Evidence {
 }
 
 /** Build a Markdown investigation report and copy referenced evidence next to it. */
+const REPORT_MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+
+/** Day Month Year with 24h time + timezone — e.g. "24 Jun 2026, 14:32:07 (UTC-04:00)". */
+function fmtReportDate(d: Date): string {
+  if (isNaN(d.getTime())) return ''
+  const p = (n: number): string => String(n).padStart(2, '0')
+  const off = -d.getTimezoneOffset()
+  const sign = off >= 0 ? '+' : '-'
+  const tz = `UTC${sign}${p(Math.floor(Math.abs(off) / 60))}:${p(Math.abs(off) % 60)}`
+  return `${d.getDate()} ${REPORT_MONTHS[d.getMonth()]} ${d.getFullYear()}, ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())} (${tz})`
+}
+
 function buildReport(
   project: Project,
   evidence: Evidence[],
@@ -172,12 +184,11 @@ function buildReport(
   evidenceDir: string
 ): string {
   const L: string[] = []
-  const date = new Date()
   L.push(`# Investigation report — ${project.name}`, '')
   L.push(`- **Type:** ${project.type}`)
   if (project.subject) L.push(`- **Subject:** ${project.subject}`)
   L.push(`- **Status:** ${project.status}`)
-  L.push(`- **Generated:** ${date.toISOString()}`, '')
+  L.push(`- **Generated:** ${fmtReportDate(new Date())}`, '')
 
   if (project.objectives) L.push('## Objectives', '', project.objectives, '')
   if (project.known) L.push('## Background / notes', '', project.known, '')
@@ -201,7 +212,7 @@ function buildReport(
       }
       L.push(`### ${e.title || e.sourceUrl || e.id}`)
       if (e.sourceUrl) L.push(`- **URL:** ${e.sourceUrl}`)
-      L.push(`- **Captured:** ${new Date(e.capturedAt).toISOString()}`)
+      L.push(`- **Captured:** ${fmtReportDate(new Date(e.capturedAt))}`)
       if (e.sha256) L.push(`- **SHA-256:** \`${e.sha256}\``)
       if (rel) L.push('', `![evidence](${rel})`)
       L.push('')

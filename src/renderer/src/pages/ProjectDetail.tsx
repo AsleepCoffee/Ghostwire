@@ -37,6 +37,7 @@ import { ProjectEditor } from './Projects'
 import { PivotModal } from '../components/PivotModal'
 import { useOpenInBrowser } from '../lib/browserBus'
 import { useConfirm } from '../lib/confirm'
+import { fmtDate, fmtDateTime } from '../lib/format'
 import { subjectForEntity, type PivotSubject } from '../lib/pivot'
 
 const subjectForType: Record<Project['type'], PivotSubject> = {
@@ -400,7 +401,7 @@ export function ProjectDetail(): JSX.Element {
                   <img src={e.path} alt={e.title || 'evidence'} className="w-full h-32 object-cover object-top bg-ink-950" />
                   <div className="p-2.5">
                     <div className="text-xs font-medium text-slate-200 truncate">{e.title || e.sourceUrl || 'Capture'}</div>
-                    <div className="text-[11px] text-slate-500 truncate">{new Date(e.capturedAt).toLocaleString()}</div>
+                    <div className="text-[11px] text-slate-500 truncate">{fmtDateTime(e.capturedAt)}</div>
                     <div className="text-[10px] text-slate-600 font-mono truncate" title={e.sha256}>
                       sha256 {e.sha256.slice(0, 16)}…
                     </div>
@@ -456,7 +457,7 @@ export function ProjectDetail(): JSX.Element {
           items={contents.notes.map((n) => ({
             id: n.id,
             primary: n.title,
-            secondary: new Date(n.updatedAt).toLocaleDateString(),
+            secondary: fmtDate(n.updatedAt),
             icon: <NotebookPen size={15} className="text-slate-400" />,
             onOpen: () => nav('/notes'),
             onUnlink: () => linkNote(n, false)
@@ -476,7 +477,7 @@ export function ProjectDetail(): JSX.Element {
           items={contents.boards.map((b) => ({
             id: b.id,
             primary: b.name,
-            secondary: new Date(b.updatedAt).toLocaleDateString(),
+            secondary: fmtDate(b.updatedAt),
             icon: <Workflow size={15} className="text-slate-400" />,
             onOpen: () => nav('/graph'),
             onUnlink: () => linkBoard(b, false)
@@ -500,7 +501,7 @@ export function ProjectDetail(): JSX.Element {
                 <div key={a.id} className="flex items-center gap-3 px-4 py-2">
                   <span className="text-[9px] uppercase tracking-wider text-slate-500 w-16 shrink-0">{a.type}</span>
                   <span className="text-sm text-slate-300 flex-1 min-w-0 truncate">{a.message}</span>
-                  <span className="text-xs text-slate-600 shrink-0">{new Date(a.at).toLocaleString()}</span>
+                  <span className="text-xs text-slate-600 shrink-0">{fmtDateTime(a.at)}</span>
                 </div>
               ))}
             </div>

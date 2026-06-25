@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.1.19
+- Persona autofill now fills sign-up forms, not just logins — opening a site for a persona auto-populates first/last name, email (+ confirm), username, password (+ confirm), birthday, gender, and phone. Tuned for Facebook and generic registration pages; the 🔑 button re-fills on demand.
+- Quick Create can target a country (US, UK, Canada, Australia, Ireland, Germany, France, Netherlands, or Any) — location, nationality, and phone are generated to match.
+- Mailbox: optionally store the receiving account's password so GhostWire re-fills its webmail login automatically if you get signed out.
+- Dates now display as Day Month Year (e.g. 25 Jun 2026) throughout; reports use a clear timestamped format with timezone.
+
 ## v0.1.18
 - Disposable persona mailboxes are far more reliable — falls back from mail.tm to mail.gw when one provider runs out of domains, so persona email creation rarely fails. Read these right in the app from a persona's Inbox.
 - Clarified the two ways to receive mail: per-persona disposable inboxes (read natively in-app) vs. a catch-all domain forwarding to one account read in the Mailbox tab.

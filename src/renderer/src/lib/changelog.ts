@@ -7,6 +7,16 @@ export interface ChangelogEntry {
 /** In-app patch notes. Newest first. Keep in sync with CHANGELOG.md. */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.1.19',
+    date: '2026-06-25',
+    notes: [
+      'Persona autofill now fills sign-up forms, not just logins — opening a site for a persona auto-populates first/last name, email (and confirm-email), username, password (and confirm), birthday, gender, and phone. Tuned for Facebook and generic registration pages; the 🔑 button re-fills on demand.',
+      'Quick Create can target a country (US, UK, Canada, Australia, Ireland, Germany, France, Netherlands, or Any) — the location, nationality, and phone number are generated to match.',
+      'Mailbox: store the receiving account’s password (optional) so GhostWire re-fills the webmail login automatically if you get signed out.',
+      'Dates now display as Day Month Year (e.g. 25 Jun 2026) everywhere, and investigation reports use a clear timestamped format with timezone.'
+    ]
+  },
+  {
     version: '0.1.18',
     date: '2026-06-24',
     notes: [

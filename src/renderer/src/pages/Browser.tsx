@@ -52,26 +52,101 @@ function toUrl(input: string): string {
   return `https://duckduckgo.com/?q=${encodeURIComponent(s)}`
 }
 
-/** A page script that fills login fields with the persona's stored credentials. */
+/** A page script that fills login AND sign-up fields with a persona's details.
+ *  It only writes into empty fields, so it is safe to run on every navigation and
+ *  it cooperates with two-step (email-then-password) flows. */
 function fillScript(a: Autofill): string {
-  const u = JSON.stringify(a.username ?? '')
-  const p = JSON.stringify(a.password ?? '')
+  const data = JSON.stringify({
+    username: a.username ?? '',
+    password: a.password ?? '',
+    email: a.email ?? (a.username && a.username.includes('@') ? a.username : ''),
+    firstName: a.firstName ?? '',
+    lastName: a.lastName ?? '',
+    fullName: a.fullName ?? '',
+    birthdate: a.birthdate ?? '',
+    gender: a.gender ?? '',
+    phone: a.phone ?? ''
+  })
   return `(function(){
     try {
+      var D=${data};
+      function visible(el){ return el && el.offsetParent !== null && !el.disabled && !el.readOnly; }
       function setVal(el, val){
-        if(!el || !val || el.value) return false;
+        if(!visible(el) || !val || el.value) return false;
         el.focus();
-        const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype,'value').set;
+        var proto = el instanceof window.HTMLTextAreaElement ? window.HTMLTextAreaElement.prototype : window.HTMLInputElement.prototype;
+        var setter = Object.getOwnPropertyDescriptor(proto,'value').set;
         setter.call(el, val);
         el.dispatchEvent(new Event('input',{bubbles:true}));
         el.dispatchEvent(new Event('change',{bubbles:true}));
         return true;
       }
-      var u=${u}, p=${p};
-      var userEl=document.querySelector('input[autocomplete="username"], input[type="email"], input[name*="email" i], input[name*="user" i], input[id*="user" i], input[id*="email" i], input[name="login"]');
-      var passEl=document.querySelector('input[type="password"]');
-      if(u) setVal(userEl,u);
-      if(p) setVal(passEl,p);
+      function first(sel){ try { return document.querySelector(sel); } catch(e){ return null; } }
+      function all(sel){ try { return Array.prototype.slice.call(document.querySelectorAll(sel)); } catch(e){ return []; } }
+
+      // ---- Name fields ----
+      setVal(first('input[autocomplete="given-name"], input[name*="first" i], input[id*="first" i], input[name="firstname"], input[aria-label*="first name" i]'), D.firstName);
+      setVal(first('input[autocomplete="family-name"], input[name*="last" i], input[id*="last" i], input[name="lastname"], input[aria-label*="last name" i]'), D.lastName);
+      if(D.fullName) setVal(first('input[autocomplete="name"], input[name="name"], input[id="name"], input[aria-label*="full name" i]'), D.fullName);
+
+      // ---- Email (+ confirm email) ----
+      if(D.email){
+        var emails = all('input[type="email"], input[autocomplete="email"], input[name*="email" i], input[id*="email" i]');
+        emails.forEach(function(el){ setVal(el, D.email); });
+      }
+
+      // ---- Username (a user/login field that is NOT the email) ----
+      if(D.username){
+        var userEl = first('input[autocomplete="username"], input[name="login"], input[name*="user" i]:not([type="email"]), input[id*="user" i]:not([type="email"])');
+        if(userEl && (userEl.type||'').toLowerCase() !== 'email') setVal(userEl, D.username);
+      }
+
+      // ---- Phone ----
+      if(D.phone) setVal(first('input[type="tel"], input[autocomplete="tel"], input[name*="phone" i], input[id*="phone" i]'), D.phone);
+
+      // ---- Passwords: fill every empty password box (password + confirm) ----
+      if(D.password){
+        all('input[type="password"]').forEach(function(el){ setVal(el, D.password); });
+      }
+
+      // ---- Birthdate (YYYY-MM-DD) ----
+      if(D.birthdate && /^\\d{4}-\\d{2}-\\d{2}$/.test(D.birthdate)){
+        var parts = D.birthdate.split('-'), Y=parts[0], M=String(parseInt(parts[1],10)), Dd=String(parseInt(parts[2],10));
+        var dateInput = first('input[type="date"]');
+        if(dateInput) setVal(dateInput, D.birthdate);
+        function selectBy(el, value){
+          if(!visible(el) || !value) return false;
+          var opts = Array.prototype.slice.call(el.options||[]);
+          var want = String(value);
+          var hit = opts.find(function(o){
+            return o.value===want || String(parseInt(o.value,10))===want || o.text.trim()===want || String(parseInt(o.text,10))===want;
+          });
+          if(hit){ el.value = hit.value; el.dispatchEvent(new Event('change',{bubbles:true})); return true; }
+          return false;
+        }
+        selectBy(first('select[name*="day" i], select[id*="day" i], select[aria-label*="day" i]'), Dd);
+        selectBy(first('select[name*="month" i], select[id*="month" i], select[aria-label*="month" i]'), M);
+        selectBy(first('select[name*="year" i], select[id*="year" i], select[aria-label*="year" i]'), Y);
+      }
+
+      // ---- Gender (radios / select) ----
+      if(D.gender){
+        var g = D.gender.toLowerCase();
+        var radios = all('input[type="radio"]');
+        radios.forEach(function(r){
+          var hay = ((r.value||'') + ' ' + (r.getAttribute('aria-label')||'') + ' ' + (r.name||'') + ' ' + ((r.labels&&r.labels[0]&&r.labels[0].innerText)||'')).toLowerCase();
+          if(/sex|gender/.test((r.name||'').toLowerCase()) || /male|female/.test(hay)){
+            if((g.indexOf('female')===0 && /female|f\\b|^2$/.test(hay)) || (g.indexOf('male')===0 && /\\bmale|^1$|^m\\b/.test(hay) && !/female/.test(hay))){
+              if(!r.checked){ r.click(); }
+            }
+          }
+        });
+        var gsel = first('select[name*="gender" i], select[id*="gender" i], select[name*="sex" i]');
+        if(gsel){
+          var opt = Array.prototype.slice.call(gsel.options||[]).find(function(o){ return (o.text||'').toLowerCase().indexOf(g.split(' ')[0])>-1; });
+          if(opt){ gsel.value = opt.value; gsel.dispatchEvent(new Event('change',{bubbles:true})); }
+        }
+      }
     } catch(e){}
   })();`
 }
@@ -261,7 +336,7 @@ export function Browser(): JSX.Element {
         {active?.autofill && (
           <button
             className="btn-ghost !px-2 text-accent"
-            title="Re-fill stored credentials"
+            title="Re-fill persona details (login & sign-up forms)"
             onClick={() => active && refs.current.get(active.id)?.executeJavaScript(fillScript(active.autofill!))}
           >
             <KeyRound size={16} />
@@ -322,7 +397,7 @@ export function Browser(): JSX.Element {
             This tab browses as <b style={{ color: personaColor(persona.id) }}>{persona.name}</b> — isolated
             cookies & storage.
           </span>
-          {active?.autofill && <span className="ml-auto text-slate-500">credentials auto-filled 🔑</span>}
+          {active?.autofill && <span className="ml-auto text-slate-500">persona details auto-filled 🔑</span>}
         </div>
       )}
 

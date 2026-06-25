@@ -191,6 +191,8 @@ export interface AppSettings {
   catchAllDomain?: string
   /** Your real inbox that the catch-all forwards to (used to open its webmail). */
   personalEmail?: string
+  /** Password for the receiving account, used to auto-fill its webmail login if you get signed out. Stored locally in plaintext. */
+  personalEmailPassword?: string
   /** The investigation new evidence/captures are filed under. */
   activeProjectId?: string | null
 }

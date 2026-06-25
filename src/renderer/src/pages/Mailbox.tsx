@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Mail, ExternalLink, RotateCw, Lock, CheckCircle2 } from 'lucide-react'
+import { Mail, ExternalLink, RotateCw, Lock, CheckCircle2, Eye, EyeOff } from 'lucide-react'
 import { api } from '../lib/api'
 import { useSettings } from '../lib/settings'
 import { Icon } from '../components/ui'
@@ -8,6 +8,31 @@ import { Icon } from '../components/ui'
 interface WebviewEl extends HTMLElement {
   reload(): void
   getURL(): string
+  executeJavaScript(code: string): Promise<unknown>
+  addEventListener(type: string, listener: (e: Event) => void): void
+  removeEventListener(type: string, listener: (e: Event) => void): void
+}
+
+/** Fill an email + password into a webmail login page (only empty fields, so it
+ *  cooperates with Google/Microsoft's two-step email-then-password flows). */
+function mailFillScript(email: string, password: string): string {
+  const data = JSON.stringify({ email, password })
+  return `(function(){
+    try {
+      var D=${data};
+      function vis(el){ return el && el.offsetParent !== null && !el.disabled && !el.readOnly; }
+      function setVal(el,val){
+        if(!vis(el)||!val||el.value) return;
+        el.focus();
+        var s=Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype,'value').set;
+        s.call(el,val);
+        el.dispatchEvent(new Event('input',{bubbles:true}));
+        el.dispatchEvent(new Event('change',{bubbles:true}));
+      }
+      setVal(document.querySelector('input[type="email"], input[autocomplete="username"], input[name="identifier"], input[name="loginfmt"], input[name*="email" i]'), D.email);
+      setVal(document.querySelector('input[type="password"], input[autocomplete="current-password"], input[name="passwd"], input[name="Passwd"]'), D.password);
+    } catch(e){}
+  })();`
 }
 
 /** Derive the webmail login URL from the personal inbox address. */
@@ -73,14 +98,35 @@ export function Mailbox(): JSX.Element {
   const ref = useRef<WebviewEl | null>(null)
   const [domainInput, setDomainInput] = useState('')
   const [emailInput, setEmailInput] = useState('')
+  const [passInput, setPassInput] = useState('')
+  const [showPass, setShowPass] = useState(false)
 
   useEffect(() => {
     setDomainInput(settings.catchAllDomain ?? '')
     setEmailInput(settings.personalEmail ?? '')
-  }, [settings.catchAllDomain, settings.personalEmail])
+    setPassInput(settings.personalEmailPassword ?? '')
+  }, [settings.catchAllDomain, settings.personalEmail, settings.personalEmailPassword])
 
   const configured = !!settings.catchAllDomain
   const webmail = webmailFor(settings.personalEmail)
+
+  // Auto-fill the webmail login if credentials are stored (handles getting signed out).
+  useEffect(() => {
+    const wv = ref.current
+    if (!wv || !configured) return
+    const email = settings.personalEmail ?? ''
+    const pass = settings.personalEmailPassword ?? ''
+    if (!email && !pass) return
+    const fill = (): void => {
+      wv.executeJavaScript(mailFillScript(email, pass)).catch(() => {})
+    }
+    wv.addEventListener('did-finish-load', fill)
+    wv.addEventListener('did-navigate-in-page', fill)
+    return () => {
+      wv.removeEventListener('did-finish-load', fill)
+      wv.removeEventListener('did-navigate-in-page', fill)
+    }
+  }, [configured, settings.personalEmail, settings.personalEmailPassword])
 
   // ---- Not set up: greyed hero + step-by-step guide ----
   if (!configured) {
@@ -136,11 +182,34 @@ export function Mailbox(): JSX.Element {
                 <label className="label">Dedicated receiving account</label>
                 <input className="input" placeholder="yourcrew.osint@gmail.com" value={emailInput} onChange={(e) => setEmailInput(e.target.value.trim())} />
               </div>
+              <div className="sm:col-span-2">
+                <label className="label">Account password (optional — auto sign-in)</label>
+                <div className="relative">
+                  <input
+                    className="input pr-10"
+                    type={showPass ? 'text' : 'password'}
+                    placeholder="So GhostWire re-fills the login if you get signed out"
+                    value={passInput}
+                    onChange={(e) => setPassInput(e.target.value)}
+                  />
+                  <button
+                    type="button"
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300"
+                    onClick={() => setShowPass((v) => !v)}
+                    title={showPass ? 'Hide' : 'Show'}
+                  >
+                    {showPass ? <EyeOff size={15} /> : <Eye size={15} />}
+                  </button>
+                </div>
+                <p className="text-[11px] text-slate-600 mt-1">
+                  Stored locally in plaintext. GhostWire only fills it into this account’s webmail login — leave blank to sign in manually.
+                </p>
+              </div>
             </div>
             <button
               className="btn-primary mt-3"
               disabled={!domainInput.trim()}
-              onClick={() => update({ catchAllDomain: domainInput.trim(), personalEmail: emailInput.trim() })}
+              onClick={() => update({ catchAllDomain: domainInput.trim(), personalEmail: emailInput.trim(), personalEmailPassword: passInput })}
             >
               <CheckCircle2 size={16} /> Save & open mailbox
             </button>
