@@ -13,6 +13,7 @@ import {
 import { PROJECT_TYPES, ENTITY_TYPES } from '../lib/constants'
 import { Icon, Modal, StatusBadge, EmptyState } from '../components/ui'
 import { useSettings } from '../lib/settings'
+import { TIMEZONES } from '../lib/timezones'
 
 export function Projects(): JSX.Element {
   const [projects, setProjects] = useState<Project[]>([])
@@ -227,6 +228,21 @@ export function ProjectEditor({
               value={p.subject ?? ''}
               onChange={(e) => set({ subject: e.target.value })}
             />
+          </div>
+          <div className="col-span-2">
+            <label className="label">Time zone (optional)</label>
+            <input
+              className="input"
+              list="gw-timezones"
+              placeholder="e.g. America/New_York — shown as a clock on the dashboard"
+              value={p.timezone ?? ''}
+              onChange={(e) => set({ timezone: e.target.value })}
+            />
+            <datalist id="gw-timezones">
+              {TIMEZONES.map((tz) => (
+                <option key={tz} value={tz} />
+              ))}
+            </datalist>
           </div>
         </div>
         {/* Structured known data points */}

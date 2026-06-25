@@ -6,7 +6,7 @@
 
 **An all-in-one OSINT workbench for your desktop.**
 
-Sock puppets with isolated browser sessions · a Maltego-style link graph · investigations · a built-in browser · curated tools & API integrations · Markdown notes that export to Obsidian.
+Sock puppets with isolated browser sessions & per-persona VPN exits · a Maltego-style link graph with transforms · investigations with evidence, timelines & shareable reports · a built-in browser · account enumeration · curated tools & API integrations · Markdown notes that export to Obsidian.
 
 [![Latest release](https://img.shields.io/github/v/release/AsleepCoffee/Ghostwire?label=download&style=flat-square)](https://github.com/AsleepCoffee/Ghostwire/releases/latest)
 [![Downloads](https://img.shields.io/github/downloads/AsleepCoffee/Ghostwire/total?style=flat-square)](https://github.com/AsleepCoffee/Ghostwire/releases)
@@ -26,21 +26,26 @@ Grab the latest Windows installer from the **[Releases page](https://github.com/
 
 ## ✨ Features
 
-- **🎭 Sock Puppet Manager** — build personas with full identity details, **random AI-face avatars**, linked accounts with credential autofill, and a one-click identity + password generator. Each persona gets a **fully isolated browser session** (be logged into the same site as several identities at once), can provision a **disposable mailbox** (mail.tm, with a built-in inbox) or use your own **catch-all domain**, and tracks which accounts are created vs. still to make.
-- **🌐 Embedded Browser** — a real tabbed Chromium browser with a per-tab persona switcher. **Capture any page to evidence** (URL + UTC timestamp + SHA-256, filed to the active investigation). Sites that block embedding fall back to your system browser in one click.
-- **🕵️ Investigations** — a workspace per target (person or company). Capture structured **known information**, pivot on any of it, drop findings onto a link chart, attach **evidence**, keep an **activity log** (methodology trail), and **export a Markdown report**. Group personas, notes, and boards under each case.
-- **🕸️ Graph Workspace** — a Maltego-style canvas with **transforms that pull real data into the graph** (right-click a node): crt.sh subdomains, DNS & Wayback, live username enumeration, EXIF→location, and API-powered enrichment (VirusTotal, Shodan, Hunter, AbuseIPDB, IPinfo). Auto-dedupe, and **export the chart as a PNG**.
+- **🎭 Sock Puppet Manager** — build personas with full identity details, **random AI-face avatars**, linked accounts with login **and sign-up form autofill**, and a one-click identity + password generator (localised by country). Each persona gets a **fully isolated browser session** (be logged into the same site as several identities at once), can provision a **disposable mailbox** (mail.tm/mail.gw, with a built-in inbox) or use your own **catch-all domain**, and tracks which accounts are created vs. still to make.
+- **🕵️ Investigations** — a workspace per target (person or company). Capture structured **known information**, set one as the **active investigation** so captures file to it automatically, pivot on any data, drop findings onto a link chart, attach **evidence**, keep an **activity log**, and **export a full case report as PDF, HTML, or Markdown** (link chart + evidence with hashes + notes + timeline).
+- **🕸️ Graph Workspace** — a Maltego-style canvas with **transforms that pull real data into the graph** (right-click a node, or **Run all transforms**): crt.sh subdomains, DNS & Wayback, live username enumeration, EXIF→location, and API-powered enrichment (VirusTotal, Shodan, Hunter, AbuseIPDB, IPinfo) — with a **live transform log**. Open a node's link in the browser, attach an image from evidence, unlink edges, auto-dedupe, and **export the chart as a PNG**.
+- **🖼️ Evidence Board** — a per-investigation media locker. Drag images in, paste screenshots, or paste an image URL; each is saved with a capture time and **SHA-256** hash. Read **EXIF** (GPS → map pin, camera/date), run **reverse image search** (Google Lens / Yandex / Bing / TinEye / PimEyes), and add an image to the link chart.
+- **🌐 Embedded Browser** — a real tabbed Chromium browser with a per-tab persona switcher. **Region-select screenshots to evidence** (URL + UTC timestamp + SHA-256, filed to the active investigation). Sites that block embedding fall back to your system browser in one click.
+- **🔍 Account Finder** — check a username across every major platform at once with live found/not-found status, then drop the hits straight onto a link chart.
+- **🛡️ Per-persona VPN** — import Proton WireGuard configs (one-click engine install) and route each sock puppet through a different country at once — userspace, fail-closed, no admin rights.
 - **🎯 Dork & Pivot** — a Google-dork builder plus a pivot engine that, for any value (email, username, domain, IP, name…), opens the right lookups — including the API tools you hold a key for, deep-linked per data type.
 - **🧰 Tools & API Integrations** — a curated launcher of OSINT tools, plus integrations that unlock when you add a free or paid API key (VirusTotal, Shodan, AbuseIPDB, urlscan, IPinfo, Hunter, Censys, and more) — with a **Test** button for each key.
-- **📝 Notes** — Markdown notes with live preview, folders, tags, and image paste — **one-click export to your Obsidian vault** with YAML frontmatter.
+- **📝 Notes & ⏱️ Timeline** — Markdown notes with live preview, folders, tags and image paste (**one-click export to Obsidian**), plus a per-investigation **case timeline** of every action.
+- **🧭 Reference docks & world clocks** — slide-out docks keep the active persona and investigation details handy on any tab; the dashboard shows live clocks for your target's time zones.
+- **💾 Backups** — back up everything (database + media) to a folder on demand or automatically, and restore in one click.
 - **🎨 10 full-app themes**, a custom themed window frame, themed dialogs, and auto-updates from GitHub releases.
 
 All data is stored **locally** in a SQLite database in your app-data folder. Nothing leaves your machine unless you explicitly use a tool or API.
 
 ## 🔒 Privacy & security
 
-- Everything lives locally (SQLite + Markdown). GhostWire has no backend and phones home only to GitHub to check for updates.
-- Persona credentials, API keys and mailbox passwords are stored **unencrypted** in the local database — enable OS full-disk encryption (e.g. BitLocker) and keep your device secured.
+- Everything lives locally (SQLite + Markdown). GhostWire has no backend and phones home only to GitHub to check for updates and to the OSINT services/APIs you explicitly use.
+- Persona credentials, API keys and mailbox passwords are stored **unencrypted** in the local database — enable OS full-disk encryption (e.g. BitLocker) and keep your device secured. The built-in **Backups** are unencrypted too, so store them somewhere safe.
 
 ## ⚖️ Responsible use
 
@@ -62,12 +67,12 @@ GhostWire is **Electron + React + TypeScript** (electron-vite), styled with **Ta
 
 ```
 src/
-  main/        Electron main — window, SQLite DB, IPC, media, mail, updater, API tests/EXIF, export
+  main/        Electron main — window, SQLite DB, IPC, media, mail, VPN, backups, updater, reports, API tests/EXIF
   preload/     contextBridge API exposed to the renderer as window.api
   renderer/    React app
     src/
-      pages/       Dashboard, Investigations, Graph, Tools, Dork, Browser, Notes, Settings
-      components/  TitleBar, Sidebar, Topbar, dialogs, shared UI
+      pages/       Dashboard, Investigations, Graph, Evidence, Account Finder, Timeline, Tools, Dork, Browser, Mailbox, VPN, Notes, Settings
+      components/  TitleBar, Sidebar, Topbar, reference docks, dialogs, shared UI
       lib/         API wrapper, pivot/transform engines, themes, settings, constants
   shared/      Types shared between main and renderer
 ```

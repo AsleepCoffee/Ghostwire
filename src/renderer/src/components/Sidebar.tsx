@@ -13,20 +13,33 @@ interface NavItem {
 
 const GROUPS: { heading?: string; items: NavItem[]; toggle?: 'courseNotes' }[] = [
   {
+    items: [{ to: '/', label: 'Dashboard', icon: 'LayoutDashboard' }]
+  },
+  {
+    heading: 'Investigation',
     items: [
-      { to: '/', label: 'Dashboard', icon: 'LayoutDashboard' },
       { to: '/projects', label: 'Investigations', icon: 'FolderSearch' },
       { to: '/graph', label: 'Graph Workspace', icon: 'Workflow' },
-      { to: '/tools', label: 'Tools & Resources', icon: 'Wrench' },
-      { to: '/dork', label: 'Dork & Pivot', icon: 'Binoculars' },
-      { to: '/enumerate', label: 'Account Finder', icon: 'ScanSearch' },
-      { to: '/timeline', label: 'Case Timeline', icon: 'History' },
-      { to: '/sock-puppets', label: 'Sock Puppets', icon: 'Drama' },
       { to: '/evidence', label: 'Evidence Board', icon: 'Images' },
-      { to: '/browser', label: 'Browser', icon: 'Globe' },
-      { to: '/vpn', label: 'VPN', icon: 'Shield' },
-      { to: '/mailbox', label: 'Mailbox', icon: 'Mail' },
+      { to: '/timeline', label: 'Case Timeline', icon: 'History' },
       { to: '/notes', label: 'Notes', icon: 'NotebookPen' }
+    ]
+  },
+  {
+    heading: 'Identities',
+    items: [
+      { to: '/sock-puppets', label: 'Sock Puppets', icon: 'Drama' },
+      { to: '/browser', label: 'Browser', icon: 'Globe' },
+      { to: '/mailbox', label: 'Mailbox', icon: 'Mail' },
+      { to: '/vpn', label: 'VPN', icon: 'Shield' }
+    ]
+  },
+  {
+    heading: 'Research',
+    items: [
+      { to: '/enumerate', label: 'Account Finder', icon: 'ScanSearch' },
+      { to: '/dork', label: 'Dork & Pivot', icon: 'Binoculars' },
+      { to: '/tools', label: 'Tools & Resources', icon: 'Wrench' }
     ]
   },
   {

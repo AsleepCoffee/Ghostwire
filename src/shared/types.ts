@@ -27,6 +27,8 @@ export interface Project {
   known: string
   /** What we're trying to find out. */
   objectives: string
+  /** IANA time zone for the subject (e.g. "America/New_York") — shown as a clock. */
+  timezone?: string
   createdAt: number
   updatedAt: number
 }
@@ -230,6 +232,8 @@ export interface AppSettings {
   autoBackup?: boolean
   /** Timestamp of the last successful backup. */
   lastBackupAt?: number
+  /** Extra world clocks pinned to the dashboard. */
+  worldClocks?: { label: string; tz: string }[]
 }
 
 export interface BackupInfo {

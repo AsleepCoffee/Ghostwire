@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.1.39
+- Dashboard world clocks — set a Time zone on an investigation (editor) and the dashboard shows a live clock for it beside local time (investigations with a zone appear automatically, active first).
+- "Add clock" on the dashboard pins any time zone alongside local time.
+- Reorganized the sidebar into sections — Investigation, Identities, Research.
+
 ## v0.1.38
 - Fixed the active-investigation picker (top bar) not listing newly created investigations / showing blank when set — now refreshes live (on navigation, focus, and project changes). Set active also available from the investigation page and each card's star.
 - Unlink in the graph — double-click a link to remove it, or select + Delete/Backspace (persisted). Keyboard node deletion persists too.

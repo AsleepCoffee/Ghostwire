@@ -7,6 +7,15 @@ export interface ChangelogEntry {
 /** In-app patch notes. Newest first. Keep in sync with CHANGELOG.md. */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.1.39',
+    date: '2026-06-25',
+    notes: [
+      'Dashboard world clocks — set a Time zone on an investigation (in its editor) and the dashboard shows a live clock for it next to your local time. Investigations with a time zone appear automatically (active one first).',
+      'Add your own clocks too — “Add clock” on the dashboard pins any time zone (e.g. a target’s location) alongside local time.',
+      'Reorganized the sidebar into clear sections — Investigation, Identities, and Research — so related tools sit together.'
+    ]
+  },
+  {
     version: '0.1.38',
     date: '2026-06-25',
     notes: [

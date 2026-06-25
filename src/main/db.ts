@@ -32,6 +32,7 @@ CREATE TABLE IF NOT EXISTS projects (
   dataPoints TEXT DEFAULT '[]',
   known TEXT DEFAULT '',
   objectives TEXT DEFAULT '',
+  timezone TEXT DEFAULT '',
   createdAt INTEGER,
   updatedAt INTEGER
 );
@@ -188,7 +189,8 @@ function migrate(): void {
     'ALTER TABLE personas ADD COLUMN mailbox TEXT',
     'ALTER TABLE personas ADD COLUMN vpnConfigId TEXT',
     'ALTER TABLE personas ADD COLUMN nationality TEXT',
-    'ALTER TABLE personas ADD COLUMN phone TEXT'
+    'ALTER TABLE personas ADD COLUMN phone TEXT',
+    "ALTER TABLE projects ADD COLUMN timezone TEXT DEFAULT ''"
   ]
   for (const sql of adds) {
     try {

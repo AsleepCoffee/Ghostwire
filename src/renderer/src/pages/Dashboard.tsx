@@ -16,13 +16,17 @@ import {
   Globe,
   ArrowUpRight,
   Radar,
-  PlayCircle
+  PlayCircle,
+  Clock,
+  X
 } from 'lucide-react'
 import { api, type Persona, type Note, type ToolLink, type Project } from '../lib/api'
 import { personaColor, PROJECT_TYPES } from '../lib/constants'
 import { Icon, StatusBadge, Panel } from '../components/ui'
 import { useOpenInBrowser } from '../lib/browserBus'
 import { fmtDate } from '../lib/format'
+import { useSettings } from '../lib/settings'
+import { TIMEZONES, timeInZone, dateInZone } from '../lib/timezones'
 import { PivotModal } from '../components/PivotModal'
 import { SUBJECT_LABELS, type PivotSubject } from '../lib/pivot'
 
@@ -46,6 +50,7 @@ export function Dashboard(): JSX.Element {
   const [tools, setTools] = useState<ToolLink[]>([])
   const [projects, setProjects] = useState<Project[]>([])
   const openInBrowser = useOpenInBrowser()
+  const { settings } = useSettings()
 
   const launchTool = (t: ToolLink): void => {
     const url = t.url.replace('{QUERY}', '')
@@ -71,12 +76,21 @@ export function Dashboard(): JSX.Element {
     () => [...projects].sort((a, b) => b.updatedAt - a.updatedAt)[0] ?? null,
     [projects]
   )
+  // Clocks derived from investigations that have a time zone (active one first).
+  const extraClocks = useMemo(() => {
+    const withTz = projects.filter((p) => p.timezone)
+    const ordered = [
+      ...withTz.filter((p) => p.id === settings.activeProjectId),
+      ...withTz.filter((p) => p.id !== settings.activeProjectId)
+    ]
+    return ordered.map((p) => ({ label: p.subject || p.name, tz: p.timezone as string }))
+  }, [projects, settings.activeProjectId])
 
   return (
     <div className="h-full overflow-y-auto">
       <div className="p-6 space-y-5 max-w-[1500px] mx-auto">
         {/* Hero */}
-        <Hero activeInvestigations={projects.length} personaCount={personas.length} resume={resume} />
+        <Hero activeInvestigations={projects.length} personaCount={personas.length} resume={resume} extraClocks={extraClocks} />
 
         {/* Stats strip */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -273,18 +287,42 @@ const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', '
 function Hero({
   activeInvestigations,
   personaCount,
-  resume
+  resume,
+  extraClocks
 }: {
   activeInvestigations: number
   personaCount: number
   resume: Project | null
+  extraClocks: { label: string; tz: string }[]
 }): JSX.Element {
   const nav = useNavigate()
+  const { settings, update } = useSettings()
   const [now, setNow] = useState(() => new Date())
+  const [adding, setAdding] = useState(false)
+  const [tzInput, setTzInput] = useState('')
+  const [labelInput, setLabelInput] = useState('')
   useEffect(() => {
     const t = setInterval(() => setNow(new Date()), 1000)
     return () => clearInterval(t)
   }, [])
+
+  const world = settings.worldClocks ?? []
+  const secondary = [
+    ...extraClocks.map((c) => ({ ...c, removable: false as const, idx: -1 })),
+    ...world.map((c, idx) => ({ ...c, removable: true as const, idx }))
+  ]
+  const addClock = (): void => {
+    const tz = tzInput.trim()
+    if (!tz) return
+    const label = labelInput.trim() || tz.split('/').pop()!.replace(/_/g, ' ')
+    update({ worldClocks: [...world, { label, tz }] })
+    setTzInput('')
+    setLabelInput('')
+    setAdding(false)
+  }
+  const removeClock = (idx: number): void => {
+    update({ worldClocks: world.filter((_, i) => i !== idx) })
+  }
 
   const p = (n: number): string => String(n).padStart(2, '0')
   const clock = `${p(now.getHours())}:${p(now.getMinutes())}:${p(now.getSeconds())}`
@@ -353,8 +391,8 @@ function Hero({
           </div>
         </div>
 
-        {/* Right: live ops clock */}
-        <div className="glass rounded-2xl px-6 py-5 shrink-0 w-full lg:w-[280px] animate-fade-up" style={{ animationDelay: '120ms' }}>
+        {/* Right: live clocks (local + target time zones) */}
+        <div className="glass rounded-2xl px-5 py-4 shrink-0 w-full lg:w-[320px] animate-fade-up" style={{ animationDelay: '120ms' }}>
           <div className="flex items-center justify-between text-[10px] font-mono uppercase tracking-[0.2em] text-slate-500">
             <span className="flex items-center gap-1.5">
               <Radar size={12} className="text-accent-glow" /> Local time
@@ -363,8 +401,68 @@ function Hero({
               <span className="live-dot !bg-ok" /> Live
             </span>
           </div>
-          <div className="mt-3 text-4xl font-bold text-slate-100 tabular-nums tracking-tight">{clock}</div>
-          <div className="mt-1.5 text-sm text-slate-400">{dateLong}</div>
+          <div className="mt-2 text-4xl font-bold text-slate-100 tabular-nums tracking-tight">{clock}</div>
+          <div className="mt-1 text-sm text-slate-400">{dateLong}</div>
+
+          {secondary.length > 0 && (
+            <div className="mt-3 pt-3 border-t border-ink-700 space-y-2">
+              {secondary.map((c, i) => (
+                <div key={`${c.tz}-${i}`} className="flex items-center gap-2">
+                  <Clock size={13} className="text-slate-500 shrink-0" />
+                  <div className="min-w-0 flex-1">
+                    <div className="text-xs text-slate-300 truncate">{c.label}</div>
+                    <div className="text-[10px] text-slate-500 truncate">{dateInZone(now, c.tz)}</div>
+                  </div>
+                  <div className="text-sm font-semibold text-slate-100 tabular-nums">{timeInZone(now, c.tz)}</div>
+                  {c.removable && (
+                    <button className="text-slate-600 hover:text-danger" title="Remove clock" onClick={() => removeClock(c.idx)}>
+                      <X size={13} />
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {adding ? (
+            <div className="mt-3 pt-3 border-t border-ink-700 space-y-2">
+              <input
+                className="input !py-1.5 text-xs"
+                list="gw-hero-tz"
+                placeholder="Time zone (e.g. Asia/Tokyo)"
+                value={tzInput}
+                onChange={(e) => setTzInput(e.target.value)}
+                autoFocus
+              />
+              <datalist id="gw-hero-tz">
+                {TIMEZONES.map((tz) => (
+                  <option key={tz} value={tz} />
+                ))}
+              </datalist>
+              <input
+                className="input !py-1.5 text-xs"
+                placeholder="Label (optional)"
+                value={labelInput}
+                onChange={(e) => setLabelInput(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && addClock()}
+              />
+              <div className="flex gap-2">
+                <button className="btn-primary !py-1 text-xs flex-1 justify-center" onClick={addClock} disabled={!tzInput.trim()}>
+                  Add
+                </button>
+                <button className="btn-ghost !py-1 text-xs" onClick={() => setAdding(false)}>
+                  Cancel
+                </button>
+              </div>
+            </div>
+          ) : (
+            <button
+              className="mt-3 text-[11px] text-slate-500 hover:text-accent-glow flex items-center gap-1"
+              onClick={() => setAdding(true)}
+            >
+              <Plus size={12} /> Add clock
+            </button>
+          )}
         </div>
       </div>
     </section>
