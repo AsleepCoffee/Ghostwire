@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.1.28
+- Fixed X/Twitter (and other) sign-ups demanding a Windows security key / passkey — passkey prompts are disabled inside the in-app browser so sites fall back to normal password sign-up.
+- Generated usernames are valid on Reddit, X and Discord — dots are stripped (those platforms don't allow them).
+- X/Twitter sign-up opens on the current x.com flow.
+
 ## v0.1.27
 - New Backups (Settings → Backups): pick a folder and back up everything (DB + evidence/avatar media). On-demand backup, optional daily auto-backup, and one-click restore (the app restarts into the restored data). Keeps the latest 15 backups.
 - VPN exits are auto-named by location — imported Proton configs show their country (e.g. "United States · US-NY#1") so it's obvious which exit to assign to which persona.

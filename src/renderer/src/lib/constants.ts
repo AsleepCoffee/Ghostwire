@@ -200,9 +200,9 @@ export const PLATFORM_SIGNUP: Record<string, string> = {
   hotmail: 'https://signup.live.com/',
   facebook: 'https://www.facebook.com/r.php',
   instagram: 'https://www.instagram.com/accounts/emailsignup/',
-  'x / twitter': 'https://twitter.com/i/flow/signup',
-  twitter: 'https://twitter.com/i/flow/signup',
-  x: 'https://twitter.com/i/flow/signup',
+  'x / twitter': 'https://x.com/i/flow/signup',
+  twitter: 'https://x.com/i/flow/signup',
+  x: 'https://x.com/i/flow/signup',
   reddit: 'https://www.reddit.com/register/',
   linkedin: 'https://www.linkedin.com/signup',
   tiktok: 'https://www.tiktok.com/signup',
@@ -219,12 +219,24 @@ export function signupUrlFor(platform: string, fallbackUrl?: string): string {
   return PLATFORM_SIGNUP[key] || fallbackUrl || `https://www.google.com/search?q=${encodeURIComponent(platform + ' sign up')}`
 }
 
+// Platforms whose usernames allow only letters, digits, underscore (no dots/dashes).
+const DOTLESS_USERNAME = /reddit|twitter|discord|tiktok|\bx\b/i
+
+/** A platform-appropriate username. Email accounts use the address; platforms
+ *  that forbid dots (Reddit, X/Twitter, …) get a sanitized handle. */
+export function usernameFor(platform: string, handle: string, email: string): string {
+  if (platform.trim().toLowerCase() === 'email') return email
+  const h = handle ?? ''
+  if (DOTLESS_USERNAME.test(platform)) return h.replace(/[^a-zA-Z0-9_]/g, '_').replace(/_+/g, '_').replace(/^_|_$/g, '')
+  return h
+}
+
 /** Build a starter set of accounts (with generated passwords) for a new persona. */
 export function buildStarterAccounts(handle: string, email: string): import('./api').PersonaAccount[] {
   const platforms = ['Email', 'Facebook', 'Instagram', 'Reddit', 'X / Twitter']
   return platforms.map((platform) => ({
     platform,
-    username: platform === 'Email' ? email : handle,
+    username: usernameFor(platform, handle, email),
     password: generatePassword(),
     url: loginUrlFor(platform),
     notes: ''

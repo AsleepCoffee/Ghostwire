@@ -7,6 +7,15 @@ export interface ChangelogEntry {
 /** In-app patch notes. Newest first. Keep in sync with CHANGELOG.md. */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.1.28',
+    date: '2026-06-25',
+    notes: [
+      'Fixed X/Twitter (and other) sign-ups demanding a Windows security key / passkey — GhostWire now disables passkey prompts inside the in-app browser so sites fall back to normal password sign-up.',
+      'Generated usernames are now valid on Reddit, X and Discord — dots are stripped (those platforms don’t allow them).',
+      'X/Twitter sign-up now opens on the current x.com flow.'
+    ]
+  },
+  {
     version: '0.1.27',
     date: '2026-06-25',
     notes: [

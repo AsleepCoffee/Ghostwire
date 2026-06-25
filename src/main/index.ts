@@ -60,16 +60,38 @@ app.whenReady().then(async () => {
   initVpn()
   maybeAutoBackup()
 
-  // The Mailbox webview signs into webmail (e.g. Gmail), which tries to open its
-  // login in a popup window. Keep it inline: navigate the webview itself instead
-  // of spawning a separate window.
   app.on('web-contents-created', (_e, contents) => {
     if (contents.getType() !== 'webview') return
-    if (contents.session !== session.fromPartition('persist:gw-mailbox')) return
-    contents.setWindowOpenHandler(({ url }) => {
-      if (url && /^https?:\/\//i.test(url)) contents.loadURL(url).catch(() => {})
-      return { action: 'deny' }
+
+    // Neutralize WebAuthn/passkeys inside embedded sign-up flows (e.g. X/Twitter)
+    // so sites don't pop the Windows Hello / security-key dialog and instead
+    // offer regular password sign-up. Injected early on every navigation.
+    contents.on('dom-ready', () => {
+      contents
+        .executeJavaScript(
+          `(function(){try{
+            if (navigator.credentials){
+              navigator.credentials.create = function(){ return Promise.reject(new DOMException('disabled','NotAllowedError')); };
+              navigator.credentials.get = function(){ return Promise.reject(new DOMException('disabled','NotAllowedError')); };
+            }
+            if (window.PublicKeyCredential){
+              window.PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable = function(){ return Promise.resolve(false); };
+              if (window.PublicKeyCredential.isConditionalMediationAvailable) window.PublicKeyCredential.isConditionalMediationAvailable = function(){ return Promise.resolve(false); };
+            }
+          }catch(e){}})();`
+        )
+        .catch(() => {})
     })
+
+    // The Mailbox webview signs into webmail (e.g. Gmail), which tries to open its
+    // login in a popup window. Keep it inline: navigate the webview itself instead
+    // of spawning a separate window.
+    if (contents.session === session.fromPartition('persist:gw-mailbox')) {
+      contents.setWindowOpenHandler(({ url }) => {
+        if (url && /^https?:\/\//i.test(url)) contents.loadURL(url).catch(() => {})
+        return { action: 'deny' }
+      })
+    }
   })
 
   createWindow()
