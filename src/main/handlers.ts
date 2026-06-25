@@ -4,7 +4,8 @@ import { existsSync, mkdirSync, writeFileSync, copyFileSync } from 'fs'
 import { join, dirname, basename } from 'path'
 import { all, get, run } from './db'
 import { exportAllNotes, writeNote } from './export'
-import { pickImage, saveDataUrl, resolveMediaPath } from './media'
+import exifr from 'exifr'
+import { pickImage, saveDataUrl, resolveMediaPath, importImageFromUrl, readMedia } from './media'
 import { testAllTools } from './toolcheck'
 import { testApiKey } from './apitest'
 import { createMailbox, listMessages, getMessage } from './mail'
@@ -21,6 +22,18 @@ import type {
 } from '../shared/types'
 
 const now = (): number => Date.now()
+
+/** Append an entry to an investigation's activity log. */
+function logActivity(projectId: string | null | undefined, type: string, message: string): void {
+  if (!projectId) return
+  run('INSERT INTO activity (id,projectId,type,message,at) VALUES (?,?,?,?,?)', [
+    randomUUID(),
+    projectId,
+    type,
+    message,
+    now()
+  ])
+}
 const j = (v: unknown): string => JSON.stringify(v ?? null)
 const pj = <T>(s: unknown, fallback: T): T => {
   try {
@@ -331,6 +344,7 @@ export function registerHandlers(): void {
     if (!existsSync(dir)) mkdirSync(dir, { recursive: true })
     const file = join(dir, `${safe}.md`)
     writeFileSync(file, buildReport(project, evidence, contents, join(dir, 'evidence')), 'utf-8')
+    logActivity(id, 'report', 'Exported investigation report')
     return file
   })
 
@@ -351,6 +365,7 @@ export function registerHandlers(): void {
       'INSERT INTO evidence (id,projectId,kind,path,sourceUrl,title,sha256,capturedAt,note) VALUES (?,?,?,?,?,?,?,?,?)',
       [id, payload.projectId ?? null, payload.kind ?? 'screenshot', path, payload.sourceUrl ?? '', payload.title ?? '', sha, now(), '']
     )
+    logActivity(payload.projectId, 'evidence', `Captured evidence: ${payload.title || payload.sourceUrl || 'screenshot'}`)
     return mapEvidence(get('SELECT * FROM evidence WHERE id = ?', [id])!)
   })
   ipcMain.handle('evidence:list', (_e, projectId: string | null) => {
@@ -579,6 +594,40 @@ export function registerHandlers(): void {
   // ===== Files / images =====
   ipcMain.handle('files:pickImage', (_e, kind: string) => pickImage(kind))
   ipcMain.handle('files:saveDataUrl', (_e, dataUrl: string, kind: string) => saveDataUrl(kind, dataUrl))
+  ipcMain.handle('files:fetchImage', (_e, url: string, kind: string) => importImageFromUrl(kind, url))
+  ipcMain.handle('files:exif', async (_e, mediaUrl: string) => {
+    const buf = readMedia(mediaUrl)
+    if (!buf) return {}
+    try {
+      const data = (await exifr.parse(buf)) as Record<string, unknown> | undefined
+      if (!data) return {}
+      const lat = data.latitude as number | undefined
+      const lng = data.longitude as number | undefined
+      return {
+        gps: typeof lat === 'number' && typeof lng === 'number' ? { lat, lng } : undefined,
+        make: data.Make as string | undefined,
+        model: data.Model as string | undefined,
+        software: data.Software as string | undefined,
+        dateTime: data.DateTimeOriginal ? String(data.DateTimeOriginal) : undefined
+      }
+    } catch {
+      return {}
+    }
+  })
+
+  // ===== Activity log =====
+  ipcMain.handle('activity:log', (_e, projectId: string, type: string, message: string) =>
+    logActivity(projectId, type, message)
+  )
+  ipcMain.handle('activity:list', (_e, projectId: string) =>
+    all('SELECT * FROM activity WHERE projectId = ? ORDER BY at DESC LIMIT 200', [projectId]).map((r) => ({
+      id: String(r.id),
+      projectId: String(r.projectId),
+      type: String(r.type ?? ''),
+      message: String(r.message ?? ''),
+      at: Number(r.at)
+    }))
+  )
 
   // ===== API key testing =====
   ipcMain.handle('apikeys:test', (_e, id: string, key: string) => testApiKey(id, key))

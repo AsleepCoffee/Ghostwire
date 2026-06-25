@@ -127,6 +127,14 @@ CREATE TABLE IF NOT EXISTS evidence (
   note TEXT
 );
 
+CREATE TABLE IF NOT EXISTS activity (
+  id TEXT PRIMARY KEY,
+  projectId TEXT NOT NULL,
+  type TEXT,
+  message TEXT,
+  at INTEGER
+);
+
 CREATE TABLE IF NOT EXISTS settings (
   key TEXT PRIMARY KEY,
   value TEXT

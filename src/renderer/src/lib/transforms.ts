@@ -1,4 +1,4 @@
-import { api, type EntityType } from './api'
+import { api, type EntityType, type ExifResult } from './api'
 import { USERNAME_SITES } from './pivot'
 
 /** A transform turns one entity into related entities and/or browser lookups —
@@ -248,7 +248,38 @@ const usernameEnum: Transform = {
   }
 }
 
+const exifExtract: Transform = {
+  id: 'exif',
+  label: 'EXIF: GPS & camera',
+  description: 'Read embedded metadata from the attached image — GPS becomes a location node; camera/date become properties.',
+  run: async (_label, props) => {
+    const url = props.image
+    if (!url) return { entities: [], urls: [], note: 'No image attached to this entity' }
+    const ex = (await api.files.exif(url)) as ExifResult
+    const entities: NewEntity[] = []
+    if (ex.gps) {
+      entities.push({
+        type: 'location',
+        label: `${ex.gps.lat.toFixed(5)}, ${ex.gps.lng.toFixed(5)}`,
+        props: { url: `https://www.google.com/maps?q=${ex.gps.lat},${ex.gps.lng}`, lat: String(ex.gps.lat), lng: String(ex.gps.lng) }
+      })
+    }
+    const updateSource: Record<string, string> = {}
+    if (ex.make || ex.model) updateSource.camera = [ex.make, ex.model].filter(Boolean).join(' ')
+    if (ex.dateTime) updateSource.taken = ex.dateTime
+    if (ex.software) updateSource.software = ex.software
+    const found = ex.gps || ex.make || ex.dateTime
+    return {
+      entities,
+      urls: [],
+      updateSource,
+      note: found ? (ex.gps ? 'EXIF: GPS location + metadata added' : 'EXIF: metadata added (no GPS in image)') : 'No EXIF metadata found'
+    }
+  }
+}
+
 const TRANSFORMS: Partial<Record<EntityType, Transform[]>> = {
+  image: [exifExtract],
   domain: [
     crtshSubdomains,
     dnsResolve,

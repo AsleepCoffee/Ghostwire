@@ -81,6 +81,20 @@ export function readMedia(url: string): Buffer | null {
   return p ? readFileSync(p) : null
 }
 
+/** Download an image from a URL into app media; returns a gwmedia:// url (or null). */
+export async function importImageFromUrl(kind: string, url: string): Promise<string | null> {
+  if (!/^https?:\/\//i.test(url)) return null
+  const res = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0 GhostWire' } })
+  if (!res.ok) return null
+  const ct = res.headers.get('content-type') ?? ''
+  const ext = ct.includes('png') ? 'png' : ct.includes('webp') ? 'webp' : ct.includes('gif') ? 'gif' : 'jpg'
+  const buf = Buffer.from(await res.arrayBuffer())
+  if (buf.length === 0) return null
+  const file = `${randomUUID()}.${ext}`
+  writeFileSync(join(kindDir(kind), file), buf)
+  return mediaUrl(kind, file)
+}
+
 export async function pickImage(kind: string): Promise<string | null> {
   const win = BrowserWindow.getFocusedWindow()
   const res = await dialog.showOpenDialog(win!, {

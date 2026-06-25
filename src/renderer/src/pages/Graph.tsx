@@ -289,6 +289,9 @@ function GraphInner(): JSX.Element {
         api.boards.saveNode(updated)
       }
       const dupes = fresh.length - added
+      if (board?.projectId) {
+        api.activity.log(board.projectId, 'transform', `${t.label} on “${entity.label}”${added > 0 ? ` → +${added} node(s)` : ''}`)
+      }
       flash(out.note ? `${out.note}${dupes > 0 ? ` (${dupes} already on board)` : ''}` : `${t.label} done`)
     } catch (e) {
       flash(`Transform failed: ${String((e as Error)?.message ?? e)}`)

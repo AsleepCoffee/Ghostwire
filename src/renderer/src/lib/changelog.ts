@@ -7,6 +7,15 @@ export interface ChangelogEntry {
 /** In-app patch notes. Newest first. Keep in sync with CHANGELOG.md. */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.1.14',
+    date: '2026-06-24',
+    notes: [
+      'Random AI-face avatars for personas — “Random face” in the editor, and auto-added on Quick Create.',
+      'EXIF transform on image entities: pulls GPS into a location node and camera/date/software into properties.',
+      'Per-investigation activity log — transforms, evidence captures and report exports are recorded as a methodology trail in the investigation.'
+    ]
+  },
+  {
     version: '0.1.13',
     date: '2026-06-24',
     notes: [

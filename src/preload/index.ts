@@ -54,7 +54,13 @@ const api: OsintApi = {
   },
   files: {
     pickImage: (kind) => ipcRenderer.invoke('files:pickImage', kind),
-    saveDataUrl: (dataUrl, kind) => ipcRenderer.invoke('files:saveDataUrl', dataUrl, kind)
+    saveDataUrl: (dataUrl, kind) => ipcRenderer.invoke('files:saveDataUrl', dataUrl, kind),
+    fetchImage: (url, kind) => ipcRenderer.invoke('files:fetchImage', url, kind),
+    exif: (mediaUrl) => ipcRenderer.invoke('files:exif', mediaUrl)
+  },
+  activity: {
+    log: (projectId, type, message) => ipcRenderer.invoke('activity:log', projectId, type, message),
+    list: (projectId) => ipcRenderer.invoke('activity:list', projectId)
   },
   shell: {
     openExternal: (url) => ipcRenderer.invoke('shell:openExternal', url)

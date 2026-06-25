@@ -191,6 +191,22 @@ export interface AppSettings {
   activeProjectId?: string | null
 }
 
+export interface Activity {
+  id: string
+  projectId: string
+  type: string
+  message: string
+  at: number
+}
+
+export interface ExifResult {
+  gps?: { lat: number; lng: number }
+  make?: string
+  model?: string
+  dateTime?: string
+  software?: string
+}
+
 export interface Evidence {
   id: string
   projectId: string | null
@@ -269,6 +285,14 @@ export interface OsintApi {
     pickImage(kind: string): Promise<string | null>
     /** Persist a data URL (e.g. a pasted image) into app media, return a gwmedia:// url. */
     saveDataUrl(dataUrl: string, kind: string): Promise<string>
+    /** Download an image from a URL into app media, return a gwmedia:// url (or null). */
+    fetchImage(url: string, kind: string): Promise<string | null>
+    /** Parse EXIF (GPS + camera) from a stored gwmedia:// image. */
+    exif(mediaUrl: string): Promise<ExifResult>
+  }
+  activity: {
+    log(projectId: string, type: string, message: string): Promise<void>
+    list(projectId: string): Promise<Activity[]>
   }
   shell: {
     openExternal(url: string): Promise<void>

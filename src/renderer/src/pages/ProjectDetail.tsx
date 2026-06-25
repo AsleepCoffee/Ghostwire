@@ -28,7 +28,8 @@ import {
   type ProjectStatus,
   type DataPoint,
   type EntityType,
-  type Evidence
+  type Evidence,
+  type Activity
 } from '../lib/api'
 import { PROJECT_TYPES, ENTITY_TYPES, personaColor } from '../lib/constants'
 import { Icon, StatusBadge } from '../components/ui'
@@ -59,6 +60,7 @@ export function ProjectDetail(): JSX.Element {
   const [allNotes, setAllNotes] = useState<Note[]>([])
   const [allBoards, setAllBoards] = useState<Board[]>([])
   const [evidence, setEvidence] = useState<Evidence[]>([])
+  const [activity, setActivity] = useState<Activity[]>([])
   const [editing, setEditing] = useState(false)
   const [pivot, setPivot] = useState<{ value: string; subject: PivotSubject } | null>(null)
   const [known, setKnown] = useState('')
@@ -84,6 +86,7 @@ export function ProjectDetail(): JSX.Element {
     setAllNotes(await api.notes.list())
     setAllBoards(await api.boards.list())
     setEvidence(await api.evidence.list(id))
+    setActivity(await api.activity.list(id))
   }
 
   const exportReport = async (): Promise<void> => {
@@ -479,6 +482,30 @@ export function ProjectDetail(): JSX.Element {
             onUnlink: () => linkBoard(b, false)
           }))}
         />
+
+        {/* Activity log — methodology trail */}
+        <section className="card">
+          <header className="flex items-center gap-2 px-4 py-3 border-b border-ink-700">
+            <Icon name="History" size={16} className="text-brand-glow" />
+            <span className="font-semibold text-slate-100 text-sm">Activity</span>
+            <span className="text-slate-500 text-sm">({activity.length})</span>
+          </header>
+          {activity.length === 0 ? (
+            <div className="px-4 py-4 text-sm text-slate-500">
+              Transforms, captures and report exports for this investigation will be logged here.
+            </div>
+          ) : (
+            <div className="divide-y divide-ink-800 max-h-72 overflow-y-auto">
+              {activity.map((a) => (
+                <div key={a.id} className="flex items-center gap-3 px-4 py-2">
+                  <span className="text-[9px] uppercase tracking-wider text-slate-500 w-16 shrink-0">{a.type}</span>
+                  <span className="text-sm text-slate-300 flex-1 min-w-0 truncate">{a.message}</span>
+                  <span className="text-xs text-slate-600 shrink-0">{new Date(a.at).toLocaleString()}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
       </div>
 
       {editing && (

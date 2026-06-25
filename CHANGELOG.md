@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.1.14
+- Random AI-face avatars for personas — "Random face" in the editor, and auto-added on Quick Create.
+- EXIF transform on image entities: pulls GPS into a location node and camera/date/software into properties.
+- Per-investigation activity log — transforms, evidence captures and report exports are recorded as a methodology trail.
+
 ## v0.1.13
 - Screenshot-to-evidence: a Capture button in the browser snapshots the page with its URL, a UTC timestamp and a SHA-256 hash, filed under the active investigation (pick it in the top bar).
 - Investigation report export: one-click Markdown rollup of subject, known data, evidence (with hashes) and linked items.

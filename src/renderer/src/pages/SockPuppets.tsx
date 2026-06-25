@@ -18,7 +18,8 @@ import {
   Inbox,
   Loader2,
   CheckCircle2,
-  Circle
+  Circle,
+  Dices
 } from 'lucide-react'
 import {
   api,
@@ -79,6 +80,12 @@ export function SockPuppets(): JSX.Element {
 
   const quickCreate = async (): Promise<void> => {
     const g = generateIdentity()
+    let avatarPath: string | null = null
+    try {
+      avatarPath = await api.files.fetchImage(`https://thispersondoesnotexist.com/?_=${Date.now()}`, 'avatars')
+    } catch {
+      /* avatar is best-effort */
+    }
     const saved = await api.personas.save({
       name: g.name,
       handle: g.handle,
@@ -89,6 +96,7 @@ export function SockPuppets(): JSX.Element {
       occupation: g.occupation,
       email: g.email,
       backstory: g.backstory,
+      avatarPath,
       accounts: buildStarterAccounts(g.handle, g.email),
       tags: ['generated']
     })
@@ -308,7 +316,18 @@ function PersonaEditor({
   const [genMail, setGenMail] = useState(false)
   const [mailErr, setMailErr] = useState('')
   const [inboxOpen, setInboxOpen] = useState(false)
+  const [genAvatar, setGenAvatar] = useState(false)
   const { settings } = useSettings()
+
+  const randomAvatar = async (): Promise<void> => {
+    setGenAvatar(true)
+    try {
+      const url = await api.files.fetchImage(`https://thispersondoesnotexist.com/?_=${Date.now()}`, 'avatars')
+      if (url) set({ avatarPath: url })
+    } finally {
+      setGenAvatar(false)
+    }
+  }
   const set = (patch: Partial<Persona>): void => setP((prev) => ({ ...prev, ...patch }))
 
   useEffect(() => {
@@ -401,7 +420,10 @@ function PersonaEditor({
                   if (url) set({ avatarPath: url })
                 }}
               >
-                <ImagePlus size={15} /> {p.avatarPath ? 'Change' : 'Upload'} avatar
+                <ImagePlus size={15} /> {p.avatarPath ? 'Change' : 'Upload'}
+              </button>
+              <button className="btn-ghost border border-ink-600" disabled={genAvatar} onClick={randomAvatar} title="Generate a random AI face">
+                {genAvatar ? <Loader2 size={15} className="animate-spin" /> : <Dices size={15} />} Random face
               </button>
               {p.avatarPath && (
                 <button className="btn-ghost text-slate-500" onClick={() => set({ avatarPath: null })}>
