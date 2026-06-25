@@ -390,6 +390,23 @@ export function registerHandlers(): void {
   ipcMain.handle('evidence:remove', (_e, id: string) => {
     run('DELETE FROM evidence WHERE id = ?', [id])
   })
+  ipcMain.handle('evidence:setNote', (_e, id: string, note: string) => {
+    run('UPDATE evidence SET note = ? WHERE id = ?', [String(note ?? ''), id])
+  })
+  // Download an image from a URL straight into the evidence locker (with SHA-256).
+  ipcMain.handle('evidence:fromUrl', async (_e, url: string, projectId: string | null) => {
+    const path = await importImageFromUrl('evidence', url)
+    if (!path) throw new Error('Could not download an image from that URL')
+    const buf = readMedia(path)
+    const sha = buf ? createHash('sha256').update(buf).digest('hex') : ''
+    const id = randomUUID()
+    run(
+      'INSERT INTO evidence (id,projectId,kind,path,sourceUrl,title,sha256,capturedAt,note) VALUES (?,?,?,?,?,?,?,?,?)',
+      [id, projectId ?? null, 'image', path, url, '', sha, now(), '']
+    )
+    logActivity(projectId, 'evidence', `Added image from ${url}`)
+    return mapEvidence(get('SELECT * FROM evidence WHERE id = ?', [id])!)
+  })
 
   // ===== Personas =====
   ipcMain.handle('personas:list', () =>

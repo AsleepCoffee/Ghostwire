@@ -7,6 +7,15 @@ export interface ChangelogEntry {
 /** In-app patch notes. Newest first. Keep in sync with CHANGELOG.md. */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.1.34',
+    date: '2026-06-25',
+    notes: [
+      'New Evidence Board (sidebar) — a per-investigation media locker. Drag images in from your desktop, paste screenshots (Ctrl+V), or paste an image URL; everything is saved with a capture time and SHA-256 hash for integrity.',
+      'Each item shows its source, timestamp, SHA-256 (click to copy) and EXIF (GPS opens a map pin, plus camera/date). One-click reverse image search (Google Lens, Yandex, Bing, TinEye, PimEyes), add the image to your link chart as an entity, save a copy, or add a note.',
+      'Screenshots captured from the in-app Browser land here automatically under the active investigation.'
+    ]
+  },
+  {
     version: '0.1.33',
     date: '2026-06-25',
     notes: [

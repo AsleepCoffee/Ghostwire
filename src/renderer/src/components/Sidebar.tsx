@@ -20,6 +20,7 @@ const GROUPS: { heading?: string; items: NavItem[]; toggle?: 'courseNotes' }[] =
       { to: '/tools', label: 'Tools & Resources', icon: 'Wrench' },
       { to: '/dork', label: 'Dork & Pivot', icon: 'Binoculars' },
       { to: '/sock-puppets', label: 'Sock Puppets', icon: 'Drama' },
+      { to: '/evidence', label: 'Evidence Board', icon: 'Images' },
       { to: '/browser', label: 'Browser', icon: 'Globe' },
       { to: '/vpn', label: 'VPN', icon: 'Shield' },
       { to: '/mailbox', label: 'Mailbox', icon: 'Mail' },

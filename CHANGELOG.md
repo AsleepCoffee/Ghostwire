@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.1.34
+- New Evidence Board (sidebar) — a per-investigation media locker. Drag images from the desktop, paste screenshots (Ctrl+V), or paste an image URL; each is saved with a capture time and SHA-256 hash.
+- Per-item: source, timestamp, copyable SHA-256, EXIF (GPS → map pin, camera/date), one-click reverse image search (Google Lens/Yandex/Bing/TinEye/PimEyes), add-to-link-chart, save copy, and notes.
+- Screenshots captured from the in-app Browser land here automatically under the active investigation.
+
 ## v0.1.33
 - New live Transform Log on the link chart — every transform shows its status (running, +N nodes, nothing new, needs a key, or failed with the exact error). Click an entry to jump to that entity; clear/collapse anytime.
 - Hunter results are clearer: email verification reports result, score, SMTP and MX checks; domain-email lookup reports the count found.

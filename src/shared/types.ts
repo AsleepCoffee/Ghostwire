@@ -296,6 +296,8 @@ export interface OsintApi {
     }): Promise<Evidence>
     list(projectId: string | null): Promise<Evidence[]>
     remove(id: string): Promise<void>
+    setNote(id: string, note: string): Promise<void>
+    fromUrl(url: string, projectId: string | null): Promise<Evidence>
   }
   personas: {
     list(): Promise<Persona[]>
