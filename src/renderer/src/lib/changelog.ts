@@ -7,6 +7,16 @@ export interface ChangelogEntry {
 /** In-app patch notes. Newest first. Keep in sync with CHANGELOG.md. */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.1.38',
+    date: '2026-06-25',
+    notes: [
+      'Fixed the active-investigation picker (top bar) not listing newly created investigations and showing blank when one was set — it now refreshes live. You can also set the active investigation from its page (Set active) or the ⭐ on each card.',
+      'Unlink in the graph — double-click a link to remove it, or select it and press Delete/Backspace (deletes are saved). Deleting nodes by keyboard now persists too.',
+      'Attach an image to any graph entity — in the entity panel, pick one straight from your Evidence Board (or upload). Great for putting a face on a person/email node.',
+      'The right-side docks are now two separate pop-outs — Persona and Investigation each have their own edge tab.'
+    ]
+  },
+  {
     version: '0.1.37',
     date: '2026-06-25',
     notes: [

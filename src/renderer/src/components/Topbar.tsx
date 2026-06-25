@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useLocation } from 'react-router-dom'
 import { Search, FolderSearch } from 'lucide-react'
 import { useOpenInBrowser } from '../lib/browserBus'
 import { useSettings } from '../lib/settings'
@@ -9,10 +10,22 @@ export function Topbar(): JSX.Element {
   const [projects, setProjects] = useState<Project[]>([])
   const openInBrowser = useOpenInBrowser()
   const { settings, update } = useSettings()
+  const loc = useLocation()
 
+  // Keep the investigation list fresh: reload on navigation, on window focus,
+  // and whenever something signals a project change.
   useEffect(() => {
-    api.projects.list().then(setProjects)
-  }, [])
+    const load = (): void => {
+      api.projects.list().then(setProjects)
+    }
+    load()
+    window.addEventListener('focus', load)
+    window.addEventListener('gw:projects-changed', load)
+    return () => {
+      window.removeEventListener('focus', load)
+      window.removeEventListener('gw:projects-changed', load)
+    }
+  }, [loc.pathname])
 
   const submit = (e: React.FormEvent): void => {
     e.preventDefault()

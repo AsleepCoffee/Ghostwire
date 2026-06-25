@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useSearchParams, useNavigate } from 'react-router-dom'
 import {
   ReactFlow,
   ReactFlowProvider,
@@ -22,7 +22,7 @@ import {
 import '@xyflow/react/dist/style.css'
 import { toPng } from 'html-to-image'
 import { Plus, Trash2, X, ImagePlus, Crosshair, Sparkles, Loader2, ImageDown, Check, AlertTriangle, KeyRound, Minus, ChevronDown, ChevronUp, Globe, ExternalLink } from 'lucide-react'
-import { api, type Board, type EntityNode, type EntityType, type Project } from '../lib/api'
+import { api, type Board, type EntityNode, type EntityType, type Project, type Evidence } from '../lib/api'
 import { ENTITY_TYPES } from '../lib/constants'
 import { Icon, EmptyState, Modal } from '../components/ui'
 import { PivotModal } from '../components/PivotModal'
@@ -128,6 +128,9 @@ function GraphInner(): JSX.Element {
   const [runs, setRuns] = useState<TransformRun[]>([])
   const [logOpen, setLogOpen] = useState(true)
   const [menu, setMenu] = useState<{ x: number; y: number; entity: EntityNode } | null>(null)
+  const [imgPicker, setImgPicker] = useState(false)
+  const [pickEvidence, setPickEvidence] = useState<Evidence[]>([])
+  const nav = useNavigate()
   const seq = useRef(0)
   const openInBrowser = useOpenInBrowser()
   const { settings } = useSettings()
@@ -240,6 +243,26 @@ function GraphInner(): JSX.Element {
     api.boards.saveNode({ ...entity, x: node.position.x, y: node.position.y })
   }, [])
 
+  // Persist edge/node deletions made via keyboard (select + Delete/Backspace).
+  const onEdgesDelete = useCallback((eds: Edge[]): void => {
+    eds.forEach((e) => api.boards.removeEdge(e.id))
+  }, [])
+  const onNodesDelete = useCallback((nds: Node[]): void => {
+    nds.forEach((n) => api.boards.removeNode(n.id))
+    setSelected((s) => (s && nds.some((n) => n.id === s.id) ? null : s))
+  }, [])
+
+  // Double-click a link to remove it.
+  const removeEdge = (edgeId: string): void => {
+    api.boards.removeEdge(edgeId)
+    setEdges((eds) => eds.filter((e) => e.id !== edgeId))
+    flash('Link removed')
+  }
+  const onEdgeDoubleClick = useCallback((_: unknown, edge: Edge): void => {
+    removeEdge(edge.id)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [setEdges])
+
   const onNodeClick = useCallback((_: unknown, node: Node): void => {
     setSelected((node.data as { entity: EntityNode }).entity)
     setMenu(null)
@@ -249,6 +272,27 @@ function GraphInner(): JSX.Element {
     e.preventDefault()
     setMenu({ x: e.clientX, y: e.clientY, entity: (node.data as { entity: EntityNode }).entity })
   }, [])
+
+  const openImagePicker = (): void => {
+    const pid = board?.projectId ?? null
+    api.evidence.list(pid).then((list) => setPickEvidence(list.filter((e) => e.kind !== 'file')))
+    setImgPicker(true)
+  }
+  const chooseEvidenceImage = (ev: Evidence): void => {
+    if (selected) updateSelected({ props: { ...(selected.props ?? {}), image: ev.path } })
+    setImgPicker(false)
+  }
+  const uploadEntityImage = async (): Promise<void> => {
+    if (!selected) return
+    const url = await api.files.pickImage('entity')
+    if (url) updateSelected({ props: { ...(selected.props ?? {}), image: url } })
+  }
+  const clearEntityImage = (): void => {
+    if (!selected) return
+    const next = { ...(selected.props ?? {}) }
+    delete next.image
+    updateSelected({ props: next })
+  }
 
   const openLink = (entity: EntityNode, external = false): void => {
     const url = entityUrl(entity)
@@ -582,6 +626,11 @@ function GraphInner(): JSX.Element {
             onNodeClick={onNodeClick}
             onNodeDoubleClick={onNodeDoubleClick}
             onNodeContextMenu={onNodeContextMenu}
+            onEdgeDoubleClick={onEdgeDoubleClick}
+            onEdgesDelete={onEdgesDelete}
+            onNodesDelete={onNodesDelete}
+            edgesFocusable
+            deleteKeyCode={['Delete', 'Backspace']}
             onPaneClick={() => {
               setSelected(null)
               setMenu(null)
@@ -686,6 +735,9 @@ function GraphInner(): JSX.Element {
             onTransform={(t) => runTransform(selected, t)}
             onRunAll={() => runAllTransforms(selected)}
             onAddToNotes={() => addEntityToNotes(selected)}
+            onPickEvidenceImage={openImagePicker}
+            onUploadImage={uploadEntityImage}
+            onClearImage={clearEntityImage}
           />
         )}
       </div>
@@ -698,6 +750,37 @@ function GraphInner(): JSX.Element {
         subject={pivot?.subject ?? 'generic'}
         value={pivot?.value ?? ''}
       />
+
+      {imgPicker && (
+        <Modal open onClose={() => setImgPicker(false)} title="Attach an image from evidence" wide>
+          {pickEvidence.length === 0 ? (
+            <div className="text-center text-slate-500 py-10">
+              No image evidence{board?.projectId ? ' in this investigation' : ''} yet.
+              <div className="mt-3">
+                <button className="btn-ghost border border-ink-600" onClick={() => nav('/evidence')}>
+                  Open Evidence Board
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="grid grid-cols-3 sm:grid-cols-4 gap-3 max-h-[60vh] overflow-y-auto">
+              {pickEvidence.map((ev) => (
+                <button
+                  key={ev.id}
+                  onClick={() => chooseEvidenceImage(ev)}
+                  className="group card-interactive overflow-hidden"
+                  title={ev.title || ev.sourceUrl || 'evidence'}
+                >
+                  <div className="aspect-square bg-ink-950">
+                    <img src={ev.path} alt="" className="w-full h-full object-cover" />
+                  </div>
+                  <div className="p-1.5 text-[10px] text-slate-400 truncate">{ev.title || ev.sourceUrl || 'Evidence'}</div>
+                </button>
+              ))}
+            </div>
+          )}
+        </Modal>
+      )}
 
       {/* Right-click node context menu */}
       {menu && (
@@ -820,7 +903,10 @@ function EntityInspector({
   onOpenLink,
   onTransform,
   onRunAll,
-  onAddToNotes
+  onAddToNotes,
+  onPickEvidenceImage,
+  onUploadImage,
+  onClearImage
 }: {
   entity: EntityNode
   onChange: (p: Partial<EntityNode>) => void
@@ -835,6 +921,9 @@ function EntityInspector({
   onTransform: (t: Transform) => void
   onRunAll: () => void
   onAddToNotes: () => void
+  onPickEvidenceImage: () => void
+  onUploadImage: () => void
+  onClearImage: () => void
 }): JSX.Element {
   const [propKey, setPropKey] = useState('')
   const [propVal, setPropVal] = useState('')
@@ -876,6 +965,35 @@ function EntityInspector({
         <div>
           <label className="label">Label</label>
           <input className="input" value={entity.label} onChange={(e) => onChange({ label: e.target.value })} />
+        </div>
+
+        {/* Image — pick from evidence or upload, attach to this entity */}
+        <div>
+          <label className="label">Image</label>
+          {entity.props.image ? (
+            <div className="relative">
+              <img src={entity.props.image} alt="" className="w-full rounded-lg border border-ink-700 object-cover max-h-48" />
+              <button
+                className="absolute top-1.5 right-1.5 btn-ghost !p-1 bg-ink-900/80 border border-ink-600"
+                title="Remove image"
+                onClick={onClearImage}
+              >
+                <X size={14} />
+              </button>
+            </div>
+          ) : (
+            <div className="rounded-lg border border-dashed border-ink-600 p-3 text-center text-xs text-slate-500">
+              No image attached
+            </div>
+          )}
+          <div className="grid grid-cols-2 gap-2 mt-2">
+            <button className="btn-ghost border border-ink-600 justify-center text-xs" onClick={onPickEvidenceImage}>
+              <ImagePlus size={14} /> From evidence
+            </button>
+            <button className="btn-ghost border border-ink-600 justify-center text-xs" onClick={onUploadImage}>
+              <ImageDown size={14} /> Upload
+            </button>
+          </div>
         </div>
 
         {linkUrl && (

@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.1.38
+- Fixed the active-investigation picker (top bar) not listing newly created investigations / showing blank when set — now refreshes live (on navigation, focus, and project changes). Set active also available from the investigation page and each card's star.
+- Unlink in the graph — double-click a link to remove it, or select + Delete/Backspace (persisted). Keyboard node deletion persists too.
+- Attach an image to any graph entity from the Evidence Board (or upload) via the entity panel.
+- Split the right-side dock into two separate pop-outs: Persona and Investigation, each with its own edge tab.
+
 ## v0.1.37
 - New Account Finder — check a username across every major platform at once with live found/not-found/unclear status; open hits or select them and drop them onto a link chart (linked to a username node).
 - New Case Timeline — chronological, day-grouped view of everything done on an investigation, filterable by action type.

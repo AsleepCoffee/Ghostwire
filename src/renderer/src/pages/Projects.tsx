@@ -176,7 +176,11 @@ export function ProjectEditor({
 }): JSX.Element {
   const [p, setP] = useState<Partial<Project>>({ ...initial })
   const set = (patch: Partial<Project>): void => setP((prev) => ({ ...prev, ...patch }))
-  const save = async (): Promise<void> => onSaved(await api.projects.save(p))
+  const save = async (): Promise<void> => {
+    const saved = await api.projects.save(p)
+    window.dispatchEvent(new Event('gw:projects-changed'))
+    onSaved(saved)
+  }
 
   const points = p.dataPoints ?? []
   const addPoint = (): void =>

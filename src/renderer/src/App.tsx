@@ -3,7 +3,7 @@ import { Sidebar } from './components/Sidebar'
 import { Topbar } from './components/Topbar'
 import { TitleBar } from './components/TitleBar'
 import { UpdateNotice } from './components/UpdateNotice'
-import { PersonaDock } from './components/PersonaDock'
+import { PersonaDock, InvestigationDock } from './components/PersonaDock'
 import { PersonaDockProvider } from './lib/dock'
 import { Dashboard } from './pages/Dashboard'
 import { Projects } from './pages/Projects'
@@ -65,6 +65,7 @@ export default function App(): JSX.Element {
         </div>
       </div>
       <PersonaDock />
+      <InvestigationDock />
     </div>
     </PersonaDockProvider>
   )

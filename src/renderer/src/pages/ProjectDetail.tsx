@@ -19,7 +19,8 @@ import {
   Camera,
   ExternalLink,
   Loader2,
-  ChevronDown
+  ChevronDown,
+  Star
 } from 'lucide-react'
 import {
   api,
@@ -39,6 +40,7 @@ import { ProjectEditor } from './Projects'
 import { PivotModal } from '../components/PivotModal'
 import { useOpenInBrowser } from '../lib/browserBus'
 import { useConfirm } from '../lib/confirm'
+import { useSettings } from '../lib/settings'
 import { fmtDate, fmtDateTime } from '../lib/format'
 import { subjectForEntity, type PivotSubject } from '../lib/pivot'
 
@@ -53,6 +55,7 @@ export function ProjectDetail(): JSX.Element {
   const nav = useNavigate()
   const openInBrowser = useOpenInBrowser()
   const confirm = useConfirm()
+  const { settings, update } = useSettings()
   const [project, setProject] = useState<Project | null>(null)
   const [contents, setContents] = useState<{ personas: Persona[]; notes: Note[]; boards: Board[] }>({
     personas: [],
@@ -132,6 +135,8 @@ export function ProjectDetail(): JSX.Element {
     if (!project) return
     if (!(await confirm({ title: `Delete investigation “${project.name}”?`, message: 'Linked personas, notes, and boards are kept — just unlinked from this investigation.', confirmText: 'Delete', danger: true }))) return
     await api.projects.remove(project.id)
+    if (settings.activeProjectId === project.id) update({ activeProjectId: null })
+    window.dispatchEvent(new Event('gw:projects-changed'))
     nav('/projects')
   }
 
@@ -273,6 +278,14 @@ export function ProjectDetail(): JSX.Element {
               <Crosshair size={15} /> Search target
             </button>
           )}
+          <button
+            className={`btn-ghost border border-ink-600 ${settings.activeProjectId === project.id ? '!text-amber-400 !border-amber-400/40' : ''}`}
+            onClick={() => update({ activeProjectId: settings.activeProjectId === project.id ? null : project.id })}
+            title={settings.activeProjectId === project.id ? 'Active investigation — click to clear' : 'Set as active investigation'}
+          >
+            <Star size={15} fill={settings.activeProjectId === project.id ? 'currentColor' : 'none'} />
+            {settings.activeProjectId === project.id ? 'Active' : 'Set active'}
+          </button>
           <div className="relative">
             <button
               className="btn-ghost border border-ink-600"
