@@ -1,5 +1,8 @@
 # Changelog
 
+## v0.1.29
+- Fixed autofill breaking complex sign-ups (notably X/Twitter). Autofill is now gentle: each field is filled once, it never steals focus, it leaves fields you've started typing in alone, and it stops quickly rather than fighting a re-rendering page. The 🔑 button re-fills the current step on demand.
+
 ## v0.1.28
 - Fixed X/Twitter (and other) sign-ups demanding a Windows security key / passkey — passkey prompts are disabled inside the in-app browser so sites fall back to normal password sign-up.
 - Generated usernames are valid on Reddit, X and Discord — dots are stripped (those platforms don't allow them).

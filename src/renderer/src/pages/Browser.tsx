@@ -54,8 +54,10 @@ function toUrl(input: string): string {
 }
 
 /** A page script that fills login AND sign-up fields with a persona's details.
- *  It only writes into empty fields, so it is safe to run on every navigation and
- *  it cooperates with two-step (email-then-password) flows. */
+ *  Gentle by design: each field is filled at most ONCE (tracked across re-runs),
+ *  it never calls focus() (so it can't steal your cursor or fight a re-rendering
+ *  SPA like X), it leaves any field that already has a value alone, and the
+ *  watcher is throttled and self-terminates. This avoids breaking sign-up flows. */
 function fillScript(a: Autofill): string {
   const data = JSON.stringify({
     username: a.username ?? '',
@@ -71,94 +73,91 @@ function fillScript(a: Autofill): string {
   return `(function(){
     try {
       var D=${data};
+      var F = (window.__gwFilled = window.__gwFilled || {});
       function visible(el){ return el && el.offsetParent !== null && !el.disabled && !el.readOnly; }
-      function setVal(el, val){
-        if(!visible(el) || !val || el.value) return false;
-        el.focus();
+      // Set a field once. Never focuses (no cursor stealing); if it already has a
+      // value (user typed, or a previous run set it), mark done and leave it.
+      function setVal(key, el, val){
+        if(F[key] || !visible(el) || !val) return;
+        if(el.value){ F[key]=true; return; }
         var proto = el instanceof window.HTMLTextAreaElement ? window.HTMLTextAreaElement.prototype : window.HTMLInputElement.prototype;
         var setter = Object.getOwnPropertyDescriptor(proto,'value').set;
         setter.call(el, val);
         el.dispatchEvent(new Event('input',{bubbles:true}));
         el.dispatchEvent(new Event('change',{bubbles:true}));
-        return true;
+        F[key]=true;
+      }
+      function selectBy(key, el, value){
+        if(F[key] || !visible(el) || !value) return;
+        var opts = Array.prototype.slice.call(el.options||[]);
+        var want = String(value);
+        var hit = opts.find(function(o){
+          return o.value===want || String(parseInt(o.value,10))===want || (o.text||'').trim()===want || String(parseInt(o.text,10))===want;
+        });
+        if(hit){ el.value = hit.value; el.dispatchEvent(new Event('change',{bubbles:true})); F[key]=true; }
       }
       function first(sel){ try { return document.querySelector(sel); } catch(e){ return null; } }
       function all(sel){ try { return Array.prototype.slice.call(document.querySelectorAll(sel)); } catch(e){ return []; } }
 
       function tick(){
-      // ---- Name fields ----
-      setVal(first('input[autocomplete="given-name"], input[name*="first" i], input[id*="first" i], input[name="firstname"], input[aria-label*="first name" i]'), D.firstName);
-      setVal(first('input[autocomplete="family-name"], input[name*="last" i], input[id*="last" i], input[name="lastname"], input[aria-label*="last name" i]'), D.lastName);
-      if(D.fullName) setVal(first('input[autocomplete="name"], input[name="name"], input[id="name"], input[aria-label*="full name" i]'), D.fullName);
+        setVal('first', first('input[autocomplete="given-name"], input[name*="first" i], input[id*="first" i], input[name="firstname"], input[aria-label*="first name" i]'), D.firstName);
+        setVal('last', first('input[autocomplete="family-name"], input[name*="last" i], input[id*="last" i], input[name="lastname"], input[aria-label*="last name" i]'), D.lastName);
+        if(D.fullName) setVal('full', first('input[autocomplete="name"], input[name="name"], input[id="name"], input[aria-label*="full name" i]'), D.fullName);
 
-      // ---- Email (+ confirm email) ----
-      if(D.email){
-        var emails = all('input[type="email"], input[autocomplete="email"], input[name*="email" i], input[id*="email" i]');
-        emails.forEach(function(el){ setVal(el, D.email); });
-      }
-
-      // ---- Username (a user/login field that is NOT the email) ----
-      if(D.username){
-        var userEl = first('input[autocomplete="username"], input[name="login"], input[name*="user" i]:not([type="email"]), input[id*="user" i]:not([type="email"])');
-        if(userEl && (userEl.type||'').toLowerCase() !== 'email') setVal(userEl, D.username);
-      }
-
-      // ---- Phone ----
-      if(D.phone) setVal(first('input[type="tel"], input[autocomplete="tel"], input[name*="phone" i], input[id*="phone" i]'), D.phone);
-
-      // ---- Passwords: fill every empty password box (password + confirm) ----
-      if(D.password){
-        all('input[type="password"]').forEach(function(el){ setVal(el, D.password); });
-      }
-
-      // ---- Birthdate (YYYY-MM-DD) ----
-      if(D.birthdate && /^\\d{4}-\\d{2}-\\d{2}$/.test(D.birthdate)){
-        var parts = D.birthdate.split('-'), Y=parts[0], M=String(parseInt(parts[1],10)), Dd=String(parseInt(parts[2],10));
-        var dateInput = first('input[type="date"]');
-        if(dateInput) setVal(dateInput, D.birthdate);
-        function selectBy(el, value){
-          if(!visible(el) || !value) return false;
-          var opts = Array.prototype.slice.call(el.options||[]);
-          var want = String(value);
-          var hit = opts.find(function(o){
-            return o.value===want || String(parseInt(o.value,10))===want || o.text.trim()===want || String(parseInt(o.text,10))===want;
-          });
-          if(hit){ el.value = hit.value; el.dispatchEvent(new Event('change',{bubbles:true})); return true; }
-          return false;
+        if(D.email){
+          all('input[type="email"], input[autocomplete="email"], input[name*="email" i], input[id*="email" i]').forEach(function(el,i){ setVal('email'+i, el, D.email); });
         }
-        selectBy(first('select[name*="day" i], select[id*="day" i], select[aria-label*="day" i]'), Dd);
-        selectBy(first('select[name*="month" i], select[id*="month" i], select[aria-label*="month" i]'), M);
-        selectBy(first('select[name*="year" i], select[id*="year" i], select[aria-label*="year" i]'), Y);
-      }
 
-      // ---- Gender (radios / select) ----
-      if(D.gender){
-        var g = D.gender.toLowerCase();
-        var radios = all('input[type="radio"]');
-        radios.forEach(function(r){
-          var hay = ((r.value||'') + ' ' + (r.getAttribute('aria-label')||'') + ' ' + (r.name||'') + ' ' + ((r.labels&&r.labels[0]&&r.labels[0].innerText)||'')).toLowerCase();
-          if(/sex|gender/.test((r.name||'').toLowerCase()) || /male|female/.test(hay)){
-            if((g.indexOf('female')===0 && /female|f\\b|^2$/.test(hay)) || (g.indexOf('male')===0 && /\\bmale|^1$|^m\\b/.test(hay) && !/female/.test(hay))){
-              if(!r.checked){ r.click(); }
+        if(D.username){
+          var userEl = first('input[autocomplete="username"], input[name="login"], input[name*="user" i]:not([type="email"]), input[id*="user" i]:not([type="email"])');
+          if(userEl && (userEl.type||'').toLowerCase() !== 'email') setVal('user', userEl, D.username);
+        }
+
+        if(D.phone) setVal('phone', first('input[type="tel"], input[autocomplete="tel"], input[name*="phone" i], input[id*="phone" i]'), D.phone);
+
+        if(D.password){
+          all('input[type="password"]').forEach(function(el,i){ setVal('pw'+i, el, D.password); });
+        }
+
+        if(D.birthdate && /^\\d{4}-\\d{2}-\\d{2}$/.test(D.birthdate)){
+          var parts = D.birthdate.split('-'), Y=parts[0], M=String(parseInt(parts[1],10)), Dd=String(parseInt(parts[2],10));
+          setVal('dob', first('input[type="date"]'), D.birthdate);
+          selectBy('dob-d', first('select[name*="day" i], select[id*="day" i], select[aria-label*="day" i]'), Dd);
+          selectBy('dob-m', first('select[name*="month" i], select[id*="month" i], select[aria-label*="month" i]'), M);
+          selectBy('dob-y', first('select[name*="year" i], select[id*="year" i], select[aria-label*="year" i]'), Y);
+        }
+
+        if(D.gender && !F.gender){
+          var g = D.gender.toLowerCase(), done=false;
+          all('input[type="radio"]').forEach(function(r){
+            var hay = ((r.value||'') + ' ' + (r.getAttribute('aria-label')||'') + ' ' + (r.name||'') + ' ' + ((r.labels&&r.labels[0]&&r.labels[0].innerText)||'')).toLowerCase();
+            if(/sex|gender/.test((r.name||'').toLowerCase()) || /male|female/.test(hay)){
+              if((g.indexOf('female')===0 && /female|f\\b|^2$/.test(hay)) || (g.indexOf('male')===0 && /\\bmale|^1$|^m\\b/.test(hay) && !/female/.test(hay))){
+                if(!r.checked){ r.click(); done=true; }
+              }
             }
+          });
+          var gsel = first('select[name*="gender" i], select[id*="gender" i], select[name*="sex" i]');
+          if(gsel){
+            var opt = Array.prototype.slice.call(gsel.options||[]).find(function(o){ return (o.text||'').toLowerCase().indexOf(g.split(' ')[0])>-1; });
+            if(opt){ gsel.value = opt.value; gsel.dispatchEvent(new Event('change',{bubbles:true})); done=true; }
           }
-        });
-        var gsel = first('select[name*="gender" i], select[id*="gender" i], select[name*="sex" i]');
-        if(gsel){
-          var opt = Array.prototype.slice.call(gsel.options||[]).find(function(o){ return (o.text||'').toLowerCase().indexOf(g.split(' ')[0])>-1; });
-          if(opt){ gsel.value = opt.value; gsel.dispatchEvent(new Event('change',{bubbles:true})); }
+          if(done) F.gender=true;
         }
       }
-      }
-      // Re-arm: sign-up wizards reveal fields on later steps, so keep filling
-      // empty fields as the DOM changes (and via a backup poll) for ~60s.
-      if (window.__gwFillObs) { try { window.__gwFillObs.disconnect(); } catch(e){} }
-      if (window.__gwFillInt) clearInterval(window.__gwFillInt);
-      window.__gwFillObs = new MutationObserver(tick);
-      window.__gwFillObs.observe(document.documentElement, { childList:true, subtree:true, attributes:true, attributeFilter:['type','style','class'] });
+
+      // Throttle so we never hammer a re-rendering page (min 700ms between runs).
+      var lastRun = 0;
+      function run(){ var t=Date.now(); if(t-lastRun<700) return; lastRun=t; tick(); }
+      if (window.__gwObs) { try { window.__gwObs.disconnect(); } catch(e){} }
+      if (window.__gwInt) clearInterval(window.__gwInt);
+      // Watch only node additions (not attribute churn) to catch fields revealed
+      // on later sign-up steps, then stop after ~10s.
+      window.__gwObs = new MutationObserver(run);
+      window.__gwObs.observe(document.body || document.documentElement, { childList:true, subtree:true });
       var __n = 0;
-      window.__gwFillInt = setInterval(function(){ __n++; tick(); if (__n > 120) { clearInterval(window.__gwFillInt); try { window.__gwFillObs.disconnect(); } catch(e){} } }, 500);
-      tick();
+      window.__gwInt = setInterval(function(){ __n++; run(); if (__n > 12) { clearInterval(window.__gwInt); try { window.__gwObs.disconnect(); } catch(e){} } }, 800);
+      tick(); lastRun = Date.now();
     } catch(e){}
   })();`
 }
@@ -352,8 +351,14 @@ export function Browser(): JSX.Element {
         {active?.autofill && (
           <button
             className="btn-ghost !px-2 text-accent"
-            title="Re-fill persona details (login & sign-up forms)"
-            onClick={() => active && refs.current.get(active.id)?.executeJavaScript(fillScript(active.autofill!))}
+            title="Re-fill persona details into the current form"
+            onClick={() =>
+              active &&
+              refs.current
+                .get(active.id)
+                ?.executeJavaScript('try{window.__gwFilled={}}catch(e){};' + fillScript(active.autofill!))
+                .catch(() => {})
+            }
           >
             <KeyRound size={16} />
           </button>

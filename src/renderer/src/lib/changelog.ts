@@ -7,6 +7,13 @@ export interface ChangelogEntry {
 /** In-app patch notes. Newest first. Keep in sync with CHANGELOG.md. */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.1.29',
+    date: '2026-06-25',
+    notes: [
+      'Fixed autofill breaking complex sign-ups (notably X/Twitter): it’s now gentle — each field is filled once, it never steals your cursor, it leaves fields you’ve started typing in alone, and it stops quickly instead of fighting the page. Use the 🔑 button to re-fill the current step on demand.'
+    ]
+  },
+  {
     version: '0.1.28',
     date: '2026-06-25',
     notes: [
