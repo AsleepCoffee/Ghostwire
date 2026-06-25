@@ -1,5 +1,8 @@
 # Changelog
 
+## v0.1.23
+- Fixed the Mailbox tab showing a black screen — the new auto-fill could crash the view if it ran before the webmail page was ready. It now fails safely and retries once the page loads.
+
 ## v0.1.22
 - Mailbox auto sign-in now fills the password on the second Google/Microsoft step — it watches the page for the password box appearing after you pick the account, instead of only filling once on load. Still backed by the 🔑 manual fill button.
 - Settings now uses the full window width instead of a narrow centered column.

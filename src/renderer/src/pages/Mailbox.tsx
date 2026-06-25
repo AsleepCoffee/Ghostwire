@@ -134,12 +134,22 @@ export function Mailbox(): JSX.Element {
   const webmail = webmailFor(settings.personalEmail)
   const hasCreds = !!(settings.personalEmail && settings.personalEmailPassword)
 
+  /** Run the autofill in the webview. executeJavaScript throws *synchronously*
+   *  if the webview isn't dom-ready yet, so we must wrap it (a .catch only
+   *  handles the promise rejection, not the sync throw). */
+  const runFill = (wv: WebviewEl, email: string, pass: string): void => {
+    try {
+      const r = wv.executeJavaScript(mailFillScript(email, pass)) as Promise<unknown> | undefined
+      if (r && typeof r.catch === 'function') r.catch(() => {})
+    } catch {
+      /* webview not attached / dom-ready yet — a later event will retry */
+    }
+  }
+
   const fillLogin = (): void => {
     const wv = ref.current
     if (!wv) return
-    wv.executeJavaScript(
-      mailFillScript(settings.personalEmail ?? '', settings.personalEmailPassword ?? '')
-    ).catch(() => {})
+    runFill(wv, settings.personalEmail ?? '', settings.personalEmailPassword ?? '')
   }
 
   // Auto-fill the webmail login if credentials are stored (handles getting signed out).
@@ -149,9 +159,7 @@ export function Mailbox(): JSX.Element {
     const email = settings.personalEmail ?? ''
     const pass = settings.personalEmailPassword ?? ''
     if (!email && !pass) return
-    const fill = (): void => {
-      wv.executeJavaScript(mailFillScript(email, pass)).catch(() => {})
-    }
+    const fill = (): void => runFill(wv, email, pass)
     wv.addEventListener('dom-ready', fill)
     wv.addEventListener('did-finish-load', fill)
     wv.addEventListener('did-navigate-in-page', fill)

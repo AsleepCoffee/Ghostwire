@@ -7,6 +7,13 @@ export interface ChangelogEntry {
 /** In-app patch notes. Newest first. Keep in sync with CHANGELOG.md. */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.1.23',
+    date: '2026-06-25',
+    notes: [
+      'Fixed the Mailbox tab showing a black screen — the new auto-fill could crash the view if it ran before the webmail page was ready. It now fails safely and retries once the page loads.'
+    ]
+  },
+  {
     version: '0.1.22',
     date: '2026-06-25',
     notes: [
