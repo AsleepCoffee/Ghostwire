@@ -7,6 +7,13 @@ export interface ChangelogEntry {
 /** In-app patch notes. Newest first. Keep in sync with CHANGELOG.md. */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.1.43',
+    date: '2026-06-25',
+    notes: [
+      'Evidence now shows the full metadata dump — every embedded EXIF/GPS/IPTC/XMP tag (camera, lens, exposure, GPS, timestamps, software, copyright…), file size, a GPS map link, and a “Copy all” button. Right-click any image in the browser → Add image to evidence to capture and inspect it.'
+    ]
+  },
+  {
     version: '0.1.42',
     date: '2026-06-25',
     notes: [

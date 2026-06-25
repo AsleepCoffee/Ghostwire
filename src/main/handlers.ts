@@ -749,20 +749,47 @@ export function registerHandlers(): void {
   ipcMain.handle('files:exif', async (_e, mediaUrl: string) => {
     const buf = readMedia(mediaUrl)
     if (!buf) return {}
+    const fmt = (v: unknown): string => {
+      if (v == null) return ''
+      if (v instanceof Date) return v.toISOString()
+      if (Array.isArray(v)) return v.join(', ')
+      if (typeof v === 'object') return JSON.stringify(v)
+      return String(v)
+    }
     try {
-      const data = (await exifr.parse(buf)) as Record<string, unknown> | undefined
-      if (!data) return {}
-      const lat = data.latitude as number | undefined
-      const lng = data.longitude as number | undefined
+      // Parse the full tag set (EXIF + GPS + IPTC + XMP + IFD0).
+      const data = (await exifr.parse(buf, {
+        tiff: true,
+        exif: true,
+        gps: true,
+        iptc: true,
+        xmp: true,
+        translateKeys: true,
+        translateValues: true,
+        reviveValues: true
+      })) as Record<string, unknown> | undefined
+
+      const all: Record<string, string> = {}
+      if (data) {
+        for (const [k, v] of Object.entries(data)) {
+          if (k === 'latitude' || k === 'longitude') continue
+          const s = fmt(v)
+          if (s) all[k] = s.length > 300 ? s.slice(0, 300) + '…' : s
+        }
+      }
+      const lat = data?.latitude as number | undefined
+      const lng = data?.longitude as number | undefined
       return {
         gps: typeof lat === 'number' && typeof lng === 'number' ? { lat, lng } : undefined,
-        make: data.Make as string | undefined,
-        model: data.Model as string | undefined,
-        software: data.Software as string | undefined,
-        dateTime: data.DateTimeOriginal ? String(data.DateTimeOriginal) : undefined
+        make: data?.Make as string | undefined,
+        model: data?.Model as string | undefined,
+        software: data?.Software as string | undefined,
+        dateTime: data?.DateTimeOriginal ? String(data.DateTimeOriginal) : undefined,
+        fileSize: buf.length,
+        all
       }
     } catch {
-      return {}
+      return { fileSize: buf.length, all: {} }
     }
   })
 

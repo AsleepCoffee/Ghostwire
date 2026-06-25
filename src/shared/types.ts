@@ -259,6 +259,10 @@ export interface ExifResult {
   model?: string
   dateTime?: string
   software?: string
+  /** Size of the stored file in bytes. */
+  fileSize?: number
+  /** Every parsed metadata tag (EXIF/GPS/IPTC/XMP), stringified. */
+  all?: Record<string, string>
 }
 
 export interface Evidence {

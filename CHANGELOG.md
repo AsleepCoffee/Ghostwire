@@ -1,5 +1,8 @@
 # Changelog
 
+## v0.1.43
+- Evidence shows the full metadata dump — every embedded EXIF/GPS/IPTC/XMP tag, file size, GPS map link, and Copy all. Pairs with right-click → Add image to evidence in the browser.
+
 ## v0.1.42
 - New Map view — plots location entities + photo GPS; named places geocoded via OpenStreetMap; filter by investigation.
 - Right-click images in the in-app browser → Add image to evidence (SHA-256 + EXIF), reverse image search, copy/open. Full right-click menu (copy/paste, link & selection actions) added to the browser.

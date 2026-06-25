@@ -400,9 +400,25 @@ function EvidenceDetail({
               <CopyChip label="SHA-256" value={ev.sha256} />
             </div>
           )}
-          {exif && (exif.gps || exif.make || exif.model || exif.dateTime || exif.software) && (
-            <div className="rounded-lg border border-ink-700 p-2.5 space-y-1">
-              <div className="text-[10px] uppercase tracking-widest text-slate-500">EXIF metadata</div>
+          {exif && (
+            <div className="rounded-lg border border-ink-700 p-2.5 space-y-1.5">
+              <div className="flex items-center justify-between">
+                <div className="text-[10px] uppercase tracking-widest text-slate-500">Metadata</div>
+                {exif.all && Object.keys(exif.all).length > 0 && (
+                  <button
+                    className="text-[11px] text-slate-500 hover:text-accent-glow flex items-center gap-1"
+                    onClick={() =>
+                      api.clipboard.writeText(
+                        Object.entries(exif.all!)
+                          .map(([k, v]) => `${k}: ${v}`)
+                          .join('\n')
+                      )
+                    }
+                  >
+                    <Copy size={11} /> Copy all
+                  </button>
+                )}
+              </div>
               {exif.gps && (
                 <button
                   className="flex items-center gap-1.5 text-sm text-brand-glow hover:underline"
@@ -411,9 +427,19 @@ function EvidenceDetail({
                   <MapPin size={13} /> {exif.gps.lat.toFixed(5)}, {exif.gps.lng.toFixed(5)}
                 </button>
               )}
-              {(exif.make || exif.model) && <div className="text-xs text-slate-400">📷 {[exif.make, exif.model].filter(Boolean).join(' ')}</div>}
-              {exif.dateTime && <div className="text-xs text-slate-400">🕑 {exif.dateTime}</div>}
-              {exif.software && <div className="text-xs text-slate-400">🛠 {exif.software}</div>}
+              {exif.fileSize ? <div className="text-xs text-slate-400">📦 {(exif.fileSize / 1024).toFixed(1)} KB</div> : null}
+              {exif.all && Object.keys(exif.all).length > 0 ? (
+                <div className="max-h-56 overflow-y-auto mt-1 divide-y divide-ink-800 border-t border-ink-800">
+                  {Object.entries(exif.all).map(([k, v]) => (
+                    <div key={k} className="grid grid-cols-[40%_60%] gap-2 py-1">
+                      <div className="text-[11px] text-slate-500 truncate" title={k}>{k}</div>
+                      <div className="text-[11px] text-slate-300 break-words">{v}</div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-xs text-slate-500">No embedded metadata (it may have been stripped by the site/platform).</div>
+              )}
             </div>
           )}
         </div>
