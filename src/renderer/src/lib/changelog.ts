@@ -7,6 +7,15 @@ export interface ChangelogEntry {
 /** In-app patch notes. Newest first. Keep in sync with CHANGELOG.md. */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.1.21',
+    date: '2026-06-25',
+    notes: [
+      'Mailbox auto sign-in is much more reliable — it now keeps filling the email and password as the login advances (providers like Gmail reveal the password box on a second step), and there’s a 🔑 button to fill it on demand. The webmail view also uses a real desktop browser identity to avoid “insecure browser” blocks.',
+      'Per-persona VPN exits: import Proton WireGuard configs and route each sock puppet through a different country (userspace, no admin rights). Manage tunnels in Settings → VPN or the VPN tab; sessions are fail-closed and WebRTC is locked to the proxy.',
+      'Fixed an upgrade issue where older databases were missing the new nationality/phone persona fields.'
+    ]
+  },
+  {
     version: '0.1.20',
     date: '2026-06-25',
     notes: [

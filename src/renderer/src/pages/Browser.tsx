@@ -14,9 +14,10 @@ import {
   Loader2,
   AlertTriangle,
   KeyRound,
-  Camera
+  Camera,
+  Shield
 } from 'lucide-react'
-import { api, type Persona } from '../lib/api'
+import { api, type Persona, type VpnConfigStatus } from '../lib/api'
 import { personaColor } from '../lib/constants'
 import { consumePending, subscribeOpen, type OpenRequest, type Autofill } from '../lib/browserBus'
 import { useSettings } from '../lib/settings'
@@ -156,6 +157,7 @@ const newId = (): string => `tab_${Date.now()}_${tabSeq++}`
 
 export function Browser(): JSX.Element {
   const [personas, setPersonas] = useState<Persona[]>([])
+  const [vpnConfigs, setVpnConfigs] = useState<VpnConfigStatus[]>([])
   const [tabs, setTabs] = useState<Tab[]>([])
   const [activeId, setActiveId] = useState<string>('')
   const [address, setAddress] = useState('')
@@ -195,6 +197,8 @@ export function Browser(): JSX.Element {
   }
   useEffect(() => {
     reloadPersonas()
+    api.vpn.state().then((s) => setVpnConfigs(s.configs))
+    return api.vpn.onStatus((s) => setVpnConfigs(s.configs))
   }, [])
 
   const openTabs = useCallback(
@@ -255,6 +259,7 @@ export function Browser(): JSX.Element {
   }
 
   const persona = personas.find((p) => p.id === active?.personaId)
+  const exit = persona?.vpnConfigId ? vpnConfigs.find((c) => c.id === persona.vpnConfigId) : undefined
 
   return (
     <div className="h-full flex flex-col relative">
@@ -397,6 +402,14 @@ export function Browser(): JSX.Element {
             This tab browses as <b style={{ color: personaColor(persona.id) }}>{persona.name}</b> — isolated
             cookies & storage.
           </span>
+          {exit && (
+            <span
+              className={`flex items-center gap-1 ${exit.running ? 'text-ok' : 'text-danger'}`}
+              title={exit.running ? `Exiting via ${exit.name}` : `${exit.name} tunnel is down — tab will fail closed`}
+            >
+              <Shield size={12} /> {exit.name}{exit.running ? '' : ' (down)'}
+            </span>
+          )}
           {active?.autofill && <span className="ml-auto text-slate-500">persona details auto-filled 🔑</span>}
         </div>
       )}

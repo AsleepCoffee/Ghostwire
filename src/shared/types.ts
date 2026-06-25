@@ -95,8 +95,37 @@ export interface Persona {
   mailbox?: PersonaMailbox | null
   /** Unique Electron session partition so each persona has isolated cookies/storage. */
   partition: string
+  /** Id of the VPN config (exit country) this persona browses through, if any. */
+  vpnConfigId?: string | null
   createdAt: number
   updatedAt: number
+}
+
+/** A Proton WireGuard config imported by the user; one exit location.
+ *  We run a userspace `wireproxy` tunnel per config that exposes a local SOCKS5
+ *  port, and pin each persona's browser session to its assigned port. */
+export interface VpnConfig {
+  id: string
+  /** User-facing label, e.g. "Germany" — defaults to the imported filename. */
+  name: string
+  /** Endpoint host:port parsed from the WireGuard config (display only). */
+  endpoint?: string
+  /** Local SOCKS5 port this tunnel binds to (stable once assigned). */
+  socksPort: number
+  createdAt: number
+}
+
+export interface VpnConfigStatus extends VpnConfig {
+  running: boolean
+  /** Last spawn/runtime error, if the tunnel failed. */
+  error?: string
+}
+
+export interface VpnState {
+  /** Whether the `wireproxy` binary was located. The whole feature is inert without it. */
+  binaryPresent: boolean
+  binaryPath?: string
+  configs: VpnConfigStatus[]
 }
 
 export interface Note {
@@ -347,5 +376,20 @@ export interface OsintApi {
     get(): Promise<AppSettings>
     set(s: Partial<AppSettings>): Promise<AppSettings>
     pickVault(): Promise<string | null>
+  }
+  vpn: {
+    /** Current binary presence + every config with its live running state. */
+    state(): Promise<VpnState>
+    /** Open a file picker to import one or more Proton .conf files. Returns count imported. */
+    import(): Promise<number>
+    rename(id: string, name: string): Promise<void>
+    remove(id: string): Promise<void>
+    start(id: string): Promise<VpnConfigStatus>
+    stop(id: string): Promise<VpnConfigStatus>
+    /** Start every imported tunnel (no-op if the binary is missing). */
+    startAll(): Promise<void>
+    /** Re-pin every persona's browser session to its assigned exit (or direct). */
+    apply(): Promise<void>
+    onStatus(cb: (s: VpnState) => void): () => void
   }
 }

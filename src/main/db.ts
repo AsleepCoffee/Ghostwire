@@ -139,6 +139,15 @@ CREATE TABLE IF NOT EXISTS settings (
   key TEXT PRIMARY KEY,
   value TEXT
 );
+
+CREATE TABLE IF NOT EXISTS vpn_configs (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  endpoint TEXT,
+  socksPort INTEGER NOT NULL,
+  config TEXT NOT NULL,
+  createdAt INTEGER
+);
 `
 
 export async function initDb(): Promise<void> {
@@ -176,7 +185,10 @@ function migrate(): void {
     'ALTER TABLE notes ADD COLUMN projectId TEXT',
     'ALTER TABLE boards ADD COLUMN projectId TEXT',
     "ALTER TABLE projects ADD COLUMN dataPoints TEXT DEFAULT '[]'",
-    'ALTER TABLE personas ADD COLUMN mailbox TEXT'
+    'ALTER TABLE personas ADD COLUMN mailbox TEXT',
+    'ALTER TABLE personas ADD COLUMN vpnConfigId TEXT',
+    'ALTER TABLE personas ADD COLUMN nationality TEXT',
+    'ALTER TABLE personas ADD COLUMN phone TEXT'
   ]
   for (const sql of adds) {
     try {

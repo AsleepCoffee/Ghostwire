@@ -110,6 +110,21 @@ const api: OsintApi = {
     get: () => ipcRenderer.invoke('settings:get'),
     set: (s) => ipcRenderer.invoke('settings:set', s),
     pickVault: () => ipcRenderer.invoke('settings:pickVault')
+  },
+  vpn: {
+    state: () => ipcRenderer.invoke('vpn:state'),
+    import: () => ipcRenderer.invoke('vpn:import'),
+    rename: (id, name) => ipcRenderer.invoke('vpn:rename', id, name),
+    remove: (id) => ipcRenderer.invoke('vpn:remove', id),
+    start: (id) => ipcRenderer.invoke('vpn:start', id),
+    stop: (id) => ipcRenderer.invoke('vpn:stop', id),
+    startAll: () => ipcRenderer.invoke('vpn:startAll'),
+    apply: () => ipcRenderer.invoke('vpn:apply'),
+    onStatus: (cb) => {
+      const listener = (_e: unknown, payload: unknown): void => cb(payload as Parameters<typeof cb>[0])
+      ipcRenderer.on('vpn:status', listener as never)
+      return () => ipcRenderer.removeListener('vpn:status', listener as never)
+    }
   }
 }
 

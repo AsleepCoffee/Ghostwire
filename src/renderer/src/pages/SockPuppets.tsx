@@ -29,7 +29,8 @@ import {
   type Project,
   type PersonaMailbox,
   type MailMessage,
-  type MailMessageFull
+  type MailMessageFull,
+  type VpnConfigStatus
 } from '../lib/api'
 import {
   generateIdentity,
@@ -361,6 +362,7 @@ function PersonaEditor({
   const [p, setP] = useState<Partial<Persona>>({ ...initial })
   const [tagInput, setTagInput] = useState('')
   const [projects, setProjects] = useState<Project[]>([])
+  const [vpnConfigs, setVpnConfigs] = useState<VpnConfigStatus[]>([])
   const [genMail, setGenMail] = useState(false)
   const [mailErr, setMailErr] = useState('')
   const [inboxOpen, setInboxOpen] = useState(false)
@@ -382,6 +384,7 @@ function PersonaEditor({
 
   useEffect(() => {
     api.projects.list().then(setProjects)
+    api.vpn.state().then((s) => setVpnConfigs(s.configs))
   }, [])
 
   const genMailbox = async (): Promise<void> => {
@@ -581,6 +584,27 @@ function PersonaEditor({
                 </option>
               ))}
             </select>
+          </div>
+          <div className="col-span-2">
+            <label className="label">VPN exit country</label>
+            <select
+              className="input"
+              value={p.vpnConfigId ?? ''}
+              onChange={(e) => set({ vpnConfigId: e.target.value || null })}
+            >
+              <option value="">— none (use your real connection) —</option>
+              {vpnConfigs.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                  {c.running ? '' : ' (tunnel down)'}
+                </option>
+              ))}
+            </select>
+            <p className="text-[11px] text-slate-600 mt-1">
+              {vpnConfigs.length === 0
+                ? 'Import Proton WireGuard configs in the VPN tab to route this persona through another country.'
+                : 'This persona’s browser tabs will exit from the selected country. Fails closed if its tunnel is down.'}
+            </p>
           </div>
           <div>
             <label className="label">Gender</label>

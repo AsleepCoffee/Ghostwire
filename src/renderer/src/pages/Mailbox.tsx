@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Mail, ExternalLink, RotateCw, Lock, CheckCircle2, Eye, EyeOff } from 'lucide-react'
+import { Mail, ExternalLink, RotateCw, Lock, CheckCircle2, Eye, EyeOff, KeyRound } from 'lucide-react'
 import { api } from '../lib/api'
 import { useSettings } from '../lib/settings'
 import { Icon } from '../components/ui'
@@ -13,8 +13,15 @@ interface WebviewEl extends HTMLElement {
   removeEventListener(type: string, listener: (e: Event) => void): void
 }
 
-/** Fill an email + password into a webmail login page (only empty fields, so it
- *  cooperates with Google/Microsoft's two-step email-then-password flows). */
+/** A current desktop-Chrome UA. Embedded webviews are otherwise flagged by
+ *  Google as "this browser may not be secure"; a real UA reduces that. */
+const DESKTOP_UA =
+  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36'
+
+/** Fill an email + password into a webmail login page. Because providers like
+ *  Google/Microsoft reveal the password field asynchronously on a second step,
+ *  this installs a short in-page poll that keeps filling empty fields as they
+ *  appear (and clears itself after ~12s). */
 function mailFillScript(email: string, password: string): string {
   const data = JSON.stringify({ email, password })
   return `(function(){
@@ -22,15 +29,22 @@ function mailFillScript(email: string, password: string): string {
       var D=${data};
       function vis(el){ return el && el.offsetParent !== null && !el.disabled && !el.readOnly; }
       function setVal(el,val){
-        if(!vis(el)||!val||el.value) return;
+        if(!vis(el)||!val||el.value) return false;
         el.focus();
         var s=Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype,'value').set;
         s.call(el,val);
         el.dispatchEvent(new Event('input',{bubbles:true}));
         el.dispatchEvent(new Event('change',{bubbles:true}));
+        return true;
       }
-      setVal(document.querySelector('input[type="email"], input[autocomplete="username"], input[name="identifier"], input[name="loginfmt"], input[name*="email" i]'), D.email);
-      setVal(document.querySelector('input[type="password"], input[autocomplete="current-password"], input[name="passwd"], input[name="Passwd"]'), D.password);
+      function tick(){
+        setVal(document.querySelector('input[type="email"], input[autocomplete="username"], input[name="identifier"], input[name="loginfmt"], input[name*="email" i]'), D.email);
+        setVal(document.querySelector('input[type="password"], input[autocomplete="current-password"], input[name="passwd"], input[name="Passwd"], input[name*="pass" i]'), D.password);
+      }
+      if (window.__gwMailFill) clearInterval(window.__gwMailFill);
+      var n = 0;
+      window.__gwMailFill = setInterval(function(){ n++; tick(); if (n > 30) clearInterval(window.__gwMailFill); }, 400);
+      tick();
     } catch(e){}
   })();`
 }
@@ -109,6 +123,15 @@ export function Mailbox(): JSX.Element {
 
   const configured = !!settings.catchAllDomain
   const webmail = webmailFor(settings.personalEmail)
+  const hasCreds = !!(settings.personalEmail && settings.personalEmailPassword)
+
+  const fillLogin = (): void => {
+    const wv = ref.current
+    if (!wv) return
+    wv.executeJavaScript(
+      mailFillScript(settings.personalEmail ?? '', settings.personalEmailPassword ?? '')
+    ).catch(() => {})
+  }
 
   // Auto-fill the webmail login if credentials are stored (handles getting signed out).
   useEffect(() => {
@@ -120,9 +143,11 @@ export function Mailbox(): JSX.Element {
     const fill = (): void => {
       wv.executeJavaScript(mailFillScript(email, pass)).catch(() => {})
     }
+    wv.addEventListener('dom-ready', fill)
     wv.addEventListener('did-finish-load', fill)
     wv.addEventListener('did-navigate-in-page', fill)
     return () => {
+      wv.removeEventListener('dom-ready', fill)
       wv.removeEventListener('did-finish-load', fill)
       wv.removeEventListener('did-navigate-in-page', fill)
     }
@@ -233,6 +258,11 @@ export function Mailbox(): JSX.Element {
           </span>
         </div>
         <div className="ml-auto flex gap-1.5">
+          {hasCreds && (
+            <button className="btn-ghost !px-2 text-accent" onClick={fillLogin} title="Fill the stored email & password into the login form">
+              <KeyRound size={16} />
+            </button>
+          )}
           <button className="btn-ghost !px-2" onClick={() => ref.current?.reload()} title="Reload">
             <RotateCw size={16} />
           </button>
@@ -251,6 +281,7 @@ export function Mailbox(): JSX.Element {
           src={webmail.url}
           partition="persist:gw-mailbox"
           allowpopups="true"
+          useragent={DESKTOP_UA}
           style={{ width: '100%', height: '100%', display: 'inline-flex' }}
         />
       </div>

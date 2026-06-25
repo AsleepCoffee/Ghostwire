@@ -4,6 +4,7 @@ import { initDb } from './db'
 import { registerHandlers } from './handlers'
 import { registerMediaScheme, registerMediaProtocol } from './media'
 import { initUpdater } from './updater'
+import { initVpn, shutdownVpn } from './vpn'
 
 // Must run before app is ready.
 registerMediaScheme()
@@ -54,12 +55,15 @@ app.whenReady().then(async () => {
   await initDb()
   registerHandlers()
   initUpdater()
+  initVpn()
   createWindow()
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
   })
 })
+
+app.on('before-quit', () => shutdownVpn())
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit()

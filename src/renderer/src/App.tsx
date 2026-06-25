@@ -13,6 +13,8 @@ import { Tools } from './pages/Tools'
 import { Graph } from './pages/Graph'
 import { Dork } from './pages/Dork'
 import { Mailbox } from './pages/Mailbox'
+import { Vpn } from './pages/Vpn'
+import { WhatsNew } from './pages/WhatsNew'
 import { Settings } from './pages/Settings'
 
 export default function App(): JSX.Element {
@@ -41,6 +43,8 @@ export default function App(): JSX.Element {
               <Route path="/dork" element={<Dork />} />
               <Route path="/mailbox" element={<Mailbox />} />
               <Route path="/graph" element={<Graph />} />
+              <Route path="/vpn" element={<Vpn />} />
+              <Route path="/whats-new" element={<WhatsNew />} />
               <Route path="/settings" element={<Settings />} />
             </Routes>
           </div>

@@ -9,6 +9,7 @@ import { pickImage, saveDataUrl, resolveMediaPath, importImageFromUrl, readMedia
 import { testAllTools } from './toolcheck'
 import { testApiKey } from './apitest'
 import { createMailbox, listMessages, getMessage } from './mail'
+import { applyPersonaProxies } from './vpn'
 import type {
   AppSettings,
   Board,
@@ -65,6 +66,7 @@ function mapPersona(r: Record<string, unknown>): Persona {
     tags: pj(r.tags, []),
     mailbox: r.mailbox ? pj(r.mailbox, null) : null,
     partition: String(r.partition),
+    vpnConfigId: (r.vpnConfigId as string) ?? null,
     createdAt: Number(r.createdAt),
     updatedAt: Number(r.updatedAt)
   }
@@ -405,13 +407,14 @@ export function registerHandlers(): void {
       ? String((existing as Record<string, unknown>).partition)
       : `persist:persona_${id}`
     run(
-      `INSERT INTO personas (id,name,handle,status,projectId,avatarPath,bio,gender,birthdate,location,nationality,email,phone,occupation,backstory,accounts,tags,mailbox,partition,createdAt,updatedAt)
-       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+      `INSERT INTO personas (id,name,handle,status,projectId,avatarPath,bio,gender,birthdate,location,nationality,email,phone,occupation,backstory,accounts,tags,mailbox,partition,vpnConfigId,createdAt,updatedAt)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
        ON CONFLICT(id) DO UPDATE SET
          name=excluded.name, handle=excluded.handle, status=excluded.status, projectId=excluded.projectId, avatarPath=excluded.avatarPath,
          bio=excluded.bio, gender=excluded.gender, birthdate=excluded.birthdate, location=excluded.location,
          nationality=excluded.nationality, email=excluded.email, phone=excluded.phone, occupation=excluded.occupation,
-         backstory=excluded.backstory, accounts=excluded.accounts, tags=excluded.tags, mailbox=excluded.mailbox, updatedAt=excluded.updatedAt`,
+         backstory=excluded.backstory, accounts=excluded.accounts, tags=excluded.tags, mailbox=excluded.mailbox,
+         vpnConfigId=excluded.vpnConfigId, updatedAt=excluded.updatedAt`,
       [
         id,
         p.name ?? 'Unnamed persona',
@@ -432,10 +435,13 @@ export function registerHandlers(): void {
         j(p.tags ?? []),
         p.mailbox ? j(p.mailbox) : null,
         partition,
+        p.vpnConfigId ?? null,
         existing ? Number((existing as Record<string, unknown>).createdAt) : t,
         t
       ]
     )
+    // Pin this persona's browser session to its (possibly changed) exit country.
+    applyPersonaProxies()
     return mapPersona(get('SELECT * FROM personas WHERE id = ?', [id])!)
   })
   ipcMain.handle('personas:remove', (_e, id: string) => {

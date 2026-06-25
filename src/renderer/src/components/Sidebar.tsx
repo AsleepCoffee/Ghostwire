@@ -21,6 +21,7 @@ const GROUPS: { heading?: string; items: NavItem[]; toggle?: 'courseNotes' }[] =
       { to: '/dork', label: 'Dork & Pivot', icon: 'Binoculars' },
       { to: '/sock-puppets', label: 'Sock Puppets', icon: 'Drama' },
       { to: '/browser', label: 'Browser', icon: 'Globe' },
+      { to: '/vpn', label: 'VPN', icon: 'Shield' },
       { to: '/mailbox', label: 'Mailbox', icon: 'Mail' },
       { to: '/notes', label: 'Notes', icon: 'NotebookPen' }
     ]
@@ -31,8 +32,11 @@ const GROUPS: { heading?: string; items: NavItem[]; toggle?: 'courseNotes' }[] =
     items: [{ to: '/notes?folder=Course', label: 'Course Notes', icon: 'GraduationCap' }]
   },
   {
-    heading: 'Settings',
-    items: [{ to: '/settings', label: 'Settings', icon: 'Settings' }]
+    heading: 'App',
+    items: [
+      { to: '/whats-new', label: "What's New", icon: 'Sparkles' },
+      { to: '/settings', label: 'Settings', icon: 'Settings' }
+    ]
   }
 ]
 

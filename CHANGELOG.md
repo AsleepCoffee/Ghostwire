@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.1.21
+- Mailbox auto sign-in is much more reliable — it keeps filling email + password as the login advances (Gmail/Microsoft reveal the password box on a second step), plus a 🔑 fill-on-demand button. The webmail view uses a real desktop browser identity to avoid "insecure browser" blocks.
+- Per-persona VPN exits: import Proton WireGuard configs and route each sock puppet through a different country (userspace via wireproxy, no admin rights). Manage tunnels in Settings → VPN or the VPN tab; sessions are fail-closed and WebRTC is locked to the proxy.
+- Fixed an upgrade issue where older databases were missing the new nationality/phone persona columns.
+
 ## v0.1.20
 - Redesigned the dashboard into a proper command center — hero with a live ops clock, time-aware greeting, animated grid + glow backdrop, and a one-click "Resume" for your most recent investigation.
 - Premium stat cards and tool/action tiles with lift, glow-ring, and a sweeping sheen on hover; list rows highlight with an accent edge and animated chevrons.
