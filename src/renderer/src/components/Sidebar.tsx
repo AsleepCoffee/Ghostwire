@@ -19,6 +19,8 @@ const GROUPS: { heading?: string; items: NavItem[]; toggle?: 'courseNotes' }[] =
       { to: '/graph', label: 'Graph Workspace', icon: 'Workflow' },
       { to: '/tools', label: 'Tools & Resources', icon: 'Wrench' },
       { to: '/dork', label: 'Dork & Pivot', icon: 'Binoculars' },
+      { to: '/enumerate', label: 'Account Finder', icon: 'ScanSearch' },
+      { to: '/timeline', label: 'Case Timeline', icon: 'History' },
       { to: '/sock-puppets', label: 'Sock Puppets', icon: 'Drama' },
       { to: '/evidence', label: 'Evidence Board', icon: 'Images' },
       { to: '/browser', label: 'Browser', icon: 'Globe' },

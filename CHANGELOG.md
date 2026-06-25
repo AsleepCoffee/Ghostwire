@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.1.37
+- New Account Finder — check a username across every major platform at once with live found/not-found/unclear status; open hits or select them and drop them onto a link chart (linked to a username node).
+- New Case Timeline — chronological, day-grouped view of everything done on an investigation, filterable by action type.
+
 ## v0.1.36
 - Case report export — Investigation → Report → PDF / HTML / Markdown. PDF & HTML bundle a visual link-chart (SVG), evidence (images + source + SHA-256), notes, personas and the activity timeline into one shareable file.
 - Active investigation — star one to make it active (highlighted); browser captures and evidence file into it automatically.

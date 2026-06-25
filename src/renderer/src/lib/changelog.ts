@@ -7,6 +7,14 @@ export interface ChangelogEntry {
 /** In-app patch notes. Newest first. Keep in sync with CHANGELOG.md. */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.1.37',
+    date: '2026-06-25',
+    notes: [
+      'New Account Finder — check a username across every major platform at once, with live found / not-found / unclear status. Open hits in the browser, or select them and drop them onto a link chart (linked to a username node) in one click.',
+      'New Case Timeline — a chronological, day-grouped view of everything done on an investigation (captures, transforms, reports…), filterable by action type.'
+    ]
+  },
+  {
     version: '0.1.36',
     date: '2026-06-25',
     notes: [
