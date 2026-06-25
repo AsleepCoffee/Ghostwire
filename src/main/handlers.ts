@@ -704,8 +704,8 @@ export function registerHandlers(): void {
 
   // ===== Mail (mail.tm disposable mailboxes) =====
   ipcMain.handle('mail:create', (_e, localPart?: string) => createMailbox(localPart))
-  ipcMain.handle('mail:messages', (_e, token: string) => listMessages(token))
-  ipcMain.handle('mail:message', (_e, token: string, id: string) => getMessage(token, id))
+  ipcMain.handle('mail:messages', (_e, token: string, base?: string) => listMessages(token, base))
+  ipcMain.handle('mail:message', (_e, token: string, id: string, base?: string) => getMessage(token, id, base))
 
   // ===== Settings =====
   ipcMain.handle('settings:get', () => getSettings())

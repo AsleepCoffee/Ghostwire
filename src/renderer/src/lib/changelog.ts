@@ -7,6 +7,15 @@ export interface ChangelogEntry {
 /** In-app patch notes. Newest first. Keep in sync with CHANGELOG.md. */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.1.18',
+    date: '2026-06-24',
+    notes: [
+      'Disposable persona mailboxes are far more reliable — GhostWire now falls back from mail.tm to mail.gw when one provider runs out of domains, so persona email creation rarely fails. (Read these right in the app from a persona’s Inbox.)',
+      'Clarified the two ways to receive mail: per-persona disposable inboxes (read natively in-app) vs. a catch-all domain that forwards everything to one account you read in the Mailbox tab.',
+      'Mailbox setup guide now recommends a dedicated receiving account (e.g. a throwaway Gmail) rather than your personal inbox, and explains the catch-all → webmail flow more clearly.'
+    ]
+  },
+  {
     version: '0.1.17',
     date: '2026-06-24',
     notes: [

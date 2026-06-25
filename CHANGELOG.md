@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.1.18
+- Disposable persona mailboxes are far more reliable — falls back from mail.tm to mail.gw when one provider runs out of domains, so persona email creation rarely fails. Read these right in the app from a persona's Inbox.
+- Clarified the two ways to receive mail: per-persona disposable inboxes (read natively in-app) vs. a catch-all domain forwarding to one account read in the Mailbox tab.
+- Mailbox setup guide now recommends a dedicated receiving account (e.g. a throwaway Gmail) instead of your personal inbox, and explains the catch-all → webmail flow more clearly.
+
 ## v0.1.17
 - Update prompt: "Skip for now" is temporary again — re-checking (or the next launch) re-prompts to install.
 - Fixed random-face avatars (old source stopped serving images) — now a real AI face with a fallback + clear error; plus Save-avatar-to-file for uploading to profiles.

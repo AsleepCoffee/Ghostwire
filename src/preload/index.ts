@@ -74,8 +74,8 @@ const api: OsintApi = {
   },
   mail: {
     create: (localPart) => ipcRenderer.invoke('mail:create', localPart),
-    messages: (token) => ipcRenderer.invoke('mail:messages', token),
-    message: (token, id) => ipcRenderer.invoke('mail:message', token, id)
+    messages: (token, base) => ipcRenderer.invoke('mail:messages', token, base),
+    message: (token, id, base) => ipcRenderer.invoke('mail:message', token, id, base)
   },
   apiKeys: {
     test: (id, key) => ipcRenderer.invoke('apikeys:test', id, key)

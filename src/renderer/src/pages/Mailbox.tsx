@@ -24,26 +24,46 @@ function webmailFor(email?: string): { label: string; url: string } {
 
 const STEPS: { title: string; body: string; links?: { label: string; url: string }[] }[] = [
   {
-    title: 'Get a domain',
-    body: 'Register a cheap domain (a few dollars/year). Cloudflare Registrar is at-cost; Namecheap/Porkbun also work.',
+    title: 'Register a domain',
+    body: 'Buy any cheap domain (often a few dollars/year) — this becomes the @part of every persona email (e.g. empire.coffee). Cloudflare Registrar is at-cost; Namecheap and Porkbun are also fine.',
     links: [
       { label: 'Cloudflare Registrar', url: 'https://www.cloudflare.com/products/registrar/' },
-      { label: 'Namecheap', url: 'https://www.namecheap.com/domains/' }
+      { label: 'Namecheap', url: 'https://www.namecheap.com/domains/' },
+      { label: 'Porkbun', url: 'https://porkbun.com/' }
     ]
   },
   {
     title: 'Add the domain to Cloudflare (free)',
-    body: 'Create a free Cloudflare account and add your domain (point its nameservers to Cloudflare if you registered elsewhere).',
+    body: 'Create a free Cloudflare account, click "Add a domain", and enter your domain. If you registered it elsewhere, Cloudflare shows two nameservers — set those at your registrar and wait until the domain shows "Active" (minutes to a few hours). If you bought it through Cloudflare it is already active.',
     links: [{ label: 'Cloudflare dashboard', url: 'https://dash.cloudflare.com/' }]
   },
   {
-    title: 'Enable Email Routing → catch-all',
-    body: 'In Cloudflare → Email → Email Routing, enable it, then add a catch-all rule that forwards "*@yourdomain" to your personal inbox (Gmail, Proton, etc.). Verify the destination address.',
-    links: [{ label: 'Email Routing guide', url: 'https://developers.cloudflare.com/email-routing/get-started/enable-email-routing/' }]
+    title: 'Enable Email Routing',
+    body: 'In Cloudflare pick your domain → left sidebar → Email → Email Routing → Get started / Enable. Cloudflare automatically adds the required MX and SPF (TXT) DNS records for you. When the page shows Status: Enabled and DNS records: Locked, this part is done.',
+    links: [{ label: 'Email Routing — get started', url: 'https://developers.cloudflare.com/email-routing/get-started/enable-email-routing/' }]
+  },
+  {
+    title: 'Create a dedicated receiving account',
+    body: 'Make a brand-new free email account just for sock-puppet mail — a throwaway Gmail (e.g. yourcrew.osint@gmail.com) works perfectly. Do NOT use your personal inbox: this account is what GhostWire signs into and shows you in the Mailbox tab, so it should hold nothing but persona mail.',
+    links: [{ label: 'Create a Gmail', url: 'https://accounts.google.com/signup' }]
+  },
+  {
+    title: 'Verify it as your Cloudflare destination',
+    body: 'Email Routing → "Destination Addresses" tab → "Add destination address" → enter that dedicated account (e.g. yourcrew.osint@gmail.com). Cloudflare emails it a confirmation link — open it and click Verify. The address must show "Verified" before it can receive anything.',
+    links: [{ label: 'Destination addresses docs', url: 'https://developers.cloudflare.com/email-routing/setup/email-routing-addresses/' }]
+  },
+  {
+    title: 'Turn on the catch-all rule',
+    body: 'Email Routing → "Routing rules" tab → scroll to "Catch-all address" → Edit → set Action to "Send to an email" and choose your verified destination → Save → make sure the catch-all toggle is Enabled. This forwards EVERY address at your domain (*@yourdomain) to your inbox. (You can ignore the "Email Workers / Destination Workers" tab — that is only for custom scripts and is not needed here.)',
+    links: [{ label: 'Routing rules docs', url: 'https://developers.cloudflare.com/email-routing/setup/email-routing-rules/' }]
+  },
+  {
+    title: 'Test it',
+    body: 'Send an email from any account to something-random@yourdomain. Within a few seconds it should arrive in your dedicated receiving account. If it does, routing works — every address at your domain now lands in that one inbox.'
   },
   {
     title: 'Tell GhostWire',
-    body: 'Enter your catch-all domain and personal inbox below (or in Settings → Persona email). Every persona can then use handle@yourdomain, and all of it lands in your inbox.'
+    body: 'Enter your catch-all domain and the dedicated receiving account below (or in Settings → Persona email). Personas can then use handle@yourdomain, and you read ALL of their mail from this Mailbox tab — GhostWire signs into that account’s webmail right here, so nothing ever touches your personal inbox.'
   }
 ]
 
@@ -75,7 +95,8 @@ export function Mailbox(): JSX.Element {
               <h1 className="text-xl font-bold text-slate-100">Personal mailbox — not set up</h1>
               <p className="text-sm text-slate-400 mt-1">
                 Set up a catch-all domain so every sock puppet can use a <code className="text-accent">handle@yourdomain</code>{' '}
-                alias that forwards to one inbox you control. Then log in to that inbox right here.
+                alias. All of it forwards to one <b className="text-slate-300">dedicated</b> account you control, and GhostWire
+                signs into that account right here — so every persona’s mail lands in one in-app inbox, never your personal one.
               </p>
             </div>
           </div>
@@ -112,8 +133,8 @@ export function Mailbox(): JSX.Element {
                 <input className="input" placeholder="yourdomain.com" value={domainInput} onChange={(e) => setDomainInput(e.target.value.trim().replace(/^@/, ''))} />
               </div>
               <div>
-                <label className="label">Personal inbox (forwards here)</label>
-                <input className="input" placeholder="you@gmail.com" value={emailInput} onChange={(e) => setEmailInput(e.target.value.trim())} />
+                <label className="label">Dedicated receiving account</label>
+                <input className="input" placeholder="yourcrew.osint@gmail.com" value={emailInput} onChange={(e) => setEmailInput(e.target.value.trim())} />
               </div>
             </div>
             <button

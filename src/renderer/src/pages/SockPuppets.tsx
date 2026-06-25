@@ -714,7 +714,7 @@ function MailboxInbox({ mailbox, onClose }: { mailbox: PersonaMailbox; onClose: 
     setLoading(true)
     setErr('')
     try {
-      setMsgs(await api.mail.messages(mailbox.token ?? ''))
+      setMsgs(await api.mail.messages(mailbox.token ?? '', mailbox.base))
     } catch (e) {
       setErr(String((e as Error)?.message ?? e))
     } finally {
@@ -743,7 +743,7 @@ function MailboxInbox({ mailbox, onClose }: { mailbox: PersonaMailbox; onClose: 
           {msgs.map((m) => (
             <button
               key={m.id}
-              onClick={async () => setSel(await api.mail.message(mailbox.token ?? '', m.id))}
+              onClick={async () => setSel(await api.mail.message(mailbox.token ?? '', m.id, mailbox.base))}
               className={`w-full text-left px-3 py-2 hover:bg-ink-800 ${sel?.id === m.id ? 'bg-ink-800' : ''}`}
             >
               <div className="text-sm font-medium text-slate-200 truncate">{m.subject}</div>

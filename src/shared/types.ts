@@ -52,8 +52,10 @@ export interface PersonaMailbox {
   provider: 'mailtm' | 'catchall'
   address: string
   password: string
-  /** mail.tm auth token (disposable provider only). */
+  /** auth token (disposable provider only). */
   token?: string
+  /** API base the disposable mailbox lives on (mail.tm or mail.gw). */
+  base?: string
   createdAt: number
 }
 
@@ -312,8 +314,8 @@ export interface OsintApi {
   }
   mail: {
     create(localPart?: string): Promise<PersonaMailbox>
-    messages(token: string): Promise<MailMessage[]>
-    message(token: string, id: string): Promise<MailMessageFull>
+    messages(token: string, base?: string): Promise<MailMessage[]>
+    message(token: string, id: string, base?: string): Promise<MailMessageFull>
   }
   apiKeys: {
     test(
