@@ -63,7 +63,7 @@ export const SUBJECT_LABELS: Record<PivotSubject, string> = {
 
 /** Platforms whose profile pages map directly to a username. */
 export const USERNAME_SITES: { label: string; url: (u: string) => string }[] = [
-  { label: 'X / Twitter', url: (u) => `https://twitter.com/${u}` },
+  { label: 'X / Twitter', url: (u) => `https://x.com/${u}` },
   { label: 'Instagram', url: (u) => `https://www.instagram.com/${u}/` },
   { label: 'GitHub', url: (u) => `https://github.com/${u}` },
   { label: 'Reddit', url: (u) => `https://www.reddit.com/user/${u}` },

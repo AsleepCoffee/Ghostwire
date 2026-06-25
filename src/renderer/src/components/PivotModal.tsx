@@ -73,6 +73,7 @@ export function PivotModal({
 
   const openExternally = (): void => {
     selectedUrls().forEach((u) => api.shell.openExternal(u))
+    onClose()
   }
 
   return (
@@ -161,11 +162,21 @@ export function PivotModal({
             <Crosshair size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
           </div>
           <div className="ml-auto flex gap-2">
-            <button className="btn-ghost border border-ink-600" onClick={openExternally} disabled={selected.size === 0}>
-              <ExternalLink size={15} /> External
+            <button
+              className="btn-ghost border border-ink-600"
+              onClick={openSelected}
+              disabled={selected.size === 0}
+              title="Open inside GhostWire under the chosen session (some sites block embedding)"
+            >
+              <LayoutGrid size={15} /> In-app tabs
             </button>
-            <button className="btn-primary" onClick={openSelected} disabled={selected.size === 0}>
-              <LayoutGrid size={15} /> Open {selected.size} in tabs
+            <button
+              className="btn-primary"
+              onClick={openExternally}
+              disabled={selected.size === 0}
+              title="Open in your system browser — most reliable for research lookups"
+            >
+              <ExternalLink size={15} /> Open {selected.size} in browser
             </button>
           </div>
         </div>

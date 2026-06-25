@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.1.31
+- X/Twitter accounts open in your system browser instead of the in-app browser — X spawns popup windows during sign-up that can't survive in an embedded view. The persona stays pinned to the dock for copy-paste.
+- Pivots default to opening in your system browser — many lookup sites (LinkedIn, social profiles, Truecaller, PimEyes, …) block embedding and failed to load in app tabs. "In-app tabs" remains as a secondary option for persona-session lookups.
+
 ## v0.1.30
 - Autofill is disabled entirely on X/Twitter — its sign-up is too fragile to script, so GhostWire leaves it alone (use the Persona Dock to copy details). Stops the glitching when clicking Continue.
 - Marking a sock-puppet account as created/validated now saves immediately — the status sticks without hitting Save.

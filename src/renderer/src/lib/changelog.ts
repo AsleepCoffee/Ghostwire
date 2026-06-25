@@ -7,6 +7,14 @@ export interface ChangelogEntry {
 /** In-app patch notes. Newest first. Keep in sync with CHANGELOG.md. */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.1.31',
+    date: '2026-06-25',
+    notes: [
+      'X/Twitter accounts now open in your system browser instead of the in-app browser — X spawns popup windows during sign-up that can’t work inside an embedded view. The persona stays pinned to the dock so you can paste its details.',
+      'Pivots default to opening in your system browser now — many lookup sites (LinkedIn, social profiles, Truecaller, PimEyes, etc.) block embedding and were failing to load in app tabs. “In-app tabs” is still there as a secondary option when you want a persona session.'
+    ]
+  },
+  {
     version: '0.1.30',
     date: '2026-06-25',
     notes: [

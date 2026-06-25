@@ -139,14 +139,16 @@ export function SockPuppets(): JSX.Element {
   // Either way the persona's details (name, DOB, email, password…) are autofilled,
   // and we pin the persona to the side dock so its info stays handy on the Browser tab.
   const openAccount = (p: Persona, a: PersonaAccount): void => {
+    const url = a.status === 'created' ? loginUrlFor(a.platform, a.url) : signupUrlFor(a.platform, a.url)
     dock.pin(p)
-    openTabs([
-      {
-        url: a.status === 'created' ? loginUrlFor(a.platform, a.url) : signupUrlFor(a.platform, a.url),
-        personaId: p.id,
-        autofill: personaAutofill(p, a)
-      }
-    ])
+    // X/Twitter actively breaks inside an embedded browser (its sign-up spawns
+    // popup windows that can't survive in a webview). Open it in the system
+    // browser instead — the dock keeps the persona's details handy to paste in.
+    if (/(^|\.)(x|twitter)\.com/i.test(url)) {
+      api.shell.openExternal(url)
+      return
+    }
+    openTabs([{ url, personaId: p.id, autofill: personaAutofill(p, a) }])
   }
 
   const quickCreate = async (): Promise<void> => {
