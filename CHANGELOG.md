@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.1.20
+- Redesigned the dashboard into a proper command center — hero with a live ops clock, time-aware greeting, animated grid + glow backdrop, and a one-click "Resume" for your most recent investigation.
+- Premium stat cards and tool/action tiles with lift, glow-ring, and a sweeping sheen on hover; list rows highlight with an accent edge and animated chevrons.
+- New app-wide motion & polish layer (gradient text, glass surfaces, fade-up entrances) that follows the active theme and respects "reduce motion".
+
 ## v0.1.19
 - Persona autofill now fills sign-up forms, not just logins — opening a site for a persona auto-populates first/last name, email (+ confirm), username, password (+ confirm), birthday, gender, and phone. Tuned for Facebook and generic registration pages; the 🔑 button re-fills on demand.
 - Quick Create can target a country (US, UK, Canada, Australia, Ireland, Germany, France, Netherlands, or Any) — location, nationality, and phone are generated to match.

@@ -124,7 +124,10 @@ export function Panel({
     <section className={`card flex flex-col min-h-0 ${className}`}>
       {(title || action) && (
         <header className="flex items-center justify-between px-4 py-3 border-b border-ink-700 shrink-0">
-          <div className="font-semibold text-slate-100 text-sm">{title}</div>
+          <div className="flex items-center gap-2.5 font-semibold text-slate-100 text-sm">
+            <span className="h-4 w-1 rounded-full bg-gradient-to-b from-brand-glow to-accent-glow" />
+            {title}
+          </div>
           {action}
         </header>
       )}

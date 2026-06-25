@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   FolderSearch,
@@ -13,7 +13,10 @@ import {
   Crosshair,
   Workflow,
   Binoculars,
-  Globe
+  Globe,
+  ArrowUpRight,
+  Radar,
+  PlayCircle
 } from 'lucide-react'
 import { api, type Persona, type Note, type ToolLink, type Project } from '../lib/api'
 import { personaColor, PROJECT_TYPES } from '../lib/constants'
@@ -64,37 +67,44 @@ export function Dashboard(): JSX.Element {
     { label: 'Notes', value: notes.length, icon: NotebookPen, to: '/notes', color: '#f59e0b' }
   ]
   const featuredTools = tools.filter((t) => t.builtin).slice(0, 10)
+  const resume = useMemo(
+    () => [...projects].sort((a, b) => b.updatedAt - a.updatedAt)[0] ?? null,
+    [projects]
+  )
 
   return (
     <div className="h-full overflow-y-auto">
       <div className="p-6 space-y-5 max-w-[1500px] mx-auto">
-        {/* Hero + stats */}
-        <div className="card p-6 bg-gradient-to-br from-ink-850 to-ink-900 relative overflow-hidden">
-          <div className="absolute -right-16 -top-20 w-64 h-64 rounded-full bg-brand/10 blur-3xl pointer-events-none" />
-          <div className="relative flex flex-col lg:flex-row lg:items-center gap-6">
-            <div className="flex-1 min-w-0">
-              <p className="text-slate-400 text-sm">Welcome back,</p>
-              <h1 className="text-3xl font-bold text-slate-100 mt-1">Researcher 👋</h1>
-              <p className="text-slate-500 text-sm mt-1.5 max-w-md">
-                Your OSINT command center — investigations, personas, link analysis, tools and notes in one place.
-              </p>
-            </div>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 lg:w-[540px] shrink-0">
-              {stats.map((s) => (
-                <button
-                  key={s.label}
-                  onClick={() => nav(s.to)}
-                  className="p-3 rounded-xl bg-ink-800/70 border border-ink-700 hover:border-ink-500 transition-colors text-left"
+        {/* Hero */}
+        <Hero activeInvestigations={projects.length} personaCount={personas.length} resume={resume} />
+
+        {/* Stats strip */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          {stats.map((s, i) => (
+            <button
+              key={s.label}
+              onClick={() => nav(s.to)}
+              style={{ animationDelay: `${i * 60}ms` }}
+              className="group card-interactive animate-fade-up p-4 text-left overflow-hidden"
+            >
+              <span className="sheen" />
+              <span
+                className="absolute left-0 top-0 h-full w-1 rounded-l-xl transition-all duration-200 group-hover:w-1.5"
+                style={{ background: s.color }}
+              />
+              <div className="flex items-start justify-between">
+                <div
+                  className="w-11 h-11 rounded-xl flex items-center justify-center ring-1 transition-transform duration-200 group-hover:scale-110"
+                  style={{ background: `${s.color}1f`, color: s.color, boxShadow: `inset 0 0 0 1px ${s.color}33` }}
                 >
-                  <div className="w-9 h-9 rounded-lg flex items-center justify-center mb-2" style={{ background: `${s.color}1f` }}>
-                    <s.icon size={18} style={{ color: s.color }} />
-                  </div>
-                  <div className="text-2xl font-bold text-slate-100 leading-none">{s.value}</div>
-                  <div className="text-xs text-slate-500 mt-1">{s.label}</div>
-                </button>
-              ))}
-            </div>
-          </div>
+                  <s.icon size={20} />
+                </div>
+                <ArrowUpRight size={16} className="text-slate-600 group-hover:text-slate-300 transition-colors" />
+              </div>
+              <div className="mt-3 text-3xl font-bold text-slate-100 leading-none tabular-nums">{s.value}</div>
+              <div className="text-xs text-slate-500 mt-1.5 uppercase tracking-wider font-medium">{s.label}</div>
+            </button>
+          ))}
         </div>
 
         {/* Quick start */}
@@ -122,9 +132,9 @@ export function Dashboard(): JSX.Element {
                     <button
                       key={pr.id}
                       onClick={() => nav(`/projects/${pr.id}`)}
-                      className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-ink-800 text-left"
+                      className="group w-full flex items-center gap-3 px-4 py-2.5 text-left border-l-2 border-transparent hover:border-brand/60 hover:bg-ink-800/80 transition-colors"
                     >
-                      <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ background: `${cfg.color}1f` }}>
+                      <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition-transform group-hover:scale-110" style={{ background: `${cfg.color}1f` }}>
                         <Icon name={cfg.icon} size={15} style={{ color: cfg.color }} />
                       </div>
                       <div className="min-w-0 flex-1">
@@ -135,7 +145,7 @@ export function Dashboard(): JSX.Element {
                         </div>
                       </div>
                       <StatusBadge status={pr.status} />
-                      <ChevronRight size={15} className="text-slate-600 shrink-0" />
+                      <ChevronRight size={15} className="text-slate-600 shrink-0 group-hover:text-slate-300 group-hover:translate-x-0.5 transition-all" />
                     </button>
                   )
                 })}
@@ -161,12 +171,12 @@ export function Dashboard(): JSX.Element {
                   <button
                     key={p.id}
                     onClick={() => openInBrowser(['https://duckduckgo.com/'], p.id)}
-                    className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-ink-800 text-left"
+                    className="group w-full flex items-center gap-3 px-4 py-2.5 text-left border-l-2 border-transparent hover:border-brand/60 hover:bg-ink-800/80 transition-colors"
                   >
                     {p.avatarPath ? (
-                      <img src={p.avatarPath} alt="" className="w-9 h-9 rounded-lg object-cover shrink-0" style={{ border: `1px solid ${personaColor(p.id)}55` }} />
+                      <img src={p.avatarPath} alt="" className="w-9 h-9 rounded-lg object-cover shrink-0 transition-transform group-hover:scale-110" style={{ border: `1px solid ${personaColor(p.id)}55` }} />
                     ) : (
-                      <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0" style={{ background: `${personaColor(p.id)}22`, border: `1px solid ${personaColor(p.id)}55` }}>
+                      <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0 transition-transform group-hover:scale-110" style={{ background: `${personaColor(p.id)}22`, border: `1px solid ${personaColor(p.id)}55` }}>
                         <Fingerprint size={17} style={{ color: personaColor(p.id) }} />
                       </div>
                     )}
@@ -196,8 +206,8 @@ export function Dashboard(): JSX.Element {
             ) : (
               <div className="divide-y divide-ink-800">
                 {notes.slice(0, 7).map((n) => (
-                  <button key={n.id} onClick={() => nav('/notes')} className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-ink-800 text-left">
-                    <div className="w-8 h-8 rounded-lg bg-ink-800 border border-ink-700 flex items-center justify-center shrink-0">
+                  <button key={n.id} onClick={() => nav('/notes')} className="group w-full flex items-center gap-3 px-4 py-2.5 text-left border-l-2 border-transparent hover:border-brand/60 hover:bg-ink-800/80 transition-colors">
+                    <div className="w-8 h-8 rounded-lg bg-ink-800 border border-ink-700 flex items-center justify-center shrink-0 transition-transform group-hover:scale-110">
                       <NotebookPen size={15} className="text-slate-400" />
                     </div>
                     <div className="min-w-0 flex-1">
@@ -227,15 +237,17 @@ export function Dashboard(): JSX.Element {
               <button
                 key={t.id}
                 onClick={() => launchTool(t)}
-                className="flex items-center gap-3 p-3 rounded-xl bg-ink-800/60 border border-ink-700 hover:border-brand/40 hover:shadow-glow transition-all text-left"
+                className="group card-interactive flex items-center gap-3 p-3 text-left overflow-hidden"
               >
-                <div className="w-9 h-9 rounded-lg bg-ink-850 border border-ink-700 flex items-center justify-center shrink-0">
-                  <Icon name={CATEGORY_ICON[t.category] ?? 'Wrench'} size={17} className="text-brand-glow" />
+                <span className="sheen" />
+                <div className="w-9 h-9 rounded-lg bg-ink-850 border border-ink-700 flex items-center justify-center shrink-0 text-brand-glow transition-all duration-200 group-hover:scale-110 group-hover:border-brand/40">
+                  <Icon name={CATEGORY_ICON[t.category] ?? 'Wrench'} size={17} />
                 </div>
-                <div className="min-w-0">
-                  <div className="text-sm font-medium text-slate-200 truncate">{t.name}</div>
+                <div className="min-w-0 flex-1">
+                  <div className="text-sm font-medium text-slate-200 truncate group-hover:text-white transition-colors">{t.name}</div>
                   <div className="text-xs text-slate-500 truncate">{t.category}</div>
                 </div>
+                <ArrowUpRight size={14} className="text-slate-700 group-hover:text-slate-300 transition-colors shrink-0" />
               </button>
             ))}
           </div>
@@ -245,6 +257,117 @@ export function Dashboard(): JSX.Element {
         <QuickCapture onFull={() => nav('/notes')} />
       </div>
     </div>
+  )
+}
+
+function greetingFor(hour: number): string {
+  if (hour < 5) return 'Burning the midnight oil'
+  if (hour < 12) return 'Good morning'
+  if (hour < 18) return 'Good afternoon'
+  return 'Good evening'
+}
+
+const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+
+function Hero({
+  activeInvestigations,
+  personaCount,
+  resume
+}: {
+  activeInvestigations: number
+  personaCount: number
+  resume: Project | null
+}): JSX.Element {
+  const nav = useNavigate()
+  const [now, setNow] = useState(() => new Date())
+  useEffect(() => {
+    const t = setInterval(() => setNow(new Date()), 1000)
+    return () => clearInterval(t)
+  }, [])
+
+  const p = (n: number): string => String(n).padStart(2, '0')
+  const clock = `${p(now.getHours())}:${p(now.getMinutes())}:${p(now.getSeconds())}`
+  const dateLong = `${WEEKDAYS[now.getDay()]}, ${now.getDate()} ${MONTHS[now.getMonth()]} ${now.getFullYear()}`
+  const greeting = greetingFor(now.getHours())
+
+  return (
+    <section className="relative overflow-hidden rounded-2xl border border-ink-700 bg-gradient-to-br from-ink-850 via-ink-900 to-ink-950">
+      {/* decorative layers */}
+      <div className="absolute inset-0 hero-grid pointer-events-none" />
+      <div className="absolute -right-24 -top-28 w-80 h-80 rounded-full bg-brand/15 blur-3xl pointer-events-none float-orb" />
+      <div className="absolute right-40 top-10 w-56 h-56 rounded-full bg-accent/10 blur-3xl pointer-events-none float-orb-2" />
+      <div className="absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-brand/40 to-transparent" />
+
+      <div className="relative p-6 lg:p-8 flex flex-col lg:flex-row lg:items-center gap-8">
+        {/* Left: greeting + actions */}
+        <div className="flex-1 min-w-0 animate-fade-up">
+          <div className="flex items-center gap-2.5 text-[11px] font-mono uppercase tracking-[0.22em] text-slate-400">
+            <span className="live-dot" />
+            <span className="text-accent-glow">GhostWire</span>
+            <span className="text-ink-500">/</span>
+            <span>OSINT Workbench</span>
+          </div>
+
+          <h1 className="text-3xl lg:text-[2.6rem] font-bold tracking-tight mt-3 leading-tight">
+            <span className="text-slate-100">{greeting}, </span>
+            <span className="gradient-text">Operator.</span>
+          </h1>
+
+          <p className="text-slate-400 text-sm mt-2 max-w-xl">
+            {activeInvestigations > 0 ? (
+              <>
+                You have <b className="text-slate-200">{activeInvestigations}</b>{' '}
+                {activeInvestigations === 1 ? 'investigation' : 'investigations'} on the board and{' '}
+                <b className="text-slate-200">{personaCount}</b>{' '}
+                {personaCount === 1 ? 'persona' : 'personas'} standing by. Pick up where you left off.
+              </>
+            ) : (
+              <>Your unified workspace for investigations, personas, link analysis, tooling and notes. Start your first investigation below.</>
+            )}
+          </p>
+
+          <div className="flex flex-wrap items-center gap-2.5 mt-5">
+            {resume && (
+              <button
+                onClick={() => nav(`/projects/${resume.id}`)}
+                className="group inline-flex items-center gap-2 px-3.5 py-2 rounded-lg bg-accent/15 text-accent-glow border border-accent/30 hover:bg-accent/25 transition-colors text-sm font-medium"
+              >
+                <PlayCircle size={16} />
+                Resume “{resume.name}”
+                <ChevronRight size={15} className="group-hover:translate-x-0.5 transition-transform" />
+              </button>
+            )}
+            <button
+              onClick={() => nav('/projects')}
+              className="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg bg-ink-800/80 text-slate-200 border border-ink-600 hover:border-brand/50 hover:bg-ink-800 transition-colors text-sm font-medium"
+            >
+              <Plus size={16} /> New investigation
+            </button>
+            <button
+              onClick={() => nav('/graph')}
+              className="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg bg-ink-800/80 text-slate-200 border border-ink-600 hover:border-brand/50 hover:bg-ink-800 transition-colors text-sm font-medium"
+            >
+              <Workflow size={16} /> Link chart
+            </button>
+          </div>
+        </div>
+
+        {/* Right: live ops clock */}
+        <div className="glass rounded-2xl px-6 py-5 shrink-0 w-full lg:w-[280px] animate-fade-up" style={{ animationDelay: '120ms' }}>
+          <div className="flex items-center justify-between text-[10px] font-mono uppercase tracking-[0.2em] text-slate-500">
+            <span className="flex items-center gap-1.5">
+              <Radar size={12} className="text-accent-glow" /> Local time
+            </span>
+            <span className="text-ok flex items-center gap-1">
+              <span className="live-dot !bg-ok" /> Live
+            </span>
+          </div>
+          <div className="mt-3 text-4xl font-bold text-slate-100 tabular-nums tracking-tight">{clock}</div>
+          <div className="mt-1.5 text-sm text-slate-400">{dateLong}</div>
+        </div>
+      </div>
+    </section>
   )
 }
 
@@ -312,10 +435,13 @@ function QuickStart(): JSX.Element {
             <button
               key={a.label}
               onClick={a.onClick}
-              className="flex flex-col items-start gap-2 p-3 rounded-xl bg-ink-800/60 border border-ink-700 hover:border-brand/40 hover:shadow-glow transition-all text-left"
+              className="group card-interactive flex flex-col items-start gap-2.5 p-3.5 text-left overflow-hidden"
             >
-              <a.icon size={20} className="text-brand-glow" />
-              <span className="text-sm font-medium text-slate-200">{a.label}</span>
+              <span className="sheen" />
+              <span className="w-9 h-9 rounded-lg bg-ink-850 border border-ink-700 flex items-center justify-center text-brand-glow transition-all duration-200 group-hover:scale-110 group-hover:border-brand/40">
+                <a.icon size={18} />
+              </span>
+              <span className="text-sm font-medium text-slate-200 group-hover:text-white transition-colors">{a.label}</span>
             </button>
           ))}
         </div>

@@ -7,6 +7,15 @@ export interface ChangelogEntry {
 /** In-app patch notes. Newest first. Keep in sync with CHANGELOG.md. */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.1.20',
+    date: '2026-06-25',
+    notes: [
+      'Redesigned the dashboard into a proper command center — a hero with a live ops clock, time-aware greeting, animated grid + glow backdrop, and a one-click “Resume” for your most recent investigation.',
+      'Premium stat cards and tool/action tiles with lift, glow-ring, and a sweeping sheen on hover; list rows now highlight with an accent edge and animated chevrons.',
+      'New app-wide motion & polish layer (gradient text, glass surfaces, fade-up entrances) that follows your active theme and respects “reduce motion”.'
+    ]
+  },
+  {
     version: '0.1.19',
     date: '2026-06-25',
     notes: [
