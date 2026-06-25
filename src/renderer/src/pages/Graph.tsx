@@ -27,7 +27,7 @@ import { ENTITY_TYPES } from '../lib/constants'
 import { Icon, EmptyState, Modal } from '../components/ui'
 import { PivotModal } from '../components/PivotModal'
 import { subjectForEntity, type PivotSubject } from '../lib/pivot'
-import { transformsFor, type Transform } from '../lib/transforms'
+import { transformsFor, type Transform, type TransformOutput } from '../lib/transforms'
 import { useOpenInBrowser } from '../lib/browserBus'
 import { useSettings } from '../lib/settings'
 import { useConfirm } from '../lib/confirm'
@@ -236,6 +236,67 @@ function GraphInner(): JSX.Element {
     setSelected(null)
   }
 
+  // Snapshot of what's on the board, so a batch of transforms dedupes correctly
+  // even before React state catches up between awaits.
+  const buildDedupe = (): { existing: Map<string, string>; edgeKeys: Set<string>; count: number } => {
+    const existing = new Map<string, string>() // type:label -> nodeId
+    for (const n of nodes) {
+      const e = (n.data as { entity: EntityNode }).entity
+      existing.set(`${e.type}:${e.label.trim().toLowerCase()}`, n.id)
+    }
+    const edgeKeys = new Set(edges.map((e) => `${e.source}->${e.target}`))
+    return { existing, edgeKeys, count: nodes.length }
+  }
+
+  // Apply one transform's output to the graph, mutating the shared dedupe maps.
+  const applyOutput = async (
+    entity: EntityNode,
+    t: Transform,
+    out: TransformOutput,
+    existing: Map<string, string>,
+    edgeKeys: Set<string>,
+    spread: { i: number }
+  ): Promise<number> => {
+    const fresh = out.entities.filter((ne) => ne.label.trim())
+    let added = 0
+    for (const ne of fresh) {
+      const key = `${ne.type}:${ne.label.trim().toLowerCase()}`
+      let targetId = existing.get(key)
+      if (!targetId) {
+        const saved = await api.boards.saveNode({
+          boardId,
+          type: ne.type,
+          label: ne.label.trim(),
+          props: ne.props ?? {},
+          x: entity.x + 260 + Math.floor(spread.i / 12) * 220,
+          y: entity.y + ((spread.i % 12) - 5.5) * 80
+        })
+        setNodes((nds) => [
+          ...nds,
+          { id: saved.id, type: 'entity', position: { x: saved.x, y: saved.y }, data: { entity: saved } }
+        ])
+        existing.set(key, saved.id)
+        targetId = saved.id
+        added++
+        spread.i++
+      }
+      if (targetId !== entity.id && !edgeKeys.has(`${entity.id}->${targetId}`)) {
+        const edge = await api.boards.saveEdge({ boardId, source: entity.id, target: targetId, label: t.label })
+        edgeKeys.add(`${entity.id}->${targetId}`)
+        setEdges((eds) =>
+          addEdge({ id: edge.id, source: entity.id, target: targetId!, animated: true, style: { stroke: '#3a4456' } }, eds)
+        )
+      }
+    }
+    if (out.updateSource && Object.keys(out.updateSource).length) {
+      const updated = { ...entity, props: { ...(entity.props ?? {}), ...out.updateSource } }
+      setNodes((nds) => nds.map((n) => (n.id === entity.id ? { ...n, data: { entity: updated } } : n)))
+      if (selected?.id === entity.id) setSelected(updated)
+      api.boards.saveNode(updated)
+    }
+    return added
+  }
+
   const runTransform = async (entity: EntityNode, t: Transform): Promise<void> => {
     if (t.needsKey && !(settings.apiKeys ?? {})[t.needsKey]) {
       flash(`Add your ${t.needsKey} API key in Settings to use this transform.`)
@@ -244,60 +305,47 @@ function GraphInner(): JSX.Element {
     setBusyTransform(t.id)
     try {
       const out = await t.run(entity.label, entity.props ?? {}, { apiKeys: settings.apiKeys ?? {} })
-
-      // Dedupe against existing nodes/edges so repeat transforms don't pile up.
-      const existing = new Map<string, string>() // type:label -> nodeId
-      for (const n of nodes) {
-        const e = (n.data as { entity: EntityNode }).entity
-        existing.set(`${e.type}:${e.label.trim().toLowerCase()}`, n.id)
-      }
-      const edgeKeys = new Set(edges.map((e) => `${e.source}->${e.target}`))
-
-      const fresh = out.entities.filter((ne) => ne.label.trim())
-      let added = 0
-      let i = 0
-      for (const ne of fresh) {
-        const key = `${ne.type}:${ne.label.trim().toLowerCase()}`
-        let targetId = existing.get(key)
-        if (!targetId) {
-          const saved = await api.boards.saveNode({
-            boardId,
-            type: ne.type,
-            label: ne.label.trim(),
-            props: ne.props ?? {},
-            x: entity.x + 260,
-            y: entity.y + (i - (fresh.length - 1) / 2) * 80
-          })
-          setNodes((nds) => [
-            ...nds,
-            { id: saved.id, type: 'entity', position: { x: saved.x, y: saved.y }, data: { entity: saved } }
-          ])
-          existing.set(key, saved.id)
-          targetId = saved.id
-          added++
-          i++
-        }
-        if (targetId !== entity.id && !edgeKeys.has(`${entity.id}->${targetId}`)) {
-          const edge = await api.boards.saveEdge({ boardId, source: entity.id, target: targetId, label: t.label })
-          edgeKeys.add(`${entity.id}->${targetId}`)
-          setEdges((eds) =>
-            addEdge({ id: edge.id, source: entity.id, target: targetId!, animated: true, style: { stroke: '#3a4456' } }, eds)
-          )
-        }
-      }
-      if (out.updateSource && Object.keys(out.updateSource).length) {
-        const updated = { ...entity, props: { ...(entity.props ?? {}), ...out.updateSource } }
-        setNodes((nds) => nds.map((n) => (n.id === entity.id ? { ...n, data: { entity: updated } } : n)))
-        if (selected?.id === entity.id) setSelected(updated)
-        api.boards.saveNode(updated)
-      }
-      const dupes = fresh.length - added
+      const { existing, edgeKeys } = buildDedupe()
+      const added = await applyOutput(entity, t, out, existing, edgeKeys, { i: 0 })
+      const dupes = out.entities.filter((e) => e.label.trim()).length - added
       if (board?.projectId) {
         api.activity.log(board.projectId, 'transform', `${t.label} on “${entity.label}”${added > 0 ? ` → +${added} node(s)` : ''}`)
       }
       flash(out.note ? `${out.note}${dupes > 0 ? ` (${dupes} already on board)` : ''}` : `${t.label} done`)
     } catch (e) {
       flash(`Transform failed: ${String((e as Error)?.message ?? e)}`)
+    } finally {
+      setBusyTransform(null)
+    }
+  }
+
+  // Maltego-style "run all": runs every applicable transform on a node and pulls
+  // all results into the graph at once. Skips ones whose API key isn't set.
+  const runAllTransforms = async (entity: EntityNode): Promise<void> => {
+    const keys = settings.apiKeys ?? {}
+    const ts = transformsFor(entity.type).filter((t) => !t.needsKey || keys[t.needsKey])
+    if (ts.length === 0) {
+      flash('No transforms available for this entity (add API keys to unlock more).')
+      return
+    }
+    setBusyTransform('__all__')
+    const { existing, edgeKeys } = buildDedupe()
+    const spread = { i: 0 }
+    let total = 0
+    const fails: string[] = []
+    try {
+      for (const t of ts) {
+        try {
+          const out = await t.run(entity.label, entity.props ?? {}, { apiKeys: keys })
+          total += await applyOutput(entity, t, out, existing, edgeKeys, spread)
+        } catch (e) {
+          fails.push(`${t.label}: ${String((e as Error)?.message ?? e)}`)
+        }
+      }
+      if (board?.projectId) {
+        api.activity.log(board.projectId, 'transform', `Ran ${ts.length} transforms on “${entity.label}” → +${total} node(s)`)
+      }
+      flash(`Ran ${ts.length} transform${ts.length === 1 ? '' : 's'} → +${total} node(s)${fails.length ? ` · ${fails.length} failed` : ''}`)
     } finally {
       setBusyTransform(null)
     }
@@ -501,6 +549,7 @@ function GraphInner(): JSX.Element {
             busyTransform={busyTransform}
             apiKeys={settings.apiKeys ?? {}}
             onTransform={(t) => runTransform(selected, t)}
+            onRunAll={() => runAllTransforms(selected)}
             onAddToNotes={() => addEntityToNotes(selected)}
           />
         )}
@@ -553,8 +602,20 @@ function GraphInner(): JSX.Element {
             </button>
             <div className="border-t border-ink-700 my-1" />
             <div className="px-3 py-1 text-[10px] uppercase tracking-widest text-slate-600">Transforms</div>
-            {transformsFor(menu.entity.type).length === 0 && (
+            {transformsFor(menu.entity.type).length === 0 ? (
               <div className="px-3 py-1.5 text-xs text-slate-500">None for this type — use Pivot</div>
+            ) : (
+              <button
+                className="w-full flex items-center gap-2 px-3 py-1.5 text-sm text-accent-glow hover:bg-ink-700 disabled:opacity-40"
+                disabled={busyTransform === '__all__'}
+                onClick={() => {
+                  runAllTransforms(menu.entity)
+                  setMenu(null)
+                }}
+              >
+                {busyTransform === '__all__' ? <Loader2 size={14} className="animate-spin shrink-0" /> : <Sparkles size={14} className="shrink-0" />}
+                <span className="flex-1 text-left font-medium">Run all transforms</span>
+              </button>
             )}
             {transformsFor(menu.entity.type).map((t) => {
               const locked = !!t.needsKey && !(settings.apiKeys ?? {})[t.needsKey]
@@ -598,6 +659,7 @@ function EntityInspector({
   busyTransform,
   apiKeys,
   onTransform,
+  onRunAll,
   onAddToNotes
 }: {
   entity: EntityNode
@@ -609,6 +671,7 @@ function EntityInspector({
   busyTransform: string | null
   apiKeys: Record<string, string>
   onTransform: (t: Transform) => void
+  onRunAll: () => void
   onAddToNotes: () => void
 }): JSX.Element {
   const [propKey, setPropKey] = useState('')
@@ -675,6 +738,17 @@ function EntityInspector({
             <p className="text-[11px] text-slate-500 mb-2">
               No transforms for this type yet — use <b>Pivot</b> to search the web.
             </p>
+          )}
+          {transforms.length > 0 && (
+            <button
+              className="btn-primary w-full justify-center mb-2"
+              disabled={!!busyTransform}
+              onClick={onRunAll}
+              title="Run every available transform and pull all results into the graph"
+            >
+              {busyTransform === '__all__' ? <Loader2 size={15} className="animate-spin" /> : <Sparkles size={15} />}
+              Run all transforms
+            </button>
           )}
           <div className="space-y-1.5">
             {transforms.map((t) => {

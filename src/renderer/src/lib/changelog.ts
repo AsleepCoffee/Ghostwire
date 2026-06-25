@@ -7,6 +7,14 @@ export interface ChangelogEntry {
 /** In-app patch notes. Newest first. Keep in sync with CHANGELOG.md. */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.1.32',
+    date: '2026-06-25',
+    notes: [
+      'Maltego-style “Run all transforms” — right-click a graph node (or use the entity panel) to fire every available transform at once and pull all the results in as connected nodes. It skips transforms whose API key isn’t set, dedupes across the whole batch, and reports how many nodes it added.',
+      'Reminder: transforms (the automated lookups that add data to the graph) live on the link chart — select or right-click an entity. “Pivot” opens web searches; “transforms” bring data back in.'
+    ]
+  },
+  {
     version: '0.1.31',
     date: '2026-06-25',
     notes: [

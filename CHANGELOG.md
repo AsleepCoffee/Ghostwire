@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.1.32
+- Maltego-style "Run all transforms" — right-click a graph node (or use the entity panel) to fire every available transform at once and pull all results in as connected nodes. Skips transforms missing an API key, dedupes across the whole batch, reports nodes added.
+- Transform engine reviewed end-to-end (network layer, dedupe, edge/prop writes, activity log).
+
 ## v0.1.31
 - X/Twitter accounts open in your system browser instead of the in-app browser — X spawns popup windows during sign-up that can't survive in an embedded view. The persona stays pinned to the dock for copy-paste.
 - Pivots default to opening in your system browser — many lookup sites (LinkedIn, social profiles, Truecaller, PimEyes, …) block embedding and failed to load in app tabs. "In-app tabs" remains as a secondary option for persona-session lookups.
