@@ -139,6 +139,8 @@ export function generatePivots(subject: PivotSubject, raw: string): PivotQuery[]
       out.push({ group: 'Search', label: `Google "${v}"`, url: g(exact) })
       out.push({ group: 'Social', label: 'LinkedIn', url: g(`${exact} site:linkedin.com`) })
       out.push({ group: 'Social', label: 'Facebook', url: `https://www.facebook.com/search/top?q=${enc(v)}` })
+      out.push({ group: 'Social', label: 'SowSearch (FB graph search)', url: 'https://sowsearch.info/' })
+      out.push({ group: 'Social', label: 'IntelX — Facebook tools', url: 'https://intelx.io/tools?tab=facebook' })
       out.push({ group: 'Search', label: 'Google — profiles', url: g(`${exact} (profile OR bio OR about)`) })
       out.push({ group: 'Search', label: 'Google — docs', url: g(`${exact} (filetype:pdf OR filetype:doc OR filetype:pptx)`) })
       out.push({ group: 'Search', label: 'Google — contact', url: g(`${exact} (email OR contact OR phone)`) })

@@ -1,5 +1,8 @@
 # Changelog
 
+## v0.1.70
+- Facebook search helpers in the person pivot — SowSearch (FB graph-search URL builder) and IntelX's Facebook tools tab.
+
 ## v0.1.69
 - View/search X/Twitter without an account — username pivot adds a Nitter front-end (xcancel: profile + the handle's tweets), Sotwe, and a Google site:x.com dork.
 

@@ -7,6 +7,13 @@ export interface ChangelogEntry {
 /** In-app patch notes. Newest first. Keep in sync with CHANGELOG.md. */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.1.70',
+    date: '2026-06-26',
+    notes: [
+      'Facebook search helpers added to the person pivot — SowSearch (Facebook graph-search URL builder) and IntelX’s Facebook tools, for finding people on Facebook without its native search.'
+    ]
+  },
+  {
     version: '0.1.69',
     date: '2026-06-26',
     notes: [
