@@ -238,6 +238,10 @@ export interface AppSettings {
   hardenFingerprint?: boolean
   /** App-wide VPN exit: route the whole app (and personas without their own exit) through this config. */
   globalVpnConfigId?: string
+  /** Hunchly-style selectors: terms highlighted in the in-app browser. */
+  selectors?: string[]
+  /** Highlight selectors on pages (default on when selectors exist). */
+  highlightSelectors?: boolean
 }
 
 export interface BackupInfo {

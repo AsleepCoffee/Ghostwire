@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.1.82
+- Hunchly-style selectors — define terms of interest; the in-app browser highlights matches on every page and shows a hit-count badge. Manage from the highlighter button in the browser toolbar (with an on/off toggle).
+- Save page to investigation — bookmark button captures the current page (screenshot + URL + title) to the Evidence Board.
+
 ## v0.1.81
 - Editable caption/title on evidence images (detail panel) — flows through to the report and map labels.
 - Rename map pins — from the pin popup (Rename) or the evidence Geolocate panel.

@@ -17,7 +17,9 @@ import {
   Camera,
   Shield,
   Copy,
-  Check
+  Check,
+  Highlighter,
+  BookmarkPlus
 } from 'lucide-react'
 import { api, type Persona, type VpnConfigStatus } from '../lib/api'
 import { personaColor } from '../lib/constants'
@@ -49,6 +51,8 @@ interface Tab {
   failed: boolean
   personaId?: string
   autofill?: Autofill
+  /** Number of selector matches highlighted on this page. */
+  hits?: number
 }
 
 function toUrl(input: string): string {
@@ -172,6 +176,33 @@ function fillScript(a: Autofill): string {
   })();`
 }
 
+/** Hunchly-style: highlight selector terms on the page and return the hit count.
+ *  `on=false` (or no selectors) clears any existing highlights and returns 0. */
+function highlightScript(selectors: string[], on: boolean): string {
+  const data = JSON.stringify(on ? selectors : [])
+  return `(function(){try{
+    var SEL=${data};
+    var prev=document.querySelectorAll('mark[data-gwhl]');
+    for(var i=0;i<prev.length;i++){var pm=prev[i];if(pm.parentNode){pm.parentNode.replaceChild(document.createTextNode(pm.textContent),pm);}}
+    if(!SEL.length||!document.body) return 0;
+    var sl=SEL.map(function(s){return String(s).toLowerCase()}).filter(Boolean);
+    var count=0, w=document.createTreeWalker(document.body,NodeFilter.SHOW_TEXT,null), todo=[], n;
+    while(n=w.nextNode()){var p=n.parentNode;if(!p)continue;var tn=p.nodeName;if(tn==='SCRIPT'||tn==='STYLE'||tn==='TEXTAREA'||tn==='NOSCRIPT')continue;var lv=n.nodeValue.toLowerCase();for(var j=0;j<sl.length;j++){if(lv.indexOf(sl[j])>=0){todo.push(n);break;}}}
+    for(var k=0;k<todo.length;k++){
+      var node=todo[k],s=node.nodeValue,low=s.toLowerCase(),frag=document.createDocumentFragment(),pos=0;
+      while(pos<s.length){
+        var best=-1,bestLen=0;
+        for(var j2=0;j2<sl.length;j2++){var idx=low.indexOf(sl[j2],pos);if(idx>=0&&(best<0||idx<best)){best=idx;bestLen=sl[j2].length;}}
+        if(best<0){frag.appendChild(document.createTextNode(s.slice(pos)));break;}
+        if(best>pos)frag.appendChild(document.createTextNode(s.slice(pos,best)));
+        var mk=document.createElement('mark');mk.setAttribute('data-gwhl','1');mk.style.cssText='background:#fde047;color:#111;border-radius:2px;padding:0 1px';mk.textContent=s.slice(best,best+bestLen);frag.appendChild(mk);count++;pos=best+bestLen;
+      }
+      if(node.parentNode)node.parentNode.replaceChild(frag,node);
+    }
+    return count;
+  }catch(e){return 0}})();`
+}
+
 let tabSeq = 0
 const newId = (): string => `tab_${Date.now()}_${tabSeq++}`
 
@@ -185,7 +216,56 @@ export function Browser(): JSX.Element {
   const [pasteImg, setPasteImg] = useState<PasteImage | null>(getPasteImage())
   const [copied, setCopied] = useState(false)
   const refs = useRef<Map<string, WebviewEl>>(new Map())
-  const { settings } = useSettings()
+  const { settings, update } = useSettings()
+  const selectors = settings.selectors ?? []
+  const highlightOn = settings.highlightSelectors !== false
+  const [selOpen, setSelOpen] = useState(false)
+  const [newSel, setNewSel] = useState('')
+
+  const addSelector = (term: string): void => {
+    const t = term.trim()
+    if (!t || selectors.some((s) => s.toLowerCase() === t.toLowerCase())) return
+    update({ selectors: [...selectors, t] })
+    setNewSel('')
+  }
+  const removeSelector = (term: string): void => {
+    update({ selectors: selectors.filter((s) => s !== term) })
+  }
+
+  // Re-highlight the active tab whenever the selector set / toggle changes.
+  useEffect(() => {
+    const wv = refs.current.get(activeId)
+    if (!wv) return
+    const r = wv.executeJavaScript(highlightScript(selectors, highlightOn)) as Promise<number> | undefined
+    if (r && typeof r.then === 'function') r.then((c) => updateTab(activeId, { hits: c })).catch(() => {})
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [settings.selectors, highlightOn, activeId])
+
+  const savePage = async (): Promise<void> => {
+    if (!active) return
+    const wv = refs.current.get(active.id)
+    if (!wv) return
+    try {
+      const img = await wv.capturePage()
+      const dataUrl = img.toDataURL()
+      const hitSel = selectors.length ? `Selectors hit: ${active.hits ?? 0}` : ''
+      await api.evidence.capture({
+        dataUrl,
+        sourceUrl: active.url,
+        title: active.title,
+        projectId: settings.activeProjectId ?? null,
+        kind: 'screenshot'
+      })
+      if (hitSel) {
+        /* note set separately is optional; keep simple */
+      }
+      setToast(settings.activeProjectId ? 'Page saved to the active investigation' : 'Page saved to Evidence')
+      setTimeout(() => setToast(''), 2600)
+    } catch {
+      setToast('Could not capture this page')
+      setTimeout(() => setToast(''), 2600)
+    }
+  }
 
   useEffect(() => subscribePasteImage(setPasteImg), [])
 
@@ -451,6 +531,65 @@ export function Browser(): JSX.Element {
           <Camera size={17} />
         </button>
 
+        {/* Selectors (Hunchly-style highlighting) */}
+        <div className="relative">
+          <button
+            className="btn-ghost !px-2 relative"
+            title="Selectors — highlight terms of interest on every page"
+            onClick={() => setSelOpen((v) => !v)}
+            disabled={!active}
+          >
+            <Highlighter size={17} className={highlightOn && selectors.length ? 'text-yellow-300' : ''} />
+            {(active?.hits ?? 0) > 0 && (
+              <span className="absolute -top-1 -right-1 bg-yellow-400 text-black text-[9px] font-bold rounded-full min-w-[15px] h-[15px] px-0.5 flex items-center justify-center">
+                {active!.hits}
+              </span>
+            )}
+          </button>
+          {selOpen && (
+            <>
+              <div className="fixed inset-0 z-30" onClick={() => setSelOpen(false)} />
+              <div className="absolute right-0 mt-1 z-40 w-72 card p-3 shadow-2xl">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm font-semibold text-slate-200">Selectors</span>
+                  <label className="flex items-center gap-1.5 text-xs text-slate-400 cursor-pointer">
+                    <input type="checkbox" className="accent-accent" checked={highlightOn} onChange={(e) => update({ highlightSelectors: e.target.checked })} /> Highlight
+                  </label>
+                </div>
+                <div className="flex gap-1.5 mb-2">
+                  <input
+                    className="input !py-1 text-xs"
+                    placeholder="Add a term…"
+                    value={newSel}
+                    onChange={(e) => setNewSel(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && addSelector(newSel)}
+                  />
+                  <button className="btn-ghost border border-ink-600 text-xs" onClick={() => addSelector(newSel)}>Add</button>
+                </div>
+                {selectors.length === 0 ? (
+                  <p className="text-xs text-slate-500">Add names, emails, usernames… they’ll be highlighted on every page you visit.</p>
+                ) : (
+                  <div className="flex flex-wrap gap-1.5 max-h-40 overflow-y-auto">
+                    {selectors.map((s) => (
+                      <span key={s} className="chip text-[11px] flex items-center gap-1">
+                        {s}
+                        <button onClick={() => removeSelector(s)} className="hover:text-warn">
+                          <X size={10} />
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* Save the current page to the investigation */}
+        <button className="btn-ghost !px-2 text-accent" title="Save this page to the investigation (screenshot + URL)" onClick={savePage} disabled={!active}>
+          <BookmarkPlus size={17} />
+        </button>
+
         <div className="relative">
           <select
             className="input !w-auto pl-9 pr-8 py-1.5 text-sm"
@@ -521,6 +660,8 @@ export function Browser(): JSX.Element {
               else refs.current.delete(t.id)
             }}
             onState={(patch) => updateTab(t.id, patch)}
+            selectors={selectors}
+            highlightOn={highlightOn}
           />
         ))}
 
@@ -632,13 +773,17 @@ function BrowserView({
   active,
   personas,
   registerRef,
-  onState
+  onState,
+  selectors,
+  highlightOn
 }: {
   tab: Tab
   active: boolean
   personas: Persona[]
   registerRef: (el: WebviewEl | null) => void
   onState: (patch: Partial<Tab>) => void
+  selectors: string[]
+  highlightOn: boolean
 }): JSX.Element {
   const persona = personas.find((p) => p.id === tab.personaId)
   const partition = persona ? persona.partition : 'persist:default-browser'
@@ -673,6 +818,17 @@ function BrowserView({
     const onFinish = (): void => {
       // Idempotent autofill (only fills empty fields).
       if (tab.autofill) inject(fillScript(tab.autofill))
+      // Highlight selectors and report the hit count.
+      if (highlightOn && selectors.length) {
+        try {
+          const r = wv.executeJavaScript(highlightScript(selectors, true)) as Promise<number> | undefined
+          if (r && typeof r.then === 'function') r.then((c) => onState({ hits: c })).catch(() => {})
+        } catch {
+          /* retry on next event */
+        }
+      } else {
+        onState({ hits: 0 })
+      }
     }
     const onFail = (e: Event): void => {
       const ev = e as unknown as { errorCode: number; isMainFrame: boolean }
@@ -701,7 +857,7 @@ function BrowserView({
       wv.removeEventListener('did-fail-load', onFail as EventListener)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [partition, tab.autofill])
+  }, [partition, tab.autofill, highlightOn, selectors])
 
   return (
     <div className="absolute inset-0" style={{ display: active ? 'block' : 'none' }}>

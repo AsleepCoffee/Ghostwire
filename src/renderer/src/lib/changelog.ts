@@ -7,6 +7,14 @@ export interface ChangelogEntry {
 /** In-app patch notes. Newest first. Keep in sync with CHANGELOG.md. */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.1.82',
+    date: '2026-06-26',
+    notes: [
+      'Selectors & page-saving in the browser (Hunchly-style) — define terms of interest (names, emails, usernames…) and the in-app browser highlights every match on each page, with a hit-count badge so you instantly see if a page mentions them. Manage selectors from the highlighter button in the browser toolbar.',
+      'Save a page to the investigation — the new bookmark button captures the current page (screenshot + URL + title) straight to the Evidence Board for the active case.'
+    ]
+  },
+  {
     version: '0.1.81',
     date: '2026-06-26',
     notes: [
