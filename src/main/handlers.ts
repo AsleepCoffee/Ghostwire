@@ -1066,6 +1066,50 @@ export function registerHandlers(): void {
     }
   })
 
+  // Hunter.io domain search — given a company name or domain, return the people /
+  // email addresses Hunter knows about (name, role, department, confidence).
+  ipcMain.handle('intel:hunterDomain', async (_e, query: string, key: string) => {
+    if (!key) return { ok: false, error: 'Add a Hunter.io API key in Settings → API keys.' }
+    const q = String(query ?? '').trim()
+    if (!q) return { ok: false, error: 'Enter a company name or domain.' }
+    const isDomain = /^[^\s@]+\.[^\s@]+$/.test(q) && !q.includes(' ')
+    const param = isDomain ? `domain=${encodeURIComponent(q)}` : `company=${encodeURIComponent(q)}`
+    try {
+      const res = await net.fetch(
+        `https://api.hunter.io/v2/domain-search?${param}&limit=100&api_key=${encodeURIComponent(key)}`,
+        { headers: { Accept: 'application/json' } }
+      )
+      const j = (await res.json()) as {
+        data?: Record<string, unknown>
+        meta?: { results?: number }
+        errors?: { details?: string }[]
+      }
+      if (!res.ok) return { ok: false, error: j?.errors?.[0]?.details ?? `Hunter HTTP ${res.status}` }
+      const d = (j.data ?? {}) as Record<string, unknown>
+      const emails = ((d.emails as Record<string, unknown>[]) ?? []).map((e) => ({
+        email: String(e.value ?? ''),
+        firstName: (e.first_name as string) ?? '',
+        lastName: (e.last_name as string) ?? '',
+        position: (e.position as string) ?? '',
+        department: (e.department as string) ?? '',
+        seniority: (e.seniority as string) ?? '',
+        type: (e.type as string) ?? '',
+        confidence: typeof e.confidence === 'number' ? e.confidence : undefined,
+        linkedin: (e.linkedin as string) ?? ''
+      }))
+      return {
+        ok: true,
+        domain: (d.domain as string) ?? '',
+        organization: (d.organization as string) ?? '',
+        pattern: (d.pattern as string) ?? '',
+        total: j.meta?.results ?? emails.length,
+        emails
+      }
+    } catch (e) {
+      return { ok: false, error: String((e as Error)?.message ?? e) }
+    }
+  })
+
   // AI geolocation — ask an OpenAI vision model where an evidence image was taken.
   ipcMain.handle('intel:geolocate', async (_e, evidenceId: string): Promise<GeoResult> => {
     const key = getSettings().apiKeys?.openai

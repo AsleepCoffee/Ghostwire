@@ -273,6 +273,31 @@ export interface HibpBreach {
   classes: string
 }
 
+export interface HunterEmail {
+  email: string
+  firstName?: string
+  lastName?: string
+  position?: string
+  department?: string
+  seniority?: string
+  /** 'personal' | 'generic'. */
+  type?: string
+  /** 0–100 deliverability confidence. */
+  confidence?: number
+  linkedin?: string
+}
+
+export interface HunterResult {
+  ok: boolean
+  error?: string
+  domain?: string
+  organization?: string
+  /** The email-address pattern, e.g. "{first}.{last}". */
+  pattern?: string
+  total?: number
+  emails?: HunterEmail[]
+}
+
 export interface ExifResult {
   gps?: { lat: number; lng: number }
   make?: string
@@ -463,6 +488,8 @@ export interface OsintApi {
     hibp(email: string, key: string): Promise<{ ok: boolean; error?: string; breaches?: HibpBreach[] }>
     /** AI geolocation: ask a vision model where an evidence image was taken. */
     geolocate(evidenceId: string): Promise<GeoResult>
+    /** Hunter.io domain search — people/emails for a company name or domain. */
+    hunterDomain(query: string, key: string): Promise<HunterResult>
   }
   app: {
     version(): Promise<string>

@@ -1,5 +1,8 @@
 # Changelog
 
+## v0.1.61
+- Company lookup via Hunter.io (Email & Phone Intelligence → Company) — enter a company name or domain to get its people/emails (name, role, department, seniority, confidence, LinkedIn) and the org's email pattern. Copy/pivot any address or add the whole company to the link chart. Uses the Hunter.io API key from Settings.
+
 ## v0.1.60
 - New Proximity Search (Research) — find every place where two things sit within a chosen distance of each other (e.g. a Westin within 150 m of a Wendy's) across a country/state/city, via OpenStreetMap (Nominatim + Overpass). Results show distances, plot on a map, and offer Street View / Map / copy-coords per hit. Useful for narrowing a location from landmarks visible in a photo.
 

@@ -7,6 +7,13 @@ export interface ChangelogEntry {
 /** In-app patch notes. Newest first. Keep in sync with CHANGELOG.md. */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.1.61',
+    date: '2026-06-26',
+    notes: [
+      'Company lookup (Email & Phone Intelligence → Company) — enter a company name or domain and Hunter.io returns the people and email addresses it knows (name, role, department, seniority, confidence, LinkedIn), plus the org’s email pattern (e.g. {first}.{last}@domain). Copy any address, pivot on it, or add the whole company to the link chart. Uses your Hunter.io API key from Settings.'
+    ]
+  },
+  {
     version: '0.1.60',
     date: '2026-06-26',
     notes: [

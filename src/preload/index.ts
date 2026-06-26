@@ -105,7 +105,8 @@ const api: OsintApi = {
   intel: {
     gravatar: (email) => ipcRenderer.invoke('intel:gravatar', email),
     hibp: (email, key) => ipcRenderer.invoke('intel:hibp', email, key),
-    geolocate: (evidenceId) => ipcRenderer.invoke('intel:geolocate', evidenceId)
+    geolocate: (evidenceId) => ipcRenderer.invoke('intel:geolocate', evidenceId),
+    hunterDomain: (query, key) => ipcRenderer.invoke('intel:hunterDomain', query, key)
   },
   app: {
     version: () => ipcRenderer.invoke('app:version'),

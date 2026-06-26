@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { parsePhoneNumberFromString } from 'libphonenumber-js'
-import { Mail, Phone, Loader2, ShieldAlert, Check, X, Crosshair, Workflow, ExternalLink, UserSearch } from 'lucide-react'
-import { api, type GravatarResult, type HibpBreach } from '../lib/api'
+import { Mail, Phone, Loader2, ShieldAlert, Check, X, Crosshair, Workflow, ExternalLink, UserSearch, Building2, Copy } from 'lucide-react'
+import { api, type GravatarResult, type HibpBreach, type HunterResult } from '../lib/api'
 import { useSettings } from '../lib/settings'
 import { useOpenInBrowser } from '../lib/browserBus'
 import { PivotModal } from '../components/PivotModal'
@@ -30,11 +30,12 @@ interface PhoneReport {
 export function Intel(): JSX.Element {
   const { settings } = useSettings()
   const openInBrowser = useOpenInBrowser()
-  const [mode, setMode] = useState<'email' | 'phone'>('email')
+  const [mode, setMode] = useState<'email' | 'phone' | 'company'>('email')
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
   const [email, setEmail] = useState<EmailReport | null>(null)
   const [phone, setPhone] = useState<PhoneReport | null>(null)
+  const [company, setCompany] = useState<HunterResult | null>(null)
   const [pivot, setPivot] = useState<{ value: string; subject: 'email' | 'phone' } | null>(null)
   const [toast, setToast] = useState('')
 
@@ -84,6 +85,56 @@ export function Intel(): JSX.Element {
     })
   }
 
+  const analyzeCompany = async (): Promise<void> => {
+    const q = input.trim()
+    if (!q) return
+    if (!settings.apiKeys?.hunter) {
+      flash('Add a Hunter.io API key in Settings → API keys.')
+      return
+    }
+    setLoading(true)
+    setCompany(null)
+    try {
+      const r = await api.intel.hunterDomain(q, settings.apiKeys.hunter)
+      setCompany(r)
+      if (!r.ok && r.error) flash(r.error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const run = (): void => {
+    if (mode === 'email') analyzeEmail()
+    else if (mode === 'phone') analyzePhone()
+    else analyzeCompany()
+  }
+
+  const addCompanyToChart = async (): Promise<void> => {
+    if (!company?.emails?.length) return
+    const projectId = settings.activeProjectId ?? null
+    const boards = await api.boards.list()
+    let board = boards.find((b) => b.projectId === projectId) ?? boards.find((b) => !projectId && !b.projectId)
+    const orgLabel = company.organization || company.domain || 'Company'
+    if (!board) board = await api.boards.save({ name: `${orgLabel} — link chart`, projectId })
+    const anchor = await api.boards.saveNode({ boardId: board.id, type: 'organization', label: orgLabel, props: company.domain ? { url: `https://${company.domain}` } : {}, x: 0, y: 0 })
+    const people = company.emails.slice(0, 24)
+    let i = 0
+    for (const p of people) {
+      const label = [p.firstName, p.lastName].filter(Boolean).join(' ') || p.email
+      const node = await api.boards.saveNode({
+        boardId: board.id,
+        type: 'email',
+        label: p.email,
+        props: { note: [label, p.position].filter(Boolean).join(' — ') },
+        x: 300,
+        y: (i - (people.length - 1) / 2) * 70
+      })
+      await api.boards.saveEdge({ boardId: board.id, source: anchor.id, target: node.id, label: p.position || 'email' })
+      i++
+    }
+    flash('Added company to link chart')
+  }
+
   const addToChart = async (label: string, type: 'email' | 'phone', extra: { label: string; url?: string }[] = []): Promise<void> => {
     const projectId = settings.activeProjectId ?? null
     const boards = await api.boards.list()
@@ -112,7 +163,7 @@ export function Intel(): JSX.Element {
         <h1 className="text-xl font-bold text-slate-100 flex items-center gap-2">
           <UserSearch size={20} className="text-brand-glow" /> Email &amp; Phone Intelligence
         </h1>
-        <p className="text-sm text-slate-500">Profile an email (Gravatar, breaches, mail server) or parse a phone number, then pivot or drop it on the graph.</p>
+        <p className="text-sm text-slate-500">Profile an email (Gravatar, breaches, mail server), parse a phone number, or look up a company's people &amp; email pattern (Hunter.io) — then pivot or drop it on the graph.</p>
       </div>
 
       <div className="px-6 py-3 border-b border-ink-700 flex items-center gap-2">
@@ -123,18 +174,21 @@ export function Intel(): JSX.Element {
           <button className={`px-3 py-1.5 text-sm flex items-center gap-1.5 ${mode === 'phone' ? 'bg-brand/15 text-brand-glow' : 'text-slate-400 hover:bg-ink-800'}`} onClick={() => setMode('phone')}>
             <Phone size={14} /> Phone
           </button>
+          <button className={`px-3 py-1.5 text-sm flex items-center gap-1.5 ${mode === 'company' ? 'bg-brand/15 text-brand-glow' : 'text-slate-400 hover:bg-ink-800'}`} onClick={() => setMode('company')}>
+            <Building2 size={14} /> Company
+          </button>
         </div>
         <input
           className="input flex-1"
-          placeholder={mode === 'email' ? 'name@example.com' : '+1 415 555 0123 (include country code)'}
+          placeholder={mode === 'email' ? 'name@example.com' : mode === 'phone' ? '+1 415 555 0123 (include country code)' : 'tesla.com or “Tesla”'}
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && (mode === 'email' ? analyzeEmail() : analyzePhone())}
+          onKeyDown={(e) => e.key === 'Enter' && run()}
         />
-        <button className="btn-primary" disabled={!input.trim() || loading} onClick={() => (mode === 'email' ? analyzeEmail() : analyzePhone())}>
+        <button className="btn-primary" disabled={!input.trim() || loading} onClick={run}>
           {loading ? <Loader2 size={16} className="animate-spin" /> : <UserSearch size={16} />} Analyze
         </button>
-        {(email || phone) && (
+        {(email || phone) && mode !== 'company' && (
           <button
             className="btn-ghost border border-ink-600"
             onClick={() => setPivot({ value: mode === 'email' ? email!.email : phone!.input, subject: mode })}
@@ -265,10 +319,96 @@ export function Intel(): JSX.Element {
           </div>
         )}
 
-        {!email && !phone && (
+        {mode === 'company' && company?.ok && (
+          <div className="space-y-4">
+            <div className="card p-4">
+              <div className="flex items-center justify-between">
+                <div className="font-semibold text-slate-100 flex items-center gap-2">
+                  <Building2 size={16} className="text-brand-glow" />
+                  {company.organization || company.domain || input}
+                </div>
+                {!!company.emails?.length && (
+                  <button className="btn-ghost border border-ink-600 text-xs" onClick={addCompanyToChart}>
+                    <Workflow size={13} /> Add to chart
+                  </button>
+                )}
+              </div>
+              <div className="grid grid-cols-2 gap-2 mt-3 text-sm">
+                {company.domain && (
+                  <div>
+                    <div className="text-[10px] uppercase tracking-wider text-slate-500">Domain</div>
+                    <button className="text-sm text-brand-glow hover:underline" onClick={() => openInBrowser([`https://${company.domain}`])}>{company.domain}</button>
+                  </div>
+                )}
+                <Field label="Known emails" value={String(company.total ?? company.emails?.length ?? 0)} />
+                {company.pattern && (
+                  <div className="col-span-2">
+                    <div className="text-[10px] uppercase tracking-wider text-slate-500">Email pattern</div>
+                    <div className="flex items-center gap-2">
+                      <code className="text-sm text-accent-glow font-mono">{company.pattern}@{company.domain || 'domain'}</code>
+                      <button className="text-slate-500 hover:text-accent-glow" title="Copy pattern" onClick={() => api.clipboard.writeText(`${company.pattern}@${company.domain || ''}`)}>
+                        <Copy size={12} />
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {company.emails?.length ? (
+              <div className="space-y-1.5">
+                {[...company.emails].sort((a, b) => (b.confidence ?? 0) - (a.confidence ?? 0)).map((p) => {
+                  const name = [p.firstName, p.lastName].filter(Boolean).join(' ')
+                  const conf = p.confidence ?? 0
+                  const confCls = conf >= 80 ? 'text-ok' : conf >= 50 ? 'text-warn' : 'text-slate-500'
+                  return (
+                    <div key={p.email} className="card p-2.5">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="min-w-0">
+                          <div className="text-sm text-slate-100 truncate">
+                            {name || <span className="text-slate-500">{p.type === 'generic' ? 'Generic address' : 'Unknown name'}</span>}
+                            {p.position && <span className="text-slate-500 font-normal"> · {p.position}</span>}
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            <code className="text-xs text-slate-300 font-mono">{p.email}</code>
+                            <button className="text-slate-500 hover:text-accent-glow" title="Copy" onClick={() => api.clipboard.writeText(p.email)}><Copy size={11} /></button>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          {p.confidence != null && <span className={`text-[11px] ${confCls}`}>{conf}%</span>}
+                          {p.linkedin && (
+                            <button className="btn-ghost !p-1.5" title="LinkedIn" onClick={() => openInBrowser([p.linkedin!])}><ExternalLink size={13} /></button>
+                          )}
+                          <button className="btn-ghost !p-1.5" title="Pivot on this email" onClick={() => setPivot({ value: p.email, subject: 'email' })}><Crosshair size={13} /></button>
+                        </div>
+                      </div>
+                      {(p.department || p.seniority || p.type) && (
+                        <div className="flex flex-wrap gap-1.5 mt-1.5">
+                          {p.type && <span className="chip text-[10px]">{p.type}</span>}
+                          {p.department && <span className="chip text-[10px]">{p.department}</span>}
+                          {p.seniority && <span className="chip text-[10px]">{p.seniority}</span>}
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            ) : (
+              <div className="text-sm text-slate-500">No public email addresses found for this company on your plan.</div>
+            )}
+          </div>
+        )}
+
+        {mode === 'company' && company && !company.ok && (
+          <div className="card p-4 text-sm text-warn">{company.error || 'Search failed.'}</div>
+        )}
+
+        {((mode === 'email' && !email) || (mode === 'phone' && !phone) || (mode === 'company' && !company)) && (
           <div className="text-center text-slate-500 mt-20">
             <UserSearch size={32} className="mx-auto mb-3 text-slate-600" />
-            Enter an {mode === 'email' ? 'email address' : 'phone number'} and hit Analyze.
+            {mode === 'company'
+              ? 'Enter a company name or domain and hit Analyze.'
+              : `Enter an ${mode === 'email' ? 'email address' : 'phone number'} and hit Analyze.`}
           </div>
         )}
       </div>
