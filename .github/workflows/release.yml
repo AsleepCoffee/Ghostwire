@@ -29,6 +29,20 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
 
+      # Pre-create the release so electron-builder's concurrent artifact uploads
+      # don't race to create it (that race throws 422 "tag_name already_exists"
+      # and fails the publish). With the release already present, every uploader
+      # just attaches its asset.
+      - name: Ensure the GitHub release exists
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          if ! gh release view "$TAG" >/dev/null 2>&1; then
+            gh release create "$TAG" --title "$TAG" --notes "Build in progress…" || true
+          fi
+
       - name: Build & publish Windows installer
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -88,6 +102,18 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+
+      # The release already exists (created by release-win), but guard anyway so
+      # Linux's concurrent uploads never race to create it either.
+      - name: Ensure the GitHub release exists
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          if ! gh release view "$TAG" >/dev/null 2>&1; then
+            gh release create "$TAG" --title "$TAG" --notes "Build in progress…" || true
+          fi
 
       - name: Build & publish Linux packages (AppImage + deb)
         env:

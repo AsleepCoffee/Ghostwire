@@ -1,8 +1,10 @@
 # Changelog
 
-## v0.1.57
+## v0.1.58
 - Remove a pin from the Map — a pinned evidence location's popup now has a "Remove pin" action that clears its location and takes it off the map.
-- Release-notes step on GitHub releases is now fully resilient (finds the release incl. drafts, patches the body from a file, always exits 0), so release bodies populate again.
+- Fixed release publishing — electron-builder's concurrent artifact uploads were racing to create the GitHub release (422 "tag_name already_exists"), which randomly left releases missing the `.exe`/Linux assets. The workflow now pre-creates the release before publishing, so all artifacts upload reliably; the release-notes step is also resilient.
+
+(v0.1.57 was never fully published due to that race and is superseded by this release.)
 
 ## v0.1.56
 - Fixed the in-app browser reloading pages on its own — the webview's `src` was bound to the live, navigation-updated URL, so every redirect rewrote `src` and forced another load (looping on challenge/redirect pages). `src` is now a stable initial URL; navigation only drives the address bar.

@@ -7,11 +7,11 @@ export interface ChangelogEntry {
 /** In-app patch notes. Newest first. Keep in sync with CHANGELOG.md. */
 export const CHANGELOG: ChangelogEntry[] = [
   {
-    version: '0.1.57',
+    version: '0.1.58',
     date: '2026-06-26',
     notes: [
       'Remove a pin from the Map — click a pinned evidence location and choose “Remove pin” to clear its location (and take it off the map).',
-      'Release notes are restored on GitHub releases (the publish step is now fully resilient).'
+      'Fixed release publishing — installers (and the Linux build) were sometimes missing because the publisher raced to create the GitHub release; the release is now pre-created so every artifact uploads reliably, and release notes populate again.'
     ]
   },
   {
