@@ -597,6 +597,10 @@ export interface OsintApi {
     shodan(target: string, key: string): Promise<ShodanResult>
     /** WiGLE wireless-network search by SSID or BSSID (needs a WiGLE token). */
     wigle(query: string, kind: 'ssid' | 'bssid', key: string): Promise<WigleResult>
+    /** The bundled Sherlock site list (name + url template with {}). */
+    sherlockSites(): Promise<{ name: string; url: string }[]>
+    /** Check one Sherlock site for a username. */
+    sherlockCheck(name: string, username: string): Promise<{ found: boolean; url: string; status: number; invalid?: boolean }>
   }
   app: {
     version(): Promise<string>

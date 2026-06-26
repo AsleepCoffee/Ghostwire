@@ -10,7 +10,6 @@ import {
   Globe
 } from 'lucide-react'
 import { api } from '../lib/api'
-import { USERNAME_SITES } from '../lib/pivot'
 import { useOpenInBrowser } from '../lib/browserBus'
 import { useSettings } from '../lib/settings'
 import { PivotModal } from '../components/PivotModal'
@@ -64,16 +63,21 @@ export function Enumerate(): JSX.Element {
     setHandle(u)
     setPicked(new Set())
     setRunning(true)
-    setRows(USERNAME_SITES.map((s) => ({ label: s.label, url: s.url(u), status: 'checking' as Status, code: 0 })))
-    await Promise.all(
-      USERNAME_SITES.map(async (s) => {
-        const url = s.url(u)
-        const code = await api.net.httpStatus(url)
-        const status: Status = code >= 200 && code < 300 ? 'found' : code === 404 || code === 410 ? 'missing' : 'unknown'
-        setRows((prev) => prev.map((r) => (r.label === s.label ? { ...r, status, code } : r)))
-        if (status === 'found') setPicked((prev) => new Set(prev).add(s.label))
-      })
-    )
+    // Sherlock engine: the bundled site DB + per-site detection (status/message/url).
+    const sites = await api.intel.sherlockSites()
+    setRows(sites.map((s) => ({ label: s.name, url: s.url.replace('{}', u), status: 'checking' as Status, code: 0 })))
+    let i = 0
+    const CONCURRENCY = 16
+    const worker = async (): Promise<void> => {
+      while (i < sites.length) {
+        const s = sites[i++]
+        const r = await api.intel.sherlockCheck(s.name, u)
+        const status: Status = r.status === 0 ? 'unknown' : r.found ? 'found' : 'missing'
+        setRows((prev) => prev.map((row) => (row.label === s.name ? { ...row, status, code: r.status, url: r.url } : row)))
+        if (status === 'found') setPicked((prev) => new Set(prev).add(s.name))
+      }
+    }
+    await Promise.all(Array.from({ length: CONCURRENCY }, worker))
     setRunning(false)
   }
 
@@ -119,7 +123,7 @@ export function Enumerate(): JSX.Element {
         <h1 className="text-xl font-bold text-slate-100 flex items-center gap-2">
           <ScanSearch size={20} className="text-brand-glow" /> Account Finder
         </h1>
-        <p className="text-sm text-slate-500">Check a username across {USERNAME_SITES.length} platforms at once, then drop the hits onto your link chart.</p>
+        <p className="text-sm text-slate-500">Hunt a username across ~480 sites (Sherlock engine), then drop the hits onto your link chart.</p>
       </div>
 
       <div className="px-6 py-3 border-b border-ink-700 flex items-center gap-2">

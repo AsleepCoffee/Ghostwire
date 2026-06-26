@@ -7,6 +7,14 @@ export interface ChangelogEntry {
 /** In-app patch notes. Newest first. Keep in sync with CHANGELOG.md. */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.1.78',
+    date: '2026-06-26',
+    notes: [
+      'Account Finder now runs on the Sherlock engine — it hunts a username across ~480 sites using Sherlock’s own site database and detection logic (status code / error message / redirect), no Python needed. Live results, then drop the hits on your link chart.',
+      'PhoneInfoga-style phone footprints — pivoting a phone number now offers WhatsApp/Sync.me/NumLookup/WhoCalld/800notes lookups plus reputation, social and leak dorks, alongside the existing number parsing.'
+    ]
+  },
+  {
     version: '0.1.77',
     date: '2026-06-26',
     notes: [

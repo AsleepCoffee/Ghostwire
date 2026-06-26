@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.1.78
+- Account Finder is now powered by the Sherlock engine — the bundled Sherlock site database (~480 sites) + its detection logic (status_code / message / response_url) run natively in the app (no Python). Live per-site results, add hits to the link chart.
+- PhoneInfoga-style footprints in the phone pivot — WhatsApp (wa.me), Sync.me, NumLookup, WhoCalld, 800notes, plus reputation/social/leak Google dorks.
+
 ## v0.1.77
 - New Wireless (WiGLE) tool — geolocate WiFi networks by SSID or BSSID via the WiGLE API, plotted on a map. Needs a free WiGLE token in Settings.
 - Fixed turning the VPN off — stopping the global tunnel now re-applies proxies and reverts app-wide sessions to direct (real IP); previously vpn:stop didn't re-pin and left sessions on the dead SOCKS port. App-wide follows the global exit only while its tunnel is running (personas stay fail-closed).

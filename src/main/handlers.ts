@@ -12,6 +12,7 @@ import { createMailbox, listMessages, getMessage } from './mail'
 import { buildHtmlReport, buildPrintReport, buildDocxHtml, type ReportData } from './report'
 import HTMLtoDOCX from 'html-to-docx'
 import { openInAppTabs } from './browserbridge'
+import sherlockData from './sherlock.json'
 import { ocrImage } from './ocr'
 import { applyPersonaProxies } from './vpn'
 import type {
@@ -1141,6 +1142,75 @@ export function registerHandlers(): void {
       }
     } catch (e) {
       return { ok: false, error: String((e as Error)?.message ?? e) }
+    }
+  })
+
+  // ===== Sherlock — hunt a username across ~480 sites (bundled Sherlock DB) =====
+  interface SherlockSite {
+    url: string
+    urlMain?: string
+    urlProbe?: string
+    errorType?: string
+    errorMsg?: string | string[]
+    errorUrl?: string
+    errorCode?: number | number[]
+    regexCheck?: string
+    headers?: Record<string, string>
+    request_method?: string
+    request_payload?: unknown
+  }
+  const SHERLOCK = sherlockData as unknown as Record<string, SherlockSite>
+  const SHERLOCK_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36'
+
+  ipcMain.handle('intel:sherlockSites', () =>
+    Object.entries(SHERLOCK)
+      .filter(([n, s]) => n !== '$schema' && s && typeof s.url === 'string' && s.url.includes('{}'))
+      .map(([name, s]) => ({ name, url: s.url }))
+  )
+
+  // Check one site for a username using Sherlock's detection method.
+  ipcMain.handle('intel:sherlockCheck', async (_e, name: string, username: string) => {
+    const s = SHERLOCK[name]
+    const display = s?.url ? s.url.replace('{}', username) : ''
+    if (!s || !s.url) return { found: false, url: display, status: 0 }
+    if (s.regexCheck) {
+      try {
+        if (!new RegExp(s.regexCheck).test(username)) return { found: false, url: display, status: 0, invalid: true }
+      } catch {
+        /* bad regex — ignore */
+      }
+    }
+    const probeUrl = (s.urlProbe || s.url).replace('{}', username)
+    const headers: Record<string, string> = { 'User-Agent': SHERLOCK_UA, ...(s.headers ?? {}) }
+    const init: { method: string; headers: Record<string, string>; body?: string } = {
+      method: (s.request_method || 'GET').toUpperCase(),
+      headers
+    }
+    if (s.request_payload != null) {
+      init.body = JSON.stringify(s.request_payload).replace('{}', username)
+      headers['Content-Type'] = headers['Content-Type'] || 'application/json'
+    }
+    try {
+      const res = (await Promise.race([
+        net.fetch(probeUrl, init),
+        new Promise((_r, rej) => setTimeout(() => rej(new Error('timeout')), 12000))
+      ])) as Response
+      const status = res.status
+      let found: boolean
+      if (s.errorType === 'message') {
+        const body = await res.text()
+        const msgs = Array.isArray(s.errorMsg) ? s.errorMsg : s.errorMsg ? [s.errorMsg] : []
+        found = res.ok && !msgs.some((m) => body.includes(m))
+      } else if (s.errorType === 'response_url') {
+        const errUrl = s.errorUrl ? s.errorUrl.replace('{}', username) : ''
+        found = res.ok && (!errUrl || !res.url.startsWith(errUrl))
+      } else {
+        const codes = Array.isArray(s.errorCode) ? s.errorCode : typeof s.errorCode === 'number' ? [s.errorCode] : []
+        found = status >= 200 && status < 300 && !codes.includes(status)
+      }
+      return { found, url: display, status }
+    } catch {
+      return { found: false, url: display, status: 0 }
     }
   })
 

@@ -113,7 +113,9 @@ const api: OsintApi = {
     facebookId: (input) => ipcRenderer.invoke('intel:facebookId', input),
     instagramId: (input) => ipcRenderer.invoke('intel:instagramId', input),
     shodan: (target, key) => ipcRenderer.invoke('intel:shodan', target, key),
-    wigle: (query, kind, key) => ipcRenderer.invoke('intel:wigle', query, kind, key)
+    wigle: (query, kind, key) => ipcRenderer.invoke('intel:wigle', query, kind, key),
+    sherlockSites: () => ipcRenderer.invoke('intel:sherlockSites'),
+    sherlockCheck: (name, username) => ipcRenderer.invoke('intel:sherlockCheck', name, username)
   },
   app: {
     version: () => ipcRenderer.invoke('app:version'),

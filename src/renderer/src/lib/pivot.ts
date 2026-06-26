@@ -188,10 +188,23 @@ export function generatePivots(subject: PivotSubject, raw: string): PivotQuery[]
     case 'phone': {
       out.push({ group: 'Search', label: `Google "${v}"`, url: g(exact) })
       const digits = v.replace(/[^\d+]/g, '')
+      const bare = digits.replace(/^\+/, '')
+      const plus = digits.startsWith('+') ? digits : `+${bare}`
       out.push({ group: 'Search', label: 'Google (digits)', url: g(`"${digits}"`) })
       out.push({ group: 'Lookup', label: 'Epieos', url: `https://epieos.com/?q=${enc(v)}` })
       out.push({ group: 'Lookup', label: 'Truecaller', url: `https://www.truecaller.com/search/intl/${enc(digits)}` })
-      out.push({ group: 'Search', label: 'Google — social', url: g(`"${digits}" (whatsapp OR telegram OR contact)`) })
+      // PhoneInfoga-style footprints: messengers, reputation & reverse-lookup sites.
+      const F = (label: string, url: string): void => {
+        out.push({ group: 'PhoneInfoga', label, url })
+      }
+      F('WhatsApp (wa.me)', `https://wa.me/${enc(bare)}`)
+      F('Sync.me', `https://sync.me/search/?number=${enc(plus)}`)
+      F('NumLookup', `https://www.numlookup.com/results?phone=${enc(bare)}`)
+      F('WhoCalld', `https://whocalld.com/${enc(plus)}`)
+      F('800notes (reputation)', `https://800notes.com/Phone.aspx/${enc(bare)}`)
+      F('Google — reputation', g(`"${digits}" (scam OR spam OR complaint OR "who called")`))
+      F('Google — social', g(`"${digits}" (whatsapp OR telegram OR signal OR viber OR contact)`))
+      F('Google — leaks/docs', g(`"${digits}" (filetype:pdf OR filetype:xlsx OR filetype:csv OR site:pastebin.com)`))
       break
     }
     case 'domain': {
