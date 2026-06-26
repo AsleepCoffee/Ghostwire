@@ -315,6 +315,11 @@ export function EvidencePage(): JSX.Element {
               setItems((prev) => prev.map((x) => (x.id === selected.id ? { ...x, ocr } : x)))
               setSelected((s) => (s ? { ...s, ocr } : s))
             }}
+            onTitle={async (title) => {
+              await api.evidence.setTitle(selected.id, title)
+              setItems((prev) => prev.map((x) => (x.id === selected.id ? { ...x, title } : x)))
+              setSelected((s) => (s ? { ...s, title } : s))
+            }}
           />
         )}
       </div>
@@ -360,7 +365,8 @@ function EvidenceDetail({
   onRemove,
   onAddToGraph,
   onNote,
-  onOcr
+  onOcr,
+  onTitle
 }: {
   ev: Evidence
   onClose: () => void
@@ -368,12 +374,14 @@ function EvidenceDetail({
   onAddToGraph: () => void
   onNote: (note: string) => void
   onOcr: (ocr: string) => void
+  onTitle: (title: string) => void
 }): JSX.Element {
   const openInBrowser = useOpenInBrowser()
   const openTabs = useOpenTabs()
   const navigate = useNavigate()
   const { settings } = useSettings()
   const [exif, setExif] = useState<ExifResult | null>(null)
+  const [title, setTitle] = useState(ev.title ?? '')
   const [note, setNote] = useState(ev.note ?? '')
   const [ocrBusy, setOcrBusy] = useState(false)
   const [ocrErr, setOcrErr] = useState('')
@@ -388,6 +396,8 @@ function EvidenceDetail({
   const [aiBusy, setAiBusy] = useState(false)
   const [aiErr, setAiErr] = useState('')
   const [manual, setManual] = useState({ lat: '', lng: '', label: '' })
+  const [renaming, setRenaming] = useState(false)
+  const [renameVal, setRenameVal] = useState('')
   const [lightbox, setLightbox] = useState(false)
   const [zoom, setZoom] = useState(false)
 
@@ -404,6 +414,7 @@ function EvidenceDetail({
   }, [lightbox])
 
   useEffect(() => {
+    setTitle(ev.title ?? '')
     setNote(ev.note ?? '')
     setVerify(null)
     setAiGeo(null)
@@ -412,7 +423,7 @@ function EvidenceDetail({
     setManual({ lat: '', lng: '', label: '' })
     if (ev.kind !== 'file') api.files.exif(ev.path).then(setExif)
     else setExif(null)
-  }, [ev.id, ev.path, ev.kind, ev.note, ev.geoLat, ev.geoLng, ev.geoLabel])
+  }, [ev.id, ev.path, ev.kind, ev.note, ev.title, ev.geoLat, ev.geoLng, ev.geoLabel])
 
   const pinManual = async (): Promise<void> => {
     const lat = parseFloat(manual.lat)
@@ -506,6 +517,19 @@ function EvidenceDetail({
           </button>
         )}
 
+        {/* Caption / title */}
+        <div>
+          <div className="label">Caption</div>
+          <input
+            className="input"
+            placeholder="Describe this image…"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            onBlur={() => title !== (ev.title ?? '') && onTitle(title)}
+            onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLInputElement).blur()}
+          />
+        </div>
+
         {lightbox && ev.kind !== 'file' && (
           <div
             className="fixed inset-0 z-[120] bg-black/95 flex flex-col"
@@ -584,10 +608,39 @@ function EvidenceDetail({
               <div className="flex items-start gap-1.5 text-xs bg-ok/10 text-ok rounded-md px-2 py-1.5">
                 <MapPinned size={13} className="shrink-0 mt-0.5" />
                 <div className="flex-1 min-w-0">
-                  <div className="font-medium break-words">{geo.label || 'Pinned location'}</div>
+                  {renaming ? (
+                    <div className="flex items-center gap-1.5">
+                      <input
+                        className="input !py-1 text-xs flex-1"
+                        autoFocus
+                        value={renameVal}
+                        onChange={(e) => setRenameVal(e.target.value)}
+                        onKeyDown={async (e) => {
+                          if (e.key === 'Enter') {
+                            await api.evidence.setGeo(ev.id, geo.lat, geo.lng, renameVal.trim())
+                            setGeo((g) => ({ ...g, label: renameVal.trim() }))
+                            setRenaming(false)
+                          } else if (e.key === 'Escape') setRenaming(false)
+                        }}
+                      />
+                      <button
+                        className="underline hover:opacity-80"
+                        onClick={async () => {
+                          await api.evidence.setGeo(ev.id, geo.lat, geo.lng, renameVal.trim())
+                          setGeo((g) => ({ ...g, label: renameVal.trim() }))
+                          setRenaming(false)
+                        }}
+                      >
+                        Save
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="font-medium break-words">{geo.label || 'Pinned location'}</div>
+                  )}
                   <div className="opacity-80">{geo.lat.toFixed(5)}, {geo.lng.toFixed(5)}</div>
                   <div className="flex gap-2 mt-1">
                     <button className="underline hover:opacity-80" onClick={() => navigate('/map')}>View on map</button>
+                    <button className="underline hover:opacity-80" onClick={() => { setRenameVal(geo.label || ''); setRenaming(true) }}>Rename</button>
                     <button className="underline hover:opacity-80" onClick={clearPin}>Clear</button>
                   </div>
                 </div>

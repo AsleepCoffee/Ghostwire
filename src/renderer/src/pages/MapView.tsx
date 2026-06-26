@@ -49,6 +49,7 @@ export function MapView(): JSX.Element {
   const openRef = useRef(openInBrowser)
   openRef.current = openInBrowser
   const removeRef = useRef<(id: string) => void>(() => {})
+  const [renaming, setRenaming] = useState<{ id: string; lat: number; lng: number; label: string } | null>(null)
   const [projects, setProjects] = useState<Project[]>([])
   const [projectId, setProjectId] = useState<string | null>(settings.activeProjectId ?? null)
   const [pts, setPts] = useState<Pt[]>([])
@@ -144,7 +145,8 @@ export function MapView(): JSX.Element {
           `<b>${esc(p.label)}</b><br><span style="opacity:.6">${esc(p.kind)}</span><br>` +
             `<a href="#" data-sv="${p.lat},${p.lng}" style="color:#2563eb">📍 Street View</a>` +
             (p.evidenceId
-              ? `<br><a href="#" data-rm="${esc(p.evidenceId)}" style="color:#dc2626">✕ Remove pin</a>`
+              ? `<br><a href="#" data-rn="${esc(p.evidenceId)}" data-lat="${p.lat}" data-lng="${p.lng}" data-label="${esc(p.label)}" style="color:#2563eb">✎ Rename</a>` +
+                `<br><a href="#" data-rm="${esc(p.evidenceId)}" style="color:#dc2626">✕ Remove pin</a>`
               : '')
         )
       bounds.push([p.lat, p.lng])
@@ -172,6 +174,19 @@ export function MapView(): JSX.Element {
           ev.preventDefault()
           e.popup.remove()
           removeRef.current(rm.dataset.rm ?? '')
+        }
+      }
+      const rn = root?.querySelector('[data-rn]') as HTMLAnchorElement | null
+      if (rn) {
+        rn.onclick = (ev): void => {
+          ev.preventDefault()
+          e.popup.remove()
+          setRenaming({
+            id: rn.dataset.rn ?? '',
+            lat: Number(rn.dataset.lat),
+            lng: Number(rn.dataset.lng),
+            label: rn.dataset.label ?? ''
+          })
         }
       }
     }
@@ -216,6 +231,41 @@ export function MapView(): JSX.Element {
           </div>
         )}
       </div>
+
+      {renaming && (
+        <div className="absolute inset-0 z-[1000] bg-black/60 flex items-center justify-center" onClick={() => setRenaming(null)}>
+          <div className="card p-4 w-80" onClick={(e) => e.stopPropagation()}>
+            <div className="label">Rename pin</div>
+            <input
+              className="input"
+              autoFocus
+              value={renaming.label}
+              onChange={(e) => setRenaming((r) => (r ? { ...r, label: e.target.value } : r))}
+              onKeyDown={(e) => {
+                if (e.key === 'Escape') setRenaming(null)
+                if (e.key === 'Enter') {
+                  const r = renaming
+                  api.evidence.setGeo(r.id, r.lat, r.lng, r.label.trim()).then(() => collect())
+                  setRenaming(null)
+                }
+              }}
+            />
+            <div className="flex justify-end gap-2 mt-3">
+              <button className="btn-ghost border border-ink-600" onClick={() => setRenaming(null)}>Cancel</button>
+              <button
+                className="btn-primary"
+                onClick={() => {
+                  const r = renaming
+                  api.evidence.setGeo(r.id, r.lat, r.lng, r.label.trim()).then(() => collect())
+                  setRenaming(null)
+                }}
+              >
+                Save
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

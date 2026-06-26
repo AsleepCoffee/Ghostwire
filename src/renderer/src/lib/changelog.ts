@@ -7,6 +7,14 @@ export interface ChangelogEntry {
 /** In-app patch notes. Newest first. Keep in sync with CHANGELOG.md. */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.1.81',
+    date: '2026-06-26',
+    notes: [
+      'Caption your evidence images — each image now has an editable Caption field in its detail panel (also used as its title in the report and map).',
+      'Rename map pins — edit a pinned location’s label from the map (pin popup → Rename) or from the evidence Geolocate panel.'
+    ]
+  },
+  {
     version: '0.1.80',
     date: '2026-06-26',
     notes: [

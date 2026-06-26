@@ -19,6 +19,7 @@ const api: OsintApi = {
     list: (projectId) => ipcRenderer.invoke('evidence:list', projectId),
     remove: (id) => ipcRenderer.invoke('evidence:remove', id),
     setNote: (id, note) => ipcRenderer.invoke('evidence:setNote', id, note),
+    setTitle: (id, title) => ipcRenderer.invoke('evidence:setTitle', id, title),
     setOcr: (id, ocr) => ipcRenderer.invoke('evidence:setOcr', id, ocr),
     ocr: (id) => ipcRenderer.invoke('evidence:ocr', id),
     verify: (id) => ipcRenderer.invoke('evidence:verify', id),

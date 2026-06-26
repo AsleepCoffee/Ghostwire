@@ -618,6 +618,9 @@ export function registerHandlers(): void {
   ipcMain.handle('evidence:setNote', (_e, id: string, note: string) => {
     run('UPDATE evidence SET note = ? WHERE id = ?', [String(note ?? ''), id])
   })
+  ipcMain.handle('evidence:setTitle', (_e, id: string, title: string) => {
+    run('UPDATE evidence SET title = ? WHERE id = ?', [String(title ?? ''), id])
+  })
   ipcMain.handle('evidence:setOcr', (_e, id: string, ocr: string) => {
     run('UPDATE evidence SET ocr = ? WHERE id = ?', [String(ocr ?? ''), id])
   })

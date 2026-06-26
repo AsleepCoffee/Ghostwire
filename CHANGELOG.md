@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.1.81
+- Editable caption/title on evidence images (detail panel) — flows through to the report and map labels.
+- Rename map pins — from the pin popup (Rename) or the evidence Geolocate panel.
+
 ## v0.1.80
 - Maltego-style auto-linking — adding an entity from a search auto-connects it to related nodes already on the graph (email↔domain, subdomain↔domain, email↔username). New "Auto-link" button re-links any board on demand. Runs after every Add-to-chart.
 

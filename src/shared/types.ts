@@ -483,6 +483,8 @@ export interface OsintApi {
     list(projectId: string | null): Promise<Evidence[]>
     remove(id: string): Promise<void>
     setNote(id: string, note: string): Promise<void>
+    /** Set the caption/title of an evidence item. */
+    setTitle(id: string, title: string): Promise<void>
     setOcr(id: string, ocr: string): Promise<void>
     /** Run offline OCR on a stored image; returns the extracted text. */
     ocr(id: string): Promise<string>
