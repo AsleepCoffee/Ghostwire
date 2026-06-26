@@ -7,6 +7,13 @@ export interface ChangelogEntry {
 /** In-app patch notes. Newest first. Keep in sync with CHANGELOG.md. */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.1.84',
+    date: '2026-06-26',
+    notes: [
+      'Add notes to screenshots — after capturing a page or region (or saving a page) the browser now opens an annotate panel where you can give it a caption and write notes before it’s filed. The screenshot is saved first, so closing the panel never loses it.'
+    ]
+  },
+  {
     version: '0.1.83',
     date: '2026-06-26',
     notes: [

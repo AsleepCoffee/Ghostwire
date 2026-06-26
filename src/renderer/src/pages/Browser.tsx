@@ -215,6 +215,10 @@ export function Browser(): JSX.Element {
   const [toast, setToast] = useState('')
   const [pasteImg, setPasteImg] = useState<PasteImage | null>(getPasteImage())
   const [copied, setCopied] = useState(false)
+  // Post-capture annotation panel: a screenshot is always filed first (id), then
+  // the user can add a caption + notes before it disappears.
+  const [annotate, setAnnotate] = useState<{ id: string; title: string; note: string; thumb: string } | null>(null)
+  const [savingNote, setSavingNote] = useState(false)
   const refs = useRef<Map<string, WebviewEl>>(new Map())
   const { settings, update } = useSettings()
   const selKey = settings.activeProjectId ?? '_global'
@@ -280,22 +284,32 @@ export function Browser(): JSX.Element {
     try {
       const img = await wv.capturePage()
       const dataUrl = img.toDataURL()
-      const hitSel = selectors.length ? `Selectors hit: ${active.hits ?? 0}` : ''
-      await api.evidence.capture({
+      const ev = await api.evidence.capture({
         dataUrl,
         sourceUrl: active.url,
         title: active.title,
         projectId: settings.activeProjectId ?? null,
         kind: 'screenshot'
       })
-      if (hitSel) {
-        /* note set separately is optional; keep simple */
-      }
-      setToast(settings.activeProjectId ? 'Page saved to the active investigation' : 'Page saved to Evidence')
-      setTimeout(() => setToast(''), 2600)
+      const hitSel = selectors.length ? `Selectors hit: ${active.hits ?? 0}.` : ''
+      setAnnotate({ id: ev.id, title: ev.title ?? active.title ?? '', note: hitSel, thumb: dataUrl })
     } catch {
       setToast('Could not capture this page')
       setTimeout(() => setToast(''), 2600)
+    }
+  }
+
+  const saveAnnotate = async (): Promise<void> => {
+    if (!annotate) return
+    setSavingNote(true)
+    try {
+      await api.evidence.setTitle(annotate.id, annotate.title.trim())
+      await api.evidence.setNote(annotate.id, annotate.note.trim())
+    } finally {
+      setSavingNote(false)
+      setAnnotate(null)
+      setToast(settings.activeProjectId ? 'Saved to the active investigation' : 'Saved to Evidence')
+      setTimeout(() => setToast(''), 2400)
     }
   }
 
@@ -345,14 +359,6 @@ export function Browser(): JSX.Element {
   const dragStart = useRef<{ x: number; y: number } | null>(null)
   const selRef = useRef<{ x: number; y: number; w: number; h: number } | null>(null)
 
-  const fileCaptured = (label: string): void => {
-    setToast(
-      settings.activeProjectId
-        ? `${label} → filed to the active investigation`
-        : `${label} (set an active investigation to file it)`
-    )
-    setTimeout(() => setToast(''), 2800)
-  }
 
   const capture = async (rect?: { x: number; y: number; width: number; height: number }): Promise<void> => {
     if (!active) return
@@ -360,13 +366,15 @@ export function Browser(): JSX.Element {
     if (!wv) return
     try {
       const img = await wv.capturePage(rect)
-      await api.evidence.capture({
-        dataUrl: img.toDataURL(),
+      const dataUrl = img.toDataURL()
+      const title = active.title + (rect ? ' (region)' : '')
+      const ev = await api.evidence.capture({
+        dataUrl,
         sourceUrl: active.url,
-        title: active.title + (rect ? ' (region)' : ''),
+        title,
         projectId: settings.activeProjectId ?? null
       })
-      fileCaptured(rect ? 'Region captured' : 'Evidence captured')
+      setAnnotate({ id: ev.id, title: ev.title ?? title, note: '', thumb: dataUrl })
     } catch {
       setToast('Capture failed')
       setTimeout(() => setToast(''), 2200)
@@ -787,6 +795,45 @@ export function Browser(): JSX.Element {
       {toast && (
         <div className="absolute bottom-5 right-5 z-50 card px-4 py-2.5 text-sm text-slate-200 border-accent/40 shadow-xl">
           {toast}
+        </div>
+      )}
+
+      {/* Annotate a just-captured screenshot (caption + notes). Already filed —
+          this only enriches it, so closing keeps the evidence. */}
+      {annotate && (
+        <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/60 p-6" onMouseDown={() => setAnnotate(null)}>
+          <div className="card w-[460px] max-w-full p-4 shadow-2xl" onMouseDown={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-sm font-semibold text-slate-200">Screenshot saved — add notes</span>
+              <button className="btn-ghost !p-1" onClick={() => setAnnotate(null)} title="Close (keeps it saved)">
+                <X size={15} />
+              </button>
+            </div>
+            <img src={annotate.thumb} alt="" className="w-full max-h-44 object-contain rounded-md border border-ink-700 bg-ink-950 mb-3" />
+            <label className="block text-[11px] text-slate-400 mb-1">Caption</label>
+            <input
+              className="input text-sm mb-3"
+              value={annotate.title}
+              placeholder="Short caption…"
+              onChange={(e) => setAnnotate((a) => (a ? { ...a, title: e.target.value } : a))}
+            />
+            <label className="block text-[11px] text-slate-400 mb-1">Notes</label>
+            <textarea
+              className="input text-sm h-24 resize-none"
+              value={annotate.note}
+              placeholder="What does this show? Why does it matter?"
+              autoFocus
+              onChange={(e) => setAnnotate((a) => (a ? { ...a, note: e.target.value } : a))}
+            />
+            <div className="flex justify-end gap-2 mt-3">
+              <button className="btn-ghost border border-ink-600 text-sm" onClick={() => setAnnotate(null)}>
+                Skip
+              </button>
+              <button className="btn-primary text-sm disabled:opacity-50" onClick={saveAnnotate} disabled={savingNote}>
+                {savingNote ? 'Saving…' : 'Save notes'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
 

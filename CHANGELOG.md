@@ -1,5 +1,8 @@
 # Changelog
 
+## v0.1.84
+- Add notes to screenshots — capturing a page/region or saving a page now opens an annotate panel (caption + notes) before filing. The evidence is saved first (returns an id), then `setTitle`/`setNote` enrich it, so dismissing the panel keeps the screenshot.
+
 ## v0.1.83
 - Fixed: opening a new browser tab no longer blacks out the screen. The selector-highlight effect called `webview.executeJavaScript` against the just-mounted (not dom-ready) tab, which throws synchronously and escaped the effect, crashing the Browser component (same class of bug as the v0.1.23 Mailbox black screen). Now wrapped in try/catch; the did-finish-load handler re-runs it once the page is ready.
 - Fixed: turning the app-wide VPN exit OFF now reliably reverts the in-app browser to your real / home IP. Root cause: clearing the exit sent `undefined` over IPC (dropped in transit), so the main process kept the old config; now cleared with `null`, which persists and resolves to a direct connection.
