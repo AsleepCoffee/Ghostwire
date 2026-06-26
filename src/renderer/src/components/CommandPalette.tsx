@@ -90,6 +90,7 @@ export function CommandPalette(): JSX.Element | null {
       ['/infra', 'Domain & Infrastructure', 'Server'],
       ['/cross-ref', 'Cross-Reference Images', 'Layers'],
       ['/co-locate', 'Proximity Search', 'Crosshair'],
+      ['/fb-id', 'Facebook ID', 'Fingerprint'],
       ['/dork', 'Dork & Pivot', 'Binoculars'],
       ['/tools', 'Tools & Resources', 'Wrench'],
       ['/exam-prep', 'PORP Exam Prep', 'GraduationCap'],

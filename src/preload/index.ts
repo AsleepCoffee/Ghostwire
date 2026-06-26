@@ -109,7 +109,8 @@ const api: OsintApi = {
     hunterDomain: (query, key) => ipcRenderer.invoke('intel:hunterDomain', query, key),
     verifyEmail: (email, key) => ipcRenderer.invoke('intel:verifyEmail', email, key),
     leakcheck: (query) => ipcRenderer.invoke('intel:leakcheck', query),
-    hudsonrock: (email) => ipcRenderer.invoke('intel:hudsonrock', email)
+    hudsonrock: (email) => ipcRenderer.invoke('intel:hudsonrock', email),
+    facebookId: (input) => ipcRenderer.invoke('intel:facebookId', input)
   },
   app: {
     version: () => ipcRenderer.invoke('app:version'),

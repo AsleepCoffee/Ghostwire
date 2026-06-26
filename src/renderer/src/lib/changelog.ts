@@ -7,6 +7,13 @@ export interface ChangelogEntry {
 /** In-app patch notes. Newest first. Keep in sync with CHANGELOG.md. */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.1.71',
+    date: '2026-06-26',
+    notes: [
+      'New Facebook ID tool (Research) — pull the numeric user ID and the vanity (custom username) from a Facebook profile. Paste a URL/username to resolve it, or open the profile in the in-app browser and “Grab from the open tab” (the reliable way around Facebook’s login wall), with copy + open-profile actions and dedicated-resolver fallbacks.'
+    ]
+  },
+  {
     version: '0.1.70',
     date: '2026-06-26',
     notes: [

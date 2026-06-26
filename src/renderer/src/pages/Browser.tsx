@@ -21,7 +21,7 @@ import {
 } from 'lucide-react'
 import { api, type Persona, type VpnConfigStatus } from '../lib/api'
 import { personaColor } from '../lib/constants'
-import { consumePending, subscribeOpen, getPasteImage, subscribePasteImage, setPasteImage, registerTabReader, type OpenRequest, type Autofill, type PasteImage } from '../lib/browserBus'
+import { consumePending, subscribeOpen, getPasteImage, subscribePasteImage, setPasteImage, registerTabReader, registerHtmlReader, type OpenRequest, type Autofill, type PasteImage } from '../lib/browserBus'
 import { useSettings } from '../lib/settings'
 
 const HOME = 'https://duckduckgo.com/'
@@ -197,6 +197,22 @@ export function Browser(): JSX.Element {
       try {
         const json = (await wv.executeJavaScript(
           'JSON.stringify({url:location.href,title:document.title,links:Array.prototype.slice.call(document.querySelectorAll("a[href]")).map(function(a){return a.href}).filter(function(h){return /^https?:/.test(h)}).slice(0,800)})'
+        )) as string
+        return JSON.parse(json)
+      } catch {
+        return null
+      }
+    })
+  }, [activeId])
+
+  // Expose the active tab's HTML (capped) for the Facebook ID tool.
+  useEffect(() => {
+    return registerHtmlReader(async () => {
+      const wv = refs.current.get(activeId)
+      if (!wv) return null
+      try {
+        const json = (await wv.executeJavaScript(
+          'JSON.stringify({url:location.href,html:document.documentElement.outerHTML.slice(0,1500000)})'
         )) as string
         return JSON.parse(json)
       } catch {

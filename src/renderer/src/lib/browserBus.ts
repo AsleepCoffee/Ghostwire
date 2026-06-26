@@ -118,6 +118,19 @@ export async function readActiveTab(): Promise<TabSnapshot | null> {
   return tabReader ? tabReader() : null
 }
 
+// Reads the active tab's raw HTML (capped) — used by the Facebook ID tool to
+// scrape ids/vanity from a profile the user has open.
+let htmlReader: (() => Promise<{ url: string; html: string } | null>) | null = null
+export function registerHtmlReader(fn: (() => Promise<{ url: string; html: string } | null>) | null): () => void {
+  htmlReader = fn
+  return () => {
+    if (htmlReader === fn) htmlReader = null
+  }
+}
+export async function readActiveTabHtml(): Promise<{ url: string; html: string } | null> {
+  return htmlReader ? htmlReader() : null
+}
+
 // A navigator registered once by <App>, so non-React code (the api wrapper, IPC
 // listeners) can route URLs into the in-app browser without a hook.
 let navigateTo: ((path: string) => void) | null = null

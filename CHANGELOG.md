@@ -1,5 +1,8 @@
 # Changelog
 
+## v0.1.71
+- New Facebook ID tool (Research) — resolve a Facebook profile's numeric user ID and vanity. Paste a URL/username, or "Grab from the open tab" to scrape it from a profile loaded in the in-app browser (works around FB's login wall). Copy/open actions + lookup-id.com fallback.
+
 ## v0.1.70
 - Facebook search helpers in the person pivot — SowSearch (FB graph-search URL builder) and IntelX's Facebook tools tab.
 

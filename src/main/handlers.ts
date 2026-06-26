@@ -1144,6 +1144,73 @@ export function registerHandlers(): void {
     }
   })
 
+  // Resolve a Facebook numeric ID <-> vanity from a profile URL/username.
+  ipcMain.handle('intel:facebookId', async (_e, input: string) => {
+    const raw = String(input ?? '').trim()
+    if (!raw) return { ok: false, error: 'Enter a Facebook profile URL or username.' }
+    const FB_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36'
+    let id = ''
+    let vanity = ''
+    // Pull whatever we can straight from the input.
+    if (/^https?:\/\//i.test(raw)) {
+      try {
+        const u = new URL(raw)
+        const idp = u.searchParams.get('id')
+        if (idp && /^\d+$/.test(idp)) id = idp
+        const seg = u.pathname.split('/').filter(Boolean)[0] ?? ''
+        if (/^\d+$/.test(seg)) id = seg
+        else if (seg && seg !== 'profile.php') vanity = decodeURIComponent(seg).replace(/^@/, '')
+      } catch {
+        /* not a URL */
+      }
+    } else if (/^\d+$/.test(raw)) id = raw
+    else vanity = raw.replace(/^@/, '')
+
+    const parse = (html: string): void => {
+      if (!id) {
+        const m =
+          html.match(/"userID":"(\d+)"/) ||
+          html.match(/"entity_id":"(\d+)"/) ||
+          html.match(/"pageID":"(\d+)"/) ||
+          html.match(/"actorID":"(\d+)"/) ||
+          html.match(/fb:\/\/(?:profile|page|group)\/(\d+)/) ||
+          html.match(/profile_id=(\d+)/) ||
+          html.match(/"identifier":(\d+)/)
+        if (m) id = m[1]
+      }
+      if (!vanity) {
+        const v =
+          html.match(/"vanity":"([^"]+)"/) ||
+          html.match(/content="https:\/\/www\.facebook\.com\/([^"/?]+)\/?"/) ||
+          html.match(/"username":"([^"]+)"/)
+        if (v && !/^profile\.php/.test(v[1]) && !/^\d+$/.test(v[1])) vanity = v[1]
+      }
+    }
+
+    // Best-effort server fetch (Facebook often walls this — the in-app "grab from
+    // the open tab" path is more reliable).
+    if (!id || !vanity) {
+      const targets = vanity
+        ? [`https://www.facebook.com/${encodeURIComponent(vanity)}`, `https://mbasic.facebook.com/${encodeURIComponent(vanity)}`]
+        : id
+          ? [`https://www.facebook.com/profile.php?id=${id}`]
+          : []
+      for (const t of targets) {
+        try {
+          const res = await net.fetch(t, { headers: { 'User-Agent': FB_UA, 'Accept-Language': 'en-US,en;q=0.9' } })
+          if (res.ok) {
+            parse(await res.text())
+            if (id && vanity) break
+          }
+        } catch {
+          /* try next */
+        }
+      }
+    }
+    if (!id && !vanity) return { ok: false, error: 'Could not resolve. Facebook likely requires login — open the profile in the in-app browser and use “Grab from open tab”, or try the lookup-id.com fallback.' }
+    return { ok: true, id, vanity }
+  })
+
   // LeakCheck public API (no key) — which breaches an email/username appears in.
   ipcMain.handle('intel:leakcheck', async (_e, query: string) => {
     const q = String(query ?? '').trim()

@@ -287,6 +287,13 @@ export interface EmailVerify {
   catchAll?: boolean
 }
 
+export interface FacebookId {
+  ok: boolean
+  error?: string
+  id?: string
+  vanity?: string
+}
+
 export interface LeakCheckResult {
   ok: boolean
   error?: string
@@ -535,6 +542,8 @@ export interface OsintApi {
     leakcheck(query: string): Promise<LeakCheckResult>
     /** Hudson Rock — info-stealer infection exposure for an email (no key). */
     hudsonrock(email: string): Promise<HudsonResult>
+    /** Resolve a Facebook numeric ID <-> vanity from a profile URL/username. */
+    facebookId(input: string): Promise<FacebookId>
   }
   app: {
     version(): Promise<string>
