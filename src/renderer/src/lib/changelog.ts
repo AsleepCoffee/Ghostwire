@@ -7,6 +7,14 @@ export interface ChangelogEntry {
 /** In-app patch notes. Newest first. Keep in sync with CHANGELOG.md. */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.1.77',
+    date: '2026-06-26',
+    notes: [
+      'New Wireless (WiGLE) tool — search WiGLE for WiFi networks by name (SSID) or access-point MAC (BSSID) and map where they were observed. Needs a free WiGLE API token in Settings.',
+      'Fixed turning the VPN off — stopping the global tunnel (or clearing the global exit) now reliably reverts app-wide browsing to your real IP. Previously stopping a tunnel left sessions pinned to the dead proxy.'
+    ]
+  },
+  {
     version: '0.1.76',
     date: '2026-06-26',
     notes: [

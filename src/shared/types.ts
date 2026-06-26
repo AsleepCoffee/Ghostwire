@@ -287,6 +287,24 @@ export interface EmailVerify {
   catchAll?: boolean
 }
 
+export interface WigleNetwork {
+  ssid: string
+  bssid: string
+  lat: number
+  lng: number
+  encryption: string
+  channel?: number
+  lastSeen: string
+  place: string
+}
+
+export interface WigleResult {
+  ok: boolean
+  error?: string
+  total?: number
+  results?: WigleNetwork[]
+}
+
 export interface ShodanService {
   port: number
   transport: string
@@ -577,6 +595,8 @@ export interface OsintApi {
     instagramId(input: string): Promise<FacebookId>
     /** Verbose Shodan host/domain intelligence (needs a Shodan key). */
     shodan(target: string, key: string): Promise<ShodanResult>
+    /** WiGLE wireless-network search by SSID or BSSID (needs a WiGLE token). */
+    wigle(query: string, kind: 'ssid' | 'bssid', key: string): Promise<WigleResult>
   }
   app: {
     version(): Promise<string>

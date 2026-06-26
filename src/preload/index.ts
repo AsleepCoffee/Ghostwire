@@ -112,7 +112,8 @@ const api: OsintApi = {
     hudsonrock: (email) => ipcRenderer.invoke('intel:hudsonrock', email),
     facebookId: (input) => ipcRenderer.invoke('intel:facebookId', input),
     instagramId: (input) => ipcRenderer.invoke('intel:instagramId', input),
-    shodan: (target, key) => ipcRenderer.invoke('intel:shodan', target, key)
+    shodan: (target, key) => ipcRenderer.invoke('intel:shodan', target, key),
+    wigle: (query, kind, key) => ipcRenderer.invoke('intel:wigle', query, kind, key)
   },
   app: {
     version: () => ipcRenderer.invoke('app:version'),

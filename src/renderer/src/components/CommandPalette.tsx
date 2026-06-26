@@ -91,6 +91,7 @@ export function CommandPalette(): JSX.Element | null {
       ['/cross-ref', 'Cross-Reference Images', 'Layers'],
       ['/co-locate', 'Proximity Search', 'Crosshair'],
       ['/fb-id', 'Profile ID (Facebook / Instagram)', 'Fingerprint'],
+      ['/wireless', 'Wireless (WiGLE)', 'Wifi'],
       ['/dork', 'Dork & Pivot', 'Binoculars'],
       ['/tools', 'Tools & Resources', 'Wrench'],
       ['/exam-prep', 'PORP Exam Prep', 'GraduationCap'],

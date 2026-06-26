@@ -70,6 +70,15 @@ export const API_SERVICES: ApiService[] = [
     tool: { url: 'https://ipinfo.io/{QUERY}', query: true, category: 'Infrastructure' }
   },
   {
+    id: 'wigle',
+    name: 'WiGLE',
+    description: 'Geolocate WiFi networks by SSID or BSSID (wardriving database).',
+    free: 'Free account; paste the "Encoded for use" token (or API Name:Token). Daily query limit.',
+    tier: 'free',
+    signup: 'https://wigle.net/account',
+    unlocks: 'Wireless (WiGLE) network search & mapping.'
+  },
+  {
     id: 'emailhippo',
     name: 'Email Hippo',
     description: 'Verify whether an email address actually exists (mailbox check).',

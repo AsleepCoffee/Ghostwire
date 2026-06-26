@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.1.77
+- New Wireless (WiGLE) tool — geolocate WiFi networks by SSID or BSSID via the WiGLE API, plotted on a map. Needs a free WiGLE token in Settings.
+- Fixed turning the VPN off — stopping the global tunnel now re-applies proxies and reverts app-wide sessions to direct (real IP); previously vpn:stop didn't re-pin and left sessions on the dead SOCKS port. App-wide follows the global exit only while its tunnel is running (personas stay fail-closed).
+
 ## v0.1.76
 - Themed Windows installer & uninstaller with a dark GhostWire sidebar.
 - "Create a desktop shortcut" is now unchecked by default.

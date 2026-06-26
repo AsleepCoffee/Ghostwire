@@ -314,10 +314,14 @@ export function applyPersonaProxies(): void {
   const globalCfg = getSettings().globalVpnConfigId ? byId.get(getSettings().globalVpnConfigId!) : undefined
 
   // App-wide: default session (used by main-process net.fetch too), the default
-  // browser, and the mailbox — all follow the global exit (or direct).
-  pin(session.defaultSession, globalCfg)
-  pin(session.fromPartition('persist:default-browser'), globalCfg)
-  pin(session.fromPartition('persist:gw-mailbox'), globalCfg)
+  // browser, and the mailbox — follow the global exit only while its tunnel is
+  // actually running. If the global exit is off OR its tunnel is stopped, these
+  // go DIRECT (back to the real IP) — turning the VPN off must restore normal
+  // browsing rather than leave the app pinned to a dead SOCKS port.
+  const appWide = globalCfg && running.has(globalCfg.id) ? globalCfg : undefined
+  pin(session.defaultSession, appWide)
+  pin(session.fromPartition('persist:default-browser'), appWide)
+  pin(session.fromPartition('persist:gw-mailbox'), appWide)
 
   // Personas: own exit if set, otherwise the global exit, otherwise direct.
   const personas = all<Persona & Record<string, unknown>>('SELECT partition, vpnConfigId FROM personas')
@@ -421,6 +425,7 @@ function registerVpnHandlers(): void {
   })
   ipcMain.handle('vpn:stop', (_e, id: string) => {
     const s = stopConfig(id)
+    applyPersonaProxies() // re-pin: app-wide sessions revert to direct when their exit stops
     broadcast()
     return s
   })

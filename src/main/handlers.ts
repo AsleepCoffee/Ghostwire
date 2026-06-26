@@ -1144,6 +1144,45 @@ export function registerHandlers(): void {
     }
   })
 
+  // WiGLE — geolocate WiFi networks by SSID or BSSID (needs a WiGLE API token).
+  ipcMain.handle('intel:wigle', async (_e, query: string, kind: 'ssid' | 'bssid', key: string) => {
+    if (!key) return { ok: false, error: 'Add a WiGLE API token in Settings → API keys.' }
+    const q = String(query ?? '').trim()
+    if (!q) return { ok: false, error: 'Enter an SSID or BSSID.' }
+    // WiGLE uses HTTP Basic auth. Accept the "Encoded for use" token, or "Name:Token".
+    const auth = key.includes(':') ? Buffer.from(key.trim()).toString('base64') : key.trim()
+    const param = kind === 'bssid' ? `netid=${encodeURIComponent(q)}` : `ssid=${encodeURIComponent(q)}`
+    try {
+      const res = await net.fetch(`https://api.wigle.net/api/v2/network/search?${param}&resultsPerPage=50`, {
+        headers: { Authorization: `Basic ${auth}`, Accept: 'application/json' }
+      })
+      if (res.status === 401) return { ok: false, error: 'WiGLE token rejected (401). Use the "Encoded for use" token, or "API Name:API Token".' }
+      if (res.status === 429) return { ok: false, error: 'WiGLE daily query limit reached.' }
+      const j = (await res.json().catch(() => ({}))) as {
+        success?: boolean
+        message?: string
+        totalResults?: number
+        results?: Record<string, unknown>[]
+      }
+      if (!res.ok || j.success === false) return { ok: false, error: j.message || `WiGLE HTTP ${res.status}` }
+      const results = (j.results ?? [])
+        .map((r) => ({
+          ssid: String(r.ssid ?? ''),
+          bssid: String(r.netid ?? ''),
+          lat: Number(r.trilat),
+          lng: Number(r.trilong),
+          encryption: String(r.encryption ?? ''),
+          channel: r.channel != null ? Number(r.channel) : undefined,
+          lastSeen: String(r.lastupdt ?? ''),
+          place: [r.city, r.region, r.country].filter(Boolean).join(', ')
+        }))
+        .filter((r) => isFinite(r.lat) && isFinite(r.lng))
+      return { ok: true, total: j.totalResults ?? results.length, results }
+    } catch (e) {
+      return { ok: false, error: String((e as Error)?.message ?? e) }
+    }
+  })
+
   // Shodan host/domain intelligence (verbose) — needs a Shodan API key.
   ipcMain.handle('intel:shodan', async (_e, target: string, key: string) => {
     if (!key) return { ok: false, error: 'Add a Shodan API key in Settings → API keys.' }
