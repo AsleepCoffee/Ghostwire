@@ -7,6 +7,13 @@ export interface ChangelogEntry {
 /** In-app patch notes. Newest first. Keep in sync with CHANGELOG.md. */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.1.69',
+    date: '2026-06-26',
+    notes: [
+      'View & search X/Twitter without an account — pivoting a username now offers a Nitter front-end (profile + that handle’s tweets), Sotwe, and a Google “on X” dork, so you can read tweets without logging in or registering.'
+    ]
+  },
+  {
     version: '0.1.68',
     date: '2026-06-26',
     notes: [

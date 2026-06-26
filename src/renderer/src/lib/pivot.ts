@@ -116,6 +116,11 @@ export function generatePivots(subject: PivotSubject, raw: string): PivotQuery[]
       out.push({ group: 'Search', label: 'NameChk', url: 'https://namechk.com/' })
       out.push({ group: 'Search', label: 'NameCheckup', url: 'https://namecheckup.com/' })
       out.push({ group: 'Search', label: 'Google — accounts', url: g(`${exact} (profile OR account OR "@${u}")`) })
+      // View / search a handle on X without an account (Nitter front-ends + dorks).
+      out.push({ group: 'Twitter / X (no login)', label: 'Nitter — profile', url: `https://xcancel.com/${u}` })
+      out.push({ group: 'Twitter / X (no login)', label: 'Nitter — their tweets', url: `https://xcancel.com/search?q=${enc(`from:${u}`)}&f=tweets` })
+      out.push({ group: 'Twitter / X (no login)', label: 'Sotwe', url: `https://www.sotwe.com/${u}` })
+      out.push({ group: 'Twitter / X (no login)', label: 'Google — on X', url: g(`(site:x.com OR site:twitter.com) ("@${u}" OR "${u}")`) })
       for (const s of USERNAME_SITES) out.push({ group: 'Profiles', label: s.label, url: s.url(u) })
       break
     }

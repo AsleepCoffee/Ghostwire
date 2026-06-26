@@ -1,5 +1,8 @@
 # Changelog
 
+## v0.1.69
+- View/search X/Twitter without an account — username pivot adds a Nitter front-end (xcancel: profile + the handle's tweets), Sotwe, and a Google site:x.com dork.
+
 ## v0.1.68
 - Voter & public-records lookups in the person pivot — VoterRecords (deep-linked) plus Google dorks for voter registration and county/public records. (VoterRecords is Cloudflare-protected and blocks VPN/datacenter exits; use a residential IP.)
 
