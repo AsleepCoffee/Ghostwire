@@ -1144,6 +1144,65 @@ export function registerHandlers(): void {
     }
   })
 
+  // LeakCheck public API (no key) — which breaches an email/username appears in.
+  ipcMain.handle('intel:leakcheck', async (_e, query: string) => {
+    const q = String(query ?? '').trim()
+    if (!q) return { ok: false, error: 'No query.' }
+    try {
+      const res = await net.fetch(`https://leakcheck.io/api/public?check=${encodeURIComponent(q)}`, {
+        headers: { Accept: 'application/json' }
+      })
+      const j = (await res.json()) as {
+        success?: boolean
+        error?: string
+        found?: number
+        fields?: string[]
+        sources?: { name?: string; date?: string }[]
+      }
+      if (j?.success === false) {
+        const err = String(j.error ?? '')
+        if (/limit|rate|too many|commercial/i.test(err)) return { ok: false, error: 'LeakCheck rate limit — wait a moment.' }
+        return { ok: true, found: 0, fields: [], sources: [] } // "Not found"
+      }
+      return {
+        ok: true,
+        found: j.found ?? 0,
+        fields: j.fields ?? [],
+        sources: (j.sources ?? []).map((s) => ({ name: String(s.name ?? ''), date: String(s.date ?? '') }))
+      }
+    } catch (e) {
+      return { ok: false, error: String((e as Error)?.message ?? e) }
+    }
+  })
+
+  // Hudson Rock Cavalier (no key) — is this email tied to an info-stealer infection?
+  ipcMain.handle('intel:hudsonrock', async (_e, email: string) => {
+    const addr = String(email ?? '').trim()
+    if (!addr) return { ok: false, error: 'No email.' }
+    try {
+      const res = await net.fetch(
+        `https://cavalier.hudsonrock.com/api/json/v2/osint-tools/search-by-email?email=${encodeURIComponent(addr)}`,
+        { headers: { Accept: 'application/json' } }
+      )
+      const j = (await res.json()) as { message?: string; stealers?: Record<string, unknown>[] }
+      const stealers = Array.isArray(j?.stealers) ? j.stealers : []
+      return {
+        ok: true,
+        infected: stealers.length > 0,
+        message: String(j?.message ?? ''),
+        stealers: stealers.slice(0, 25).map((s) => ({
+          date: String(s.date_compromised ?? ''),
+          os: String(s.operating_system ?? ''),
+          computer: String(s.computer_name ?? ''),
+          userServices: Number(s.total_user_services ?? 0),
+          corpServices: Number(s.total_corporate_services ?? 0)
+        }))
+      }
+    } catch (e) {
+      return { ok: false, error: String((e as Error)?.message ?? e) }
+    }
+  })
+
   // AI geolocation — ask an OpenAI vision model where an evidence image was taken.
   ipcMain.handle('intel:geolocate', async (_e, evidenceId: string): Promise<GeoResult> => {
     const key = getSettings().apiKeys?.openai

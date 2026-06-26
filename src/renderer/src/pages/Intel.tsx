@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { parsePhoneNumberFromString } from 'libphonenumber-js'
 import { Mail, Phone, Loader2, ShieldAlert, Check, X, Crosshair, Workflow, ExternalLink, UserSearch, Building2, Copy } from 'lucide-react'
-import { api, type GravatarResult, type HibpBreach, type HunterResult, type EmailVerify } from '../lib/api'
+import { api, type GravatarResult, type HibpBreach, type HunterResult, type EmailVerify, type LeakCheckResult, type HudsonResult } from '../lib/api'
 import { useSettings } from '../lib/settings'
 import { useOpenInBrowser } from '../lib/browserBus'
 import { PivotModal } from '../components/PivotModal'
@@ -16,6 +16,8 @@ interface EmailReport {
   gravatar: GravatarResult | null
   hibp: { ok: boolean; error?: string; breaches?: HibpBreach[] } | null
   verify: EmailVerify | null
+  leak: LeakCheckResult | null
+  hudson: HudsonResult | null
 }
 
 const VERIFY_STYLE: Record<string, string> = {
@@ -69,16 +71,18 @@ export function Intel(): JSX.Element {
     setEmail(null)
     const domain = e.split('@')[1]
     try {
-      const [mxData, gravatar, hibp, verify] = await Promise.all([
+      const [mxData, gravatar, hibp, verify, leak, hudson] = await Promise.all([
         api.net
           .fetchJson(`https://dns.google/resolve?name=${enc(domain)}&type=MX`)
           .catch(() => ({}) as unknown) as Promise<{ Answer?: { data?: string }[] }>,
         api.intel.gravatar(e),
         settings.apiKeys?.hibp ? api.intel.hibp(e, settings.apiKeys.hibp) : Promise.resolve(null),
-        settings.apiKeys?.emailhippo ? api.intel.verifyEmail(e, settings.apiKeys.emailhippo) : Promise.resolve(null)
+        settings.apiKeys?.emailhippo ? api.intel.verifyEmail(e, settings.apiKeys.emailhippo) : Promise.resolve(null),
+        api.intel.leakcheck(e).catch(() => null),
+        api.intel.hudsonrock(e).catch(() => null)
       ])
       const mx = (mxData.Answer ?? []).map((a) => String(a.data ?? '').replace(/\s+\d+\s*$/, '').trim()).filter(Boolean)
-      setEmail({ email: e, domain, mx, gravatar, hibp, verify })
+      setEmail({ email: e, domain, mx, gravatar, hibp, verify, leak, hudson })
     } finally {
       setLoading(false)
     }
@@ -300,6 +304,73 @@ export function Intel(): JSX.Element {
                 </div>
               ) : (
                 <div className="text-sm text-ok flex items-center gap-1.5"><Check size={14} /> No breaches found.</div>
+              )}
+            </div>
+
+            {/* Breach appearances (LeakCheck) */}
+            <div className="card p-4">
+              <div className="text-[10px] uppercase tracking-widest text-slate-500 mb-2 flex items-center gap-1.5">
+                <ShieldAlert size={12} /> Breach appearances (LeakCheck)
+              </div>
+              {!email.leak ? (
+                <div className="text-sm text-slate-500">No result.</div>
+              ) : !email.leak.ok ? (
+                <div className="text-sm text-warn">{email.leak.error || 'Lookup failed.'}</div>
+              ) : (email.leak.found ?? 0) === 0 ? (
+                <div className="text-sm text-ok flex items-center gap-1.5"><Check size={14} /> Not seen in any public breach.</div>
+              ) : (
+                <div className="space-y-2">
+                  <div className="text-sm text-danger flex items-center gap-1.5">
+                    <X size={14} /> Appears in {email.leak.found} breach record{email.leak.found === 1 ? '' : 's'}
+                  </div>
+                  {!!email.leak.fields?.length && (
+                    <div className="flex flex-wrap gap-1.5">
+                      {email.leak.fields.map((f) => (
+                        <span key={f} className={`chip text-[10px] ${/pass|ssn|credit|cvv/i.test(f) ? 'text-danger' : ''}`}>{f}</span>
+                      ))}
+                    </div>
+                  )}
+                  {!!email.leak.sources?.length && (
+                    <div className="max-h-44 overflow-y-auto border-t border-ink-800 pt-1.5 divide-y divide-ink-800">
+                      {email.leak.sources.map((s, i) => (
+                        <div key={i} className="flex items-center justify-between py-1 text-sm">
+                          <span className="text-slate-300 truncate">{s.name || 'Unknown source'}</span>
+                          {s.date && <span className="text-[11px] text-slate-500 shrink-0 ml-2">{s.date}</span>}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  <p className="text-[10px] text-slate-600">Source names &amp; dates only — the free tier doesn't return passwords.</p>
+                </div>
+              )}
+            </div>
+
+            {/* Infostealer exposure (Hudson Rock) */}
+            <div className="card p-4">
+              <div className="text-[10px] uppercase tracking-widest text-slate-500 mb-2 flex items-center gap-1.5">
+                <ShieldAlert size={12} /> Infostealer exposure (Hudson Rock)
+              </div>
+              {!email.hudson ? (
+                <div className="text-sm text-slate-500">No result.</div>
+              ) : !email.hudson.ok ? (
+                <div className="text-sm text-warn">{email.hudson.error || 'Lookup failed.'}</div>
+              ) : !email.hudson.infected ? (
+                <div className="text-sm text-ok flex items-center gap-1.5"><Check size={14} /> No info-stealer infection found.</div>
+              ) : (
+                <div className="space-y-2">
+                  <div className="text-sm text-danger flex items-center gap-1.5">
+                    <X size={14} /> Found in {email.hudson.stealers?.length} infected machine{(email.hudson.stealers?.length ?? 0) === 1 ? '' : 's'}
+                  </div>
+                  <div className="space-y-1">
+                    {email.hudson.stealers?.map((s, i) => (
+                      <div key={i} className="rounded-lg border border-ink-700 px-3 py-1.5 text-sm">
+                        <div className="text-slate-200">{s.os || 'Unknown OS'} <span className="text-xs text-slate-500">· {s.date ? new Date(s.date).toLocaleDateString() : 'date unknown'}</span></div>
+                        <div className="text-[11px] text-slate-500">{s.userServices} personal · {s.corpServices} corporate credentials on this machine</div>
+                      </div>
+                    ))}
+                  </div>
+                  <p className="text-[10px] text-slate-600">Indicates the owner's device was infected — high risk of credential compromise.</p>
+                </div>
               )}
             </div>
 

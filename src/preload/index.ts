@@ -107,7 +107,9 @@ const api: OsintApi = {
     hibp: (email, key) => ipcRenderer.invoke('intel:hibp', email, key),
     geolocate: (evidenceId) => ipcRenderer.invoke('intel:geolocate', evidenceId),
     hunterDomain: (query, key) => ipcRenderer.invoke('intel:hunterDomain', query, key),
-    verifyEmail: (email, key) => ipcRenderer.invoke('intel:verifyEmail', email, key)
+    verifyEmail: (email, key) => ipcRenderer.invoke('intel:verifyEmail', email, key),
+    leakcheck: (query) => ipcRenderer.invoke('intel:leakcheck', query),
+    hudsonrock: (email) => ipcRenderer.invoke('intel:hudsonrock', email)
   },
   app: {
     version: () => ipcRenderer.invoke('app:version'),

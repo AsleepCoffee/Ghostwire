@@ -7,6 +7,13 @@ export interface ChangelogEntry {
 /** In-app patch notes. Newest first. Keep in sync with CHANGELOG.md. */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.1.63',
+    date: '2026-06-26',
+    notes: [
+      'Free breach lookups on every email analysis — no API key needed. LeakCheck shows which breaches an address appears in (sources, dates, and which field types leaked), and Hudson Rock flags whether the address is tied to an info-stealer malware infection (a strong credential-compromise signal).'
+    ]
+  },
+  {
     version: '0.1.62',
     date: '2026-06-26',
     notes: [

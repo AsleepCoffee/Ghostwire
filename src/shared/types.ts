@@ -287,6 +287,31 @@ export interface EmailVerify {
   catchAll?: boolean
 }
 
+export interface LeakCheckResult {
+  ok: boolean
+  error?: string
+  found?: number
+  /** Field types exposed across the breaches (e.g. password, email, ip). */
+  fields?: string[]
+  sources?: { name: string; date: string }[]
+}
+
+export interface HudsonStealer {
+  date: string
+  os: string
+  computer: string
+  userServices: number
+  corpServices: number
+}
+
+export interface HudsonResult {
+  ok: boolean
+  error?: string
+  infected?: boolean
+  message?: string
+  stealers?: HudsonStealer[]
+}
+
 export interface HunterEmail {
   email: string
   firstName?: string
@@ -506,6 +531,10 @@ export interface OsintApi {
     hunterDomain(query: string, key: string): Promise<HunterResult>
     /** Email Hippo mailbox verification — does this address actually exist? */
     verifyEmail(email: string, key: string): Promise<EmailVerify>
+    /** LeakCheck public — which breaches an email/username appears in (no key). */
+    leakcheck(query: string): Promise<LeakCheckResult>
+    /** Hudson Rock — info-stealer infection exposure for an email (no key). */
+    hudsonrock(email: string): Promise<HudsonResult>
   }
   app: {
     version(): Promise<string>

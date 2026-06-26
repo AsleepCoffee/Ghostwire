@@ -1,5 +1,8 @@
 # Changelog
 
+## v0.1.63
+- Free breach lookups (no key) on every email analysis — LeakCheck (which breaches an address is in: sources, dates, leaked field types) and Hudson Rock (info-stealer infection exposure). Like a free DeHashed-style breach view.
+
 ## v0.1.62
 - Email verification via Email Hippo — the email analysis now checks whether the mailbox exists (deliverable / doesn't exist / risky) with a trust score and disposable/role/free/catch-all flags, and each address found in a Company (Hunter) lookup has a one-click Verify. Add an Email Hippo API key in Settings → API keys.
 
