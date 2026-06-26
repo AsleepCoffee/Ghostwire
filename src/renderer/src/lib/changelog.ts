@@ -7,6 +7,13 @@ export interface ChangelogEntry {
 /** In-app patch notes. Newest first. Keep in sync with CHANGELOG.md. */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.1.68',
+    date: '2026-06-26',
+    notes: [
+      'Voter & public-records lookups added to the person pivot — VoterRecords (deep-linked to the name) plus reliable Google dorks for voter registration and county/public records. Note: VoterRecords is Cloudflare-protected and tends to block VPN/datacenter exits, so try it on a residential IP.'
+    ]
+  },
+  {
     version: '0.1.67',
     date: '2026-06-26',
     notes: [

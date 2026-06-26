@@ -162,6 +162,16 @@ export function generatePivots(subject: PivotSubject, raw: string): PivotQuery[]
         P('ZabaSearch', `https://www.zabasearch.com/people/${hy}/`)
         P('AdvancedBackgroundChecks', `https://www.advancedbackgroundchecks.com/${hy}`)
         P('Pipl', `https://pipl.com/search/?q=${enc(v)}`)
+        // Public / voter records. VoterRecords is Cloudflare-protected and often
+        // blocks VPN/datacenter exits — the Google dork is a reliable fallback.
+        const R = (label: string, url: string): void => {
+          out.push({ group: 'Public records', label, url })
+        }
+        R('VoterRecords', `https://www.voterrecords.com/voters/${hy}/`)
+        R('Google — voter records', g(`${exact} (voter OR "voter registration" OR "date of birth")`))
+        R('VoteShield / state lookup', g(`${exact} voter registration lookup`))
+        R('BlockShopper (property)', `https://blockshopper.com/search?q=${enc(v)}`)
+        R('County records (dork)', g(`${exact} ("county clerk" OR "public records" OR site:*.gov)`))
       }
       break
     }

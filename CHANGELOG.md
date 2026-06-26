@@ -1,5 +1,8 @@
 # Changelog
 
+## v0.1.68
+- Voter & public-records lookups in the person pivot — VoterRecords (deep-linked) plus Google dorks for voter registration and county/public records. (VoterRecords is Cloudflare-protected and blocks VPN/datacenter exits; use a residential IP.)
+
 ## v0.1.67
 - Many more people-search options in the name/person pivot set — TruePeopleSearch, FastPeopleSearch, FastBackgroundCheck, WhitePages, 411, Spokeo, That'sThem, WebMii, PeekYou, Radaris, Nuwber, ZabaSearch, AdvancedBackgroundChecks, Pipl — each deep-linked to the name. Pivot a person/name (e.g. a person node on the graph) → "People search".
 
