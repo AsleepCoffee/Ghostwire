@@ -164,7 +164,8 @@ function mapEvidence(r: Record<string, unknown>): Evidence {
     title: (r.title as string) ?? '',
     sha256: String(r.sha256 ?? ''),
     capturedAt: Number(r.capturedAt),
-    note: (r.note as string) ?? ''
+    note: (r.note as string) ?? '',
+    ocr: (r.ocr as string) ?? ''
   }
 }
 
@@ -498,6 +499,9 @@ export function registerHandlers(): void {
   ipcMain.handle('evidence:setNote', (_e, id: string, note: string) => {
     run('UPDATE evidence SET note = ? WHERE id = ?', [String(note ?? ''), id])
   })
+  ipcMain.handle('evidence:setOcr', (_e, id: string, ocr: string) => {
+    run('UPDATE evidence SET ocr = ? WHERE id = ?', [String(ocr ?? ''), id])
+  })
   // Download an image from a URL straight into the evidence locker (with SHA-256).
   ipcMain.handle('evidence:fromUrl', (_e, url: string, projectId: string | null) => addEvidenceFromUrl(url, projectId))
 
@@ -745,6 +749,14 @@ export function registerHandlers(): void {
     if (res.canceled || !res.filePath) return null
     writeFileSync(res.filePath, Buffer.from(m[1], 'base64'))
     return res.filePath
+  })
+  // Return a stored media file as a data URL (used for OCR, which needs raw bytes).
+  ipcMain.handle('files:dataUrl', (_e, mediaUrl: string) => {
+    const buf = readMedia(mediaUrl)
+    if (!buf) return null
+    const ext = (mediaUrl.split('.').pop() ?? '').toLowerCase().replace(/[^a-z0-9]/g, '')
+    const mime = ext === 'png' ? 'image/png' : ext === 'webp' ? 'image/webp' : ext === 'gif' ? 'image/gif' : 'image/jpeg'
+    return `data:${mime};base64,${buf.toString('base64')}`
   })
   ipcMain.handle('files:exif', async (_e, mediaUrl: string) => {
     const buf = readMedia(mediaUrl)

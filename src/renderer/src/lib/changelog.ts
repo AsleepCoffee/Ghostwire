@@ -7,6 +7,14 @@ export interface ChangelogEntry {
 /** In-app patch notes. Newest first. Keep in sync with CHANGELOG.md. */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.1.47',
+    date: '2026-06-25',
+    notes: [
+      'OCR on evidence — open any image in the Evidence Board and hit “Run OCR” to pull out its text (logos, documents, screenshots). The text is saved, copyable, and can be appended to the item’s note.',
+      'Evidence is now searchable — a search box filters by title, source, notes and OCR text, so you can find that screenshot by what it says.'
+    ]
+  },
+  {
     version: '0.1.46',
     date: '2026-06-25',
     notes: [

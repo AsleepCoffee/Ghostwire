@@ -125,7 +125,8 @@ CREATE TABLE IF NOT EXISTS evidence (
   title TEXT,
   sha256 TEXT,
   capturedAt INTEGER,
-  note TEXT
+  note TEXT,
+  ocr TEXT
 );
 
 CREATE TABLE IF NOT EXISTS activity (
@@ -190,7 +191,8 @@ function migrate(): void {
     'ALTER TABLE personas ADD COLUMN vpnConfigId TEXT',
     'ALTER TABLE personas ADD COLUMN nationality TEXT',
     'ALTER TABLE personas ADD COLUMN phone TEXT',
-    "ALTER TABLE projects ADD COLUMN timezone TEXT DEFAULT ''"
+    "ALTER TABLE projects ADD COLUMN timezone TEXT DEFAULT ''",
+    'ALTER TABLE evidence ADD COLUMN ocr TEXT'
   ]
   for (const sql of adds) {
     try {

@@ -18,6 +18,7 @@ const api: OsintApi = {
     list: (projectId) => ipcRenderer.invoke('evidence:list', projectId),
     remove: (id) => ipcRenderer.invoke('evidence:remove', id),
     setNote: (id, note) => ipcRenderer.invoke('evidence:setNote', id, note),
+    setOcr: (id, ocr) => ipcRenderer.invoke('evidence:setOcr', id, ocr),
     fromUrl: (url, projectId) => ipcRenderer.invoke('evidence:fromUrl', url, projectId)
   },
   personas: {
@@ -63,6 +64,7 @@ const api: OsintApi = {
     randomAvatar: () => ipcRenderer.invoke('files:randomAvatar'),
     saveCopy: (mediaUrl, defaultName) => ipcRenderer.invoke('files:saveCopy', mediaUrl, defaultName),
     exif: (mediaUrl) => ipcRenderer.invoke('files:exif', mediaUrl),
+    dataUrl: (mediaUrl) => ipcRenderer.invoke('files:dataUrl', mediaUrl),
     exportImage: (dataUrl, defaultName) => ipcRenderer.invoke('files:exportImage', dataUrl, defaultName)
   },
   activity: {

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import Tesseract from 'tesseract.js'
 import {
   Images,
   Upload,
@@ -10,10 +11,13 @@ import {
   Check,
   MapPin,
   ScanSearch,
+  ScanText,
   Workflow,
   Download,
   FileText,
-  Loader2
+  Loader2,
+  Search,
+  NotebookPen
 } from 'lucide-react'
 import { api, type Evidence, type Project, type ExifResult } from '../lib/api'
 import { useSettings } from '../lib/settings'
@@ -55,7 +59,14 @@ export function EvidencePage(): JSX.Element {
   const [busy, setBusy] = useState(false)
   const [toast, setToast] = useState('')
   const [urlInput, setUrlInput] = useState('')
+  const [query, setQuery] = useState('')
   const fileRef = useRef<HTMLInputElement>(null)
+
+  const shown = items.filter((e) => {
+    const q = query.trim().toLowerCase()
+    if (!q) return true
+    return `${e.title ?? ''} ${e.sourceUrl ?? ''} ${e.note ?? ''} ${e.ocr ?? ''}`.toLowerCase().includes(q)
+  })
 
   const flash = (m: string): void => {
     setToast(m)
@@ -232,6 +243,19 @@ export function EvidencePage(): JSX.Element {
         </button>
       </div>
 
+      {items.length > 0 && (
+        <div className="px-6 py-2.5 border-b border-ink-700 flex items-center gap-2">
+          <Search size={15} className="text-slate-500 shrink-0" />
+          <input
+            className="input"
+            placeholder="Search title, source, notes & OCR text…"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+          />
+          {query && <span className="text-xs text-slate-500 shrink-0">{shown.length}/{items.length}</span>}
+        </div>
+      )}
+
       {/* Gallery */}
       <div className="flex-1 min-h-0 flex">
         <div className="flex-1 overflow-y-auto p-6">
@@ -241,9 +265,11 @@ export function EvidencePage(): JSX.Element {
               title="No evidence yet"
               subtitle="Drag images here, paste a screenshot (Ctrl+V), paste an image URL, or use the in-app Browser's capture button."
             />
+          ) : shown.length === 0 ? (
+            <div className="text-center text-slate-500 mt-16">No evidence matches “{query}”.</div>
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
-              {items.map((ev) => (
+              {shown.map((ev) => (
                 <button
                   key={ev.id}
                   onClick={() => setSelected(ev)}
@@ -276,6 +302,11 @@ export function EvidencePage(): JSX.Element {
               await api.evidence.setNote(selected.id, note)
               setItems((prev) => prev.map((x) => (x.id === selected.id ? { ...x, note } : x)))
               setSelected((s) => (s ? { ...s, note } : s))
+            }}
+            onOcr={async (ocr) => {
+              await api.evidence.setOcr(selected.id, ocr)
+              setItems((prev) => prev.map((x) => (x.id === selected.id ? { ...x, ocr } : x)))
+              setSelected((s) => (s ? { ...s, ocr } : s))
             }}
           />
         )}
@@ -321,23 +352,50 @@ function EvidenceDetail({
   onClose,
   onRemove,
   onAddToGraph,
-  onNote
+  onNote,
+  onOcr
 }: {
   ev: Evidence
   onClose: () => void
   onRemove: () => void
   onAddToGraph: () => void
   onNote: (note: string) => void
+  onOcr: (ocr: string) => void
 }): JSX.Element {
   const openInBrowser = useOpenInBrowser()
   const [exif, setExif] = useState<ExifResult | null>(null)
   const [note, setNote] = useState(ev.note ?? '')
+  const [ocrBusy, setOcrBusy] = useState(false)
+  const [ocrPct, setOcrPct] = useState(0)
+  const [ocrErr, setOcrErr] = useState('')
 
   useEffect(() => {
     setNote(ev.note ?? '')
     if (ev.kind !== 'file') api.files.exif(ev.path).then(setExif)
     else setExif(null)
   }, [ev.id, ev.path, ev.kind, ev.note])
+
+  const runOcr = async (): Promise<void> => {
+    setOcrBusy(true)
+    setOcrErr('')
+    setOcrPct(0)
+    try {
+      const dataUrl = await api.files.dataUrl(ev.path)
+      if (!dataUrl) throw new Error('Could not read the image')
+      const res = await Tesseract.recognize(dataUrl, 'eng', {
+        logger: (m) => {
+          if (m.status === 'recognizing text') setOcrPct(Math.round(m.progress * 100))
+        }
+      })
+      const text = (res.data.text ?? '').trim()
+      onOcr(text)
+      if (!text) setOcrErr('No readable text found in this image.')
+    } catch (e) {
+      setOcrErr(`OCR failed: ${String((e as Error)?.message ?? e)} (needs internet on first run)`)
+    } finally {
+      setOcrBusy(false)
+    }
+  }
 
   const imageUrl = ev.sourceUrl && IMG_EXT.test(ev.sourceUrl) ? ev.sourceUrl : null
 
@@ -443,6 +501,43 @@ function EvidenceDetail({
             </div>
           )}
         </div>
+
+        {/* OCR — extract text from the image */}
+        {ev.kind !== 'file' && (
+          <div>
+            <div className="flex items-center justify-between mb-1.5">
+              <div className="flex items-center gap-1.5">
+                <ScanText size={14} className="text-accent" />
+                <span className="label !mb-0">Text (OCR)</span>
+              </div>
+              <div className="flex items-center gap-2">
+                {ev.ocr && (
+                  <button
+                    className="text-[11px] text-slate-500 hover:text-accent-glow flex items-center gap-1"
+                    onClick={() => api.clipboard.writeText(ev.ocr!)}
+                  >
+                    <Copy size={11} /> Copy
+                  </button>
+                )}
+                <button className="btn-ghost border border-ink-600 !px-2 !py-1 text-xs" onClick={runOcr} disabled={ocrBusy}>
+                  {ocrBusy ? <Loader2 size={12} className="animate-spin" /> : <ScanText size={12} />}
+                  {ocrBusy ? `${ocrPct}%` : ev.ocr ? 'Re-run' : 'Run OCR'}
+                </button>
+              </div>
+            </div>
+            {ocrErr && <div className="text-[11px] text-warn mb-1">{ocrErr}</div>}
+            {ev.ocr ? (
+              <>
+                <pre className="text-[11px] text-slate-300 whitespace-pre-wrap break-words bg-ink-950 border border-ink-700 rounded-lg p-2 max-h-48 overflow-y-auto font-sans">{ev.ocr}</pre>
+                <button className="text-[11px] text-brand-glow hover:underline mt-1 flex items-center gap-1" onClick={() => onNote((note ? note + '\n\n' : '') + ev.ocr)}>
+                  <NotebookPen size={11} /> Append to note
+                </button>
+              </>
+            ) : (
+              !ocrBusy && <div className="text-xs text-slate-500">Extract any text in this image (logos, documents, screenshots).</div>
+            )}
+          </div>
+        )}
 
         {/* Note */}
         <div>

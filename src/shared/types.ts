@@ -296,6 +296,8 @@ export interface Evidence {
   sha256: string
   capturedAt: number
   note?: string
+  /** Text extracted from the image via OCR. */
+  ocr?: string
 }
 
 export interface UpdateStatus {
@@ -332,6 +334,7 @@ export interface OsintApi {
     list(projectId: string | null): Promise<Evidence[]>
     remove(id: string): Promise<void>
     setNote(id: string, note: string): Promise<void>
+    setOcr(id: string, ocr: string): Promise<void>
     fromUrl(url: string, projectId: string | null): Promise<Evidence>
   }
   personas: {
@@ -378,6 +381,8 @@ export interface OsintApi {
     saveCopy(mediaUrl: string, defaultName: string): Promise<string | null>
     /** Parse EXIF (GPS + camera) from a stored gwmedia:// image. */
     exif(mediaUrl: string): Promise<ExifResult>
+    /** A stored gwmedia:// image as a data URL (for OCR / processing). */
+    dataUrl(mediaUrl: string): Promise<string | null>
     /** Save a data URL (e.g. an exported graph PNG) to a user-chosen file. Returns the path. */
     exportImage(dataUrl: string, defaultName: string): Promise<string | null>
   }

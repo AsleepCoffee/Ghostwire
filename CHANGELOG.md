@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.1.47
+- OCR on evidence — "Run OCR" on any image extracts its text (saved, copyable, appendable to the note).
+- Evidence search — filter the board by title, source, notes and OCR text.
+
 ## v0.1.46
 - New Email & Phone Intelligence (Research) — email: Gravatar profile + linked accounts, MX check, Have I Been Pwned breach lookup (needs a HIBP key); phone: country, line type, formats via libphonenumber. Pivot or add findings to the link chart. Added a HIBP API key in Settings.
 - Map-based time-zone picker — "Map" button on an investigation's Time zone field and the dashboard Add-clock resolves the zone from a clicked location (offline).

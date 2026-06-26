@@ -1,6 +1,6 @@
 {
   "name": "ghostwire",
-  "version": "0.1.46",
+  "version": "0.1.47",
   "description": "GhostWire — OSINT workbench: sock puppet manager, notes, tool launcher, and entity graph for OSINT investigations.",
   "main": "./out/main/index.js",
   "author": "Michael Morin",
@@ -82,6 +82,7 @@
     "react-router-dom": "^6.28.0",
     "remark-gfm": "^4.0.0",
     "sql.js": "^1.12.0",
+    "tesseract.js": "^5.1.1",
     "tz-lookup": "^6.1.25",
     "uuid": "^11.0.3"
   },
