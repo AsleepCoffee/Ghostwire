@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.1.55
+- Fixed pages constantly refreshing / the URL endlessly changing in the in-app browser — the browser now presents a consistent desktop-Chrome identity (User-Agent matches the Sec-CH-UA client hints), so Google/Cloudflare stop looping bot checks. (Replaces the v0.1.53 hardcoded UA, which mismatched the client hints.)
+- Security: upgraded to Electron 42 + electron-builder 26 (npm vulnerabilities 13 → 3, remaining are dev-only build tooling). CI actions bumped to the Node 24 runtime.
+- Map pins now have a "Street View" link that opens Google Street View at that location, in-app.
+- HTML report: every photo carries its "Exhibit N" badge so map pins / custody rows match the right image.
+
 ## v0.1.54
 - New Cross-Reference Images tool (Research) — reverse-search several images, grab the result links from the open tab, and pages/boards/profiles appearing across multiple images are ranked, surfacing a likely shared source.
 - Removed the automatic image-upload injection (it destabilised the browser); reverse image search is copy-to-clipboard + the pinned paste panel.

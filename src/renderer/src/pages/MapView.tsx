@@ -4,6 +4,7 @@ import 'leaflet/dist/leaflet.css'
 import { Map as MapIcon, Loader2, RefreshCw } from 'lucide-react'
 import { api, type Project } from '../lib/api'
 import { useSettings } from '../lib/settings'
+import { useOpenInBrowser } from '../lib/browserBus'
 
 interface Pt {
   lat: number
@@ -42,6 +43,9 @@ async function geocode(q: string): Promise<{ lat: number; lng: number } | null> 
 
 export function MapView(): JSX.Element {
   const { settings } = useSettings()
+  const openInBrowser = useOpenInBrowser()
+  const openRef = useRef(openInBrowser)
+  openRef.current = openInBrowser
   const [projects, setProjects] = useState<Project[]>([])
   const [projectId, setProjectId] = useState<string | null>(settings.activeProjectId ?? null)
   const [pts, setPts] = useState<Pt[]>([])
@@ -128,11 +132,33 @@ export function MapView(): JSX.Element {
       })
       L.marker([p.lat, p.lng], { icon })
         .addTo(layer)
-        .bindPopup(`<b>${esc(p.label)}</b><br><span style="opacity:.6">${esc(p.kind)}</span>`)
+        .bindPopup(
+          `<b>${esc(p.label)}</b><br><span style="opacity:.6">${esc(p.kind)}</span><br>` +
+            `<a href="#" data-sv="${p.lat},${p.lng}" style="color:#2563eb">📍 Street View</a>`
+        )
       bounds.push([p.lat, p.lng])
     }
     if (bounds.length) map.fitBounds(bounds, { padding: [50, 50], maxZoom: 12 })
   }, [pts])
+
+  // Open Google Street View (in the in-app browser) from a marker popup.
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map) return
+    const onOpen = (e: L.PopupEvent): void => {
+      const el = e.popup.getElement()?.querySelector('[data-sv]') as HTMLAnchorElement | null
+      if (!el) return
+      el.onclick = (ev): void => {
+        ev.preventDefault()
+        const [lat, lng] = (el.dataset.sv ?? '').split(',')
+        openRef.current([`https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${lat},${lng}`])
+      }
+    }
+    map.on('popupopen', onOpen)
+    return () => {
+      map.off('popupopen', onOpen)
+    }
+  }, [])
 
   return (
     <div className="h-full flex flex-col">

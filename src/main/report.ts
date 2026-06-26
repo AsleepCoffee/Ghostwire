@@ -212,7 +212,7 @@ export function buildHtmlReport(d: ReportData): string {
                 : '<div class="evfile">FILE</div>'
             }
             <figcaption>
-              <div class="evtitle">${esc(e.title || e.sourceUrl || `Exhibit ${i + 1}`)}</div>
+              <div class="evtitle"><span class="exno">Exhibit ${i + 1}</span>${e.title || e.sourceUrl ? ' ' + esc(e.title || e.sourceUrl) : ''}</div>
               <div class="muted">${esc(fmt(e.capturedAt))}</div>
               ${e.sourceUrl ? `<a class="evsrc" href="${esc(e.sourceUrl)}" target="_blank" rel="noreferrer">${esc(e.sourceUrl)}</a>` : ''}
               ${evidenceCamera(e)}
@@ -389,6 +389,7 @@ ${geoPoints.length ? '<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9
   .evfile{ height:170px; display:flex; align-items:center; justify-content:center; background:var(--line); color:var(--muted); font-size:12px; letter-spacing:1px; }
   figcaption{ padding:10px 12px; }
   .evtitle{ font-weight:600; margin-bottom:2px; }
+  .exno{ display:inline-block; background:var(--accent); color:#fff; font-size:10px; font-weight:700; padding:1px 7px; border-radius:20px; margin-right:6px; vertical-align:middle; }
   .evsrc{ display:block; font-size:11px; word-break:break-all; margin-top:4px; }
   .evnote{ margin-top:6px; font-size:13px; }
   .ocr{ margin-top:6px; font-size:12px; } .ocr pre{ white-space:pre-wrap; margin:6px 0 0; font:12px/1.5 ui-monospace,monospace; color:var(--muted); }

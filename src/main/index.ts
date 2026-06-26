@@ -7,7 +7,7 @@ import { registerMediaScheme, registerMediaProtocol } from './media'
 import { initUpdater } from './updater'
 import { initVpn, shutdownVpn } from './vpn'
 import { registerBackupHandlers, maybeAutoBackup } from './backup'
-import { hardenWebContents, BASE_CHROME_UA } from './fingerprint'
+import { hardenWebContents } from './fingerprint'
 import { attachContextMenu } from './contextmenu'
 
 // Must run before app is ready.
@@ -55,6 +55,17 @@ function createWindow(): void {
 }
 
 app.whenReady().then(async () => {
+  // Strip the "Electron/x" and app tokens from the default UA so embedded pages
+  // present as plain desktop Chrome — but keep the REAL Chromium version so it
+  // matches the Sec-CH-UA client hints. A mismatch there is what makes Google /
+  // Cloudflare loop their challenge ("the URL end keeps changing"). Personas
+  // still override this with their own spoofed UA.
+  try {
+    app.userAgentFallback = app.userAgentFallback.replace(/ (?:GhostWire|Electron)\/\S+/g, '')
+  } catch {
+    /* ignore */
+  }
+
   registerMediaProtocol()
   await initDb()
   registerHandlers()
@@ -63,16 +74,6 @@ app.whenReady().then(async () => {
   initVpn()
   maybeAutoBackup()
 
-  // Give the shared browsing sessions a clean desktop-Chrome UA up front (before
-  // any page loads) so anti-bot checks (Google, Cloudflare) don't reject the
-  // stock Electron UA and trap the page in a reload/challenge loop.
-  for (const part of ['persist:default-browser', 'persist:gw-mailbox']) {
-    try {
-      session.fromPartition(part).setUserAgent(BASE_CHROME_UA)
-    } catch {
-      /* ignore */
-    }
-  }
 
   app.on('web-contents-created', (_e, contents) => {
     if (contents.getType() !== 'webview') return

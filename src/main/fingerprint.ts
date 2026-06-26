@@ -18,12 +18,6 @@ function seedFrom(str: string): number {
   return h >>> 0
 }
 
-// Default browsing UA — a clean desktop Chrome string with no "Electron"/app
-// token. Sites like Google (Maps, Street View, Lens, sign-in) reject the stock
-// Electron UA and bounce in a reload/consent loop; a normal Chrome UA fixes it.
-export const BASE_CHROME_UA =
-  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36'
-
 // A small pool of plausible recent desktop Chrome UAs; pick one per persona.
 const CHROME_VERSIONS = ['124.0.0.0', '125.0.0.0', '126.0.0.0', '127.0.0.0', '128.0.0.0']
 const PLATFORMS = [
@@ -101,23 +95,14 @@ function personaForSession(ses: Session): { id: string } | null {
 /** Apply UA + fingerprint spoof to a guest webview if it belongs to a persona
  *  and hardening is enabled. Call from the web-contents-created handler. */
 export function hardenWebContents(contents: WebContents): void {
+  if (getSettings().hardenFingerprint === false) return
   const persona = personaForSession(contents.session)
-  const harden = getSettings().hardenFingerprint !== false
-  if (persona && harden) {
-    const seed = seedFrom(persona.id)
-    try {
-      contents.session.setUserAgent(personaUA(seed))
-    } catch {
-      /* ignore */
-    }
-    contents.on('dom-ready', () => contents.executeJavaScript(spoofScript(seed)).catch(() => {}))
-    return
-  }
-  // Default / un-hardened sessions: still strip the "Electron" token from the UA
-  // so Google (Maps, Street View, Earth, Lens, sign-in) doesn't reject the browser.
+  if (!persona) return // default sessions use the clean app.userAgentFallback
+  const seed = seedFrom(persona.id)
   try {
-    contents.session.setUserAgent(BASE_CHROME_UA)
+    contents.session.setUserAgent(personaUA(seed))
   } catch {
     /* ignore */
   }
+  contents.on('dom-ready', () => contents.executeJavaScript(spoofScript(seed)).catch(() => {}))
 }

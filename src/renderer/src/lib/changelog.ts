@@ -7,6 +7,16 @@ export interface ChangelogEntry {
 /** In-app patch notes. Newest first. Keep in sync with CHANGELOG.md. */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.1.55',
+    date: '2026-06-26',
+    notes: [
+      'Fixed pages constantly refreshing / the URL endlessly changing in the in-app browser — the browser now presents a consistent desktop-Chrome identity (matching its User-Agent and client-hint headers), so Google and Cloudflare stop looping their bot checks.',
+      'Security update — upgraded to Electron 42 and electron-builder 26, clearing the bulk of the dependency advisories.',
+      'Map pins now have a “Street View” link — open Google Street View at any plotted location, in-app.',
+      'HTML report — every photo now carries its “Exhibit N” badge, so the map pins and chain-of-custody entries match the right image.'
+    ]
+  },
+  {
     version: '0.1.54',
     date: '2026-06-26',
     notes: [
