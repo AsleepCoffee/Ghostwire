@@ -20,6 +20,8 @@ export interface TabRequest {
   url: string
   personaId?: string
   autofill?: Autofill
+  /** A data: URL of an image to auto-upload into the page's file input (reverse image search). */
+  upload?: string
 }
 
 export interface OpenRequest {

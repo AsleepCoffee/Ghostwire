@@ -1,4 +1,4 @@
-import { ipcMain, dialog, BrowserWindow, clipboard, app, net } from 'electron'
+import { ipcMain, dialog, BrowserWindow, clipboard, nativeImage, app, net } from 'electron'
 import { randomUUID, createHash } from 'crypto'
 import { existsSync, mkdirSync, writeFileSync, copyFileSync, unlinkSync } from 'fs'
 import { join, dirname, basename } from 'path'
@@ -20,6 +20,7 @@ import type {
   EntityEdge,
   EntityNode,
   Evidence,
+  GeoResult,
   Note,
   Persona,
   Project,
@@ -168,7 +169,10 @@ function mapEvidence(r: Record<string, unknown>): Evidence {
     sha256: String(r.sha256 ?? ''),
     capturedAt: Number(r.capturedAt),
     note: (r.note as string) ?? '',
-    ocr: (r.ocr as string) ?? ''
+    ocr: (r.ocr as string) ?? '',
+    geoLat: r.geoLat != null ? Number(r.geoLat) : null,
+    geoLng: r.geoLng != null ? Number(r.geoLng) : null,
+    geoLabel: (r.geoLabel as string) ?? ''
   }
 }
 
@@ -535,6 +539,26 @@ export function registerHandlers(): void {
   })
   // Download an image from a URL straight into the evidence locker (with SHA-256).
   ipcMain.handle('evidence:fromUrl', (_e, url: string, projectId: string | null) => addEvidenceFromUrl(url, projectId))
+  // Assign / clear a map location for an exhibit (EXIF, AI guess, or set by hand).
+  ipcMain.handle('evidence:setGeo', (_e, id: string, lat: number | null, lng: number | null, label?: string) => {
+    run('UPDATE evidence SET geoLat = ?, geoLng = ?, geoLabel = ? WHERE id = ?', [
+      lat == null ? null : Number(lat),
+      lng == null ? null : Number(lng),
+      String(label ?? ''),
+      id
+    ])
+  })
+  // Copy a stored image to the OS clipboard so it can be pasted into a reverse-image engine.
+  ipcMain.handle('evidence:copyImage', (_e, id: string) => {
+    const r = get('SELECT path FROM evidence WHERE id = ?', [id])
+    if (!r) return false
+    const buf = readMedia(String((r as Record<string, unknown>).path))
+    if (!buf) return false
+    const img = nativeImage.createFromBuffer(buf)
+    if (img.isEmpty()) return false
+    clipboard.writeImage(img)
+    return true
+  })
   // Re-hash a stored exhibit and compare it to the hash recorded at capture — proves integrity.
   ipcMain.handle('evidence:verify', (_e, id: string) => {
     const r = get('SELECT path, sha256, capturedAt FROM evidence WHERE id = ?', [id]) as
@@ -979,6 +1003,74 @@ export function registerHandlers(): void {
     } catch (e) {
       return { ok: false, error: String((e as Error)?.message ?? e) }
     }
+  })
+
+  // AI geolocation — ask an OpenAI vision model where an evidence image was taken.
+  ipcMain.handle('intel:geolocate', async (_e, evidenceId: string): Promise<GeoResult> => {
+    const key = getSettings().apiKeys?.openai
+    if (!key) throw new Error('Add an OpenAI API key in Settings to use AI geolocation.')
+    const r = get('SELECT path FROM evidence WHERE id = ?', [evidenceId]) as { path: string } | undefined
+    if (!r) throw new Error('Evidence not found.')
+    const buf = readMedia(r.path)
+    if (!buf) throw new Error('Image file not found.')
+    const ext = (r.path.split('.').pop() ?? '').toLowerCase().replace(/[^a-z0-9]/g, '')
+    const mime = ext === 'png' ? 'image/png' : ext === 'webp' ? 'image/webp' : ext === 'gif' ? 'image/gif' : 'image/jpeg'
+    const dataUri = `data:${mime};base64,${buf.toString('base64')}`
+    const instructions =
+      'Act as an expert OSINT geolocation analyst (a GeoGuessr world champion). Study the image and infer the most likely real-world location from visual cues only: text/signage and its language & script, license plates, road markings and driving side, utility poles, bollards, architecture, vegetation/climate, terrain, vehicles, and sun position. Give 1–5 ranked candidates, most likely first. ' +
+      'Respond with STRICT JSON only, no prose, in this exact shape: ' +
+      '{"summary": string, "guesses": [{"place": string, "country": string, "lat": number, "lng": number, "confidence": number, "reasoning": string}]}. ' +
+      'confidence is 0-100. lat/lng are approximate decimal degrees for the place (use null if you truly cannot estimate). If the image has no usable geographic cues, return an empty guesses array and say so in summary.'
+    const body = {
+      model: 'gpt-4o',
+      max_tokens: 1000,
+      temperature: 0.2,
+      response_format: { type: 'json_object' },
+      messages: [
+        { role: 'system', content: 'You are a precise OSINT geolocation assistant. Output only valid JSON.' },
+        {
+          role: 'user',
+          content: [
+            { type: 'text', text: instructions },
+            { type: 'image_url', image_url: { url: dataUri } }
+          ]
+        }
+      ]
+    }
+    const res = await net.fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` },
+      body: JSON.stringify(body)
+    })
+    if (!res.ok) {
+      const t = await res.text().catch(() => '')
+      if (res.status === 401) throw new Error('OpenAI key rejected (401).')
+      if (res.status === 429) throw new Error('OpenAI rate limit / quota exceeded (429).')
+      throw new Error(`OpenAI HTTP ${res.status}${t ? `: ${t.slice(0, 200)}` : ''}`)
+    }
+    const j = (await res.json()) as { choices?: { message?: { content?: string } }[] }
+    const content = j.choices?.[0]?.message?.content ?? '{}'
+    let parsed: { summary?: string; guesses?: unknown[] }
+    try {
+      parsed = JSON.parse(content)
+    } catch {
+      parsed = { summary: content, guesses: [] }
+    }
+    const num = (v: unknown): number | null => (v == null || v === '' || isNaN(Number(v)) ? null : Number(v))
+    const guesses = Array.isArray(parsed.guesses)
+      ? parsed.guesses.slice(0, 6).map((g) => {
+          const o = g as Record<string, unknown>
+          return {
+            place: String(o.place ?? o.location ?? '').trim(),
+            country: o.country ? String(o.country) : undefined,
+            lat: num(o.lat),
+            lng: num(o.lng),
+            confidence: num(o.confidence) ?? undefined,
+            reasoning: o.reasoning ? String(o.reasoning) : undefined
+          }
+        }).filter((g) => g.place)
+      : []
+    return { guesses, summary: parsed.summary ? String(parsed.summary) : undefined }
   })
 
   // ===== Mail (mail.tm disposable mailboxes) =====

@@ -19,26 +19,28 @@ import {
   NotebookPen,
   ShieldCheck,
   ShieldAlert,
-  ShieldQuestion
+  ShieldQuestion,
+  Compass,
+  Sparkles,
+  MapPinned,
+  Globe
 } from 'lucide-react'
-import { api, type Evidence, type Project, type ExifResult, type EvidenceVerify } from '../lib/api'
+import { api, type Evidence, type Project, type ExifResult, type EvidenceVerify, type GeoResult } from '../lib/api'
 import { useSettings } from '../lib/settings'
 import { useConfirm } from '../lib/confirm'
-import { useOpenInBrowser } from '../lib/browserBus'
+import { useOpenInBrowser, useOpenTabs } from '../lib/browserBus'
 import { fmtDateTime } from '../lib/format'
 import { EmptyState } from '../components/ui'
 
-const enc = encodeURIComponent
-const IMG_EXT = /\.(jpe?g|png|gif|webp|bmp|avif)(\?|#|$)/i
 
-/** Reverse-image-search engines. byUrl works when we have a direct image URL;
- *  otherwise we open the engine so you can drop the saved file in. */
-const REVERSE = [
-  { label: 'Google Lens', byUrl: (u: string) => `https://lens.google.com/uploadbyurl?url=${enc(u)}`, home: 'https://lens.google.com/' },
-  { label: 'Yandex', byUrl: (u: string) => `https://yandex.com/images/search?rpt=imageview&url=${enc(u)}`, home: 'https://yandex.com/images/' },
-  { label: 'Bing', byUrl: (u: string) => `https://www.bing.com/images/searchbyimage?cbir=sbi&imgurl=${enc(u)}`, home: 'https://www.bing.com/visualsearch' },
-  { label: 'TinEye', byUrl: (u: string) => `https://tineye.com/search?url=${enc(u)}`, home: 'https://tineye.com/' },
-  { label: 'PimEyes (faces)', byUrl: null, home: 'https://pimeyes.com/en' }
+/** Reverse-image-search engines. `upload` is the page whose file-input we drop
+ *  the saved evidence image into (the in-app browser auto-uploads it). */
+const REVERSE: { label: string; upload: string }[] = [
+  { label: 'Google Lens', upload: 'https://lens.google.com/' },
+  { label: 'Yandex', upload: 'https://yandex.com/images/' },
+  { label: 'Bing', upload: 'https://www.bing.com/visualsearch' },
+  { label: 'TinEye', upload: 'https://tineye.com/' },
+  { label: 'PimEyes (faces)', upload: 'https://pimeyes.com/en' }
 ]
 
 const fileToDataUrl = (file: File): Promise<string> =>
@@ -365,19 +367,68 @@ function EvidenceDetail({
   onOcr: (ocr: string) => void
 }): JSX.Element {
   const openInBrowser = useOpenInBrowser()
+  const openTabs = useOpenTabs()
+  const navigate = useNavigate()
+  const { settings } = useSettings()
   const [exif, setExif] = useState<ExifResult | null>(null)
   const [note, setNote] = useState(ev.note ?? '')
   const [ocrBusy, setOcrBusy] = useState(false)
   const [ocrErr, setOcrErr] = useState('')
   const [verify, setVerify] = useState<EvidenceVerify | null>(null)
   const [verifying, setVerifying] = useState(false)
+  const [geo, setGeo] = useState<{ lat: number | null; lng: number | null; label: string }>({
+    lat: ev.geoLat ?? null,
+    lng: ev.geoLng ?? null,
+    label: ev.geoLabel ?? ''
+  })
+  const [aiGeo, setAiGeo] = useState<GeoResult | null>(null)
+  const [aiBusy, setAiBusy] = useState(false)
+  const [aiErr, setAiErr] = useState('')
 
   useEffect(() => {
     setNote(ev.note ?? '')
     setVerify(null)
+    setAiGeo(null)
+    setAiErr('')
+    setGeo({ lat: ev.geoLat ?? null, lng: ev.geoLng ?? null, label: ev.geoLabel ?? '' })
     if (ev.kind !== 'file') api.files.exif(ev.path).then(setExif)
     else setExif(null)
-  }, [ev.id, ev.path, ev.kind, ev.note])
+  }, [ev.id, ev.path, ev.kind, ev.note, ev.geoLat, ev.geoLng, ev.geoLabel])
+
+  // Drop a found location onto the case map (persisted on the exhibit).
+  const pinOnMap = async (lat: number, lng: number, label: string, goToMap = true): Promise<void> => {
+    await api.evidence.setGeo(ev.id, lat, lng, label)
+    setGeo({ lat, lng, label })
+    if (goToMap) navigate('/map')
+  }
+  const clearPin = async (): Promise<void> => {
+    await api.evidence.setGeo(ev.id, null, null, '')
+    setGeo({ lat: null, lng: null, label: '' })
+  }
+
+  const runAiGeo = async (): Promise<void> => {
+    setAiBusy(true)
+    setAiErr('')
+    try {
+      setAiGeo(await api.intel.geolocate(ev.id))
+    } catch (e) {
+      setAiErr(String((e as Error)?.message ?? e))
+    } finally {
+      setAiBusy(false)
+    }
+  }
+
+  // Reverse image search: open the engine and auto-upload the saved image; also
+  // copy it to the clipboard so it can be pasted if a site blocks auto-upload.
+  const reverseSearch = async (uploadUrl: string): Promise<void> => {
+    try {
+      const dataUrl = await api.files.dataUrl(ev.path)
+      api.evidence.copyImage(ev.id).catch(() => {})
+      openTabs([{ url: uploadUrl, upload: dataUrl || undefined }])
+    } catch {
+      openTabs([{ url: uploadUrl }])
+    }
+  }
 
   const doVerify = async (): Promise<void> => {
     setVerifying(true)
@@ -402,7 +453,7 @@ function EvidenceDetail({
     }
   }
 
-  const imageUrl = ev.sourceUrl && IMG_EXT.test(ev.sourceUrl) ? ev.sourceUrl : null
+  const openaiKey = !!settings.apiKeys?.openai
 
   return (
     <div className="w-96 shrink-0 border-l border-ink-700 bg-ink-900 flex flex-col overflow-y-auto">
@@ -419,29 +470,139 @@ function EvidenceDetail({
         )}
 
         {/* Reverse image search */}
-        <div>
-          <div className="flex items-center gap-1.5 mb-1.5">
-            <ScanSearch size={14} className="text-accent" />
-            <span className="label !mb-0">Reverse image search</span>
-          </div>
-          <div className="flex flex-wrap gap-1.5">
-            {REVERSE.map((eng) => (
-              <button
-                key={eng.label}
-                className="btn-ghost border border-ink-600 text-xs"
-                onClick={() => openInBrowser([imageUrl && eng.byUrl ? eng.byUrl(imageUrl) : eng.home])}
-                title={imageUrl && eng.byUrl ? `Search this image on ${eng.label} (in-app)` : `Open ${eng.label} in-app — then upload the saved image`}
-              >
-                {eng.label}
-              </button>
-            ))}
-          </div>
-          {!imageUrl && (
+        {ev.kind !== 'file' && (
+          <div>
+            <div className="flex items-center gap-1.5 mb-1.5">
+              <ScanSearch size={14} className="text-accent" />
+              <span className="label !mb-0">Reverse image search</span>
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {REVERSE.map((eng) => (
+                <button
+                  key={eng.label}
+                  className="btn-ghost border border-ink-600 text-xs"
+                  onClick={() => reverseSearch(eng.upload)}
+                  title={`Open ${eng.label} in-app and auto-upload this image`}
+                >
+                  {eng.label}
+                </button>
+              ))}
+            </div>
             <p className="text-[11px] text-slate-600 mt-1.5">
-              No direct image URL — click <b>Save copy</b> below, then drop the file into the engine.
+              Opens in the in-app browser and drops the image into the upload box. It's also copied to your clipboard — press <b>Ctrl+V</b> if a site blocks auto-upload.
             </p>
-          )}
-        </div>
+          </div>
+        )}
+
+        {/* Geolocate — where was this taken? */}
+        {ev.kind !== 'file' && (
+          <div className="rounded-lg border border-ink-700 p-2.5 space-y-2.5">
+            <div className="flex items-center gap-1.5">
+              <Compass size={14} className="text-accent" />
+              <span className="label !mb-0">Geolocate</span>
+            </div>
+
+            {/* Assigned pin */}
+            {geo.lat != null && geo.lng != null ? (
+              <div className="flex items-start gap-1.5 text-xs bg-ok/10 text-ok rounded-md px-2 py-1.5">
+                <MapPinned size={13} className="shrink-0 mt-0.5" />
+                <div className="flex-1 min-w-0">
+                  <div className="font-medium break-words">{geo.label || 'Pinned location'}</div>
+                  <div className="opacity-80">{geo.lat.toFixed(5)}, {geo.lng.toFixed(5)}</div>
+                  <div className="flex gap-2 mt-1">
+                    <button className="underline hover:opacity-80" onClick={() => navigate('/map')}>View on map</button>
+                    <button className="underline hover:opacity-80" onClick={clearPin}>Clear</button>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <p className="text-[11px] text-slate-500">No location pinned yet.</p>
+            )}
+
+            {/* From EXIF GPS */}
+            {exif?.gps && (
+              <button
+                className="btn-ghost border border-ink-600 text-xs w-full justify-center"
+                onClick={() => pinOnMap(exif.gps!.lat, exif.gps!.lng, 'EXIF GPS', false)}
+              >
+                <MapPin size={13} /> Pin EXIF GPS ({exif.gps.lat.toFixed(4)}, {exif.gps.lng.toFixed(4)})
+              </button>
+            )}
+
+            {/* Open external geo tools (in-app browser) */}
+            <div className="flex flex-wrap gap-1.5">
+              <button
+                className="btn-ghost border border-ink-600 text-[11px]"
+                onClick={() => openInBrowser([`https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${geo.lat ?? 0},${geo.lng ?? 0}`])}
+                title="Google Street View"
+              >
+                <Globe size={12} /> Street View
+              </button>
+              <button
+                className="btn-ghost border border-ink-600 text-[11px]"
+                onClick={() => openInBrowser([geo.lat != null ? `https://earth.google.com/web/@${geo.lat},${geo.lng},100a,1000d` : 'https://earth.google.com/web/'])}
+                title="Google Earth"
+              >
+                <Globe size={12} /> Earth
+              </button>
+              <button
+                className="btn-ghost border border-ink-600 text-[11px]"
+                onClick={() => openInBrowser(['https://www.suncalc.org/'])}
+                title="Estimate time-of-day from shadows"
+              >
+                <Globe size={12} /> SunCalc
+              </button>
+            </div>
+
+            {/* AI best guess */}
+            <div className="border-t border-ink-800 pt-2">
+              <button
+                className="btn-ghost border border-ink-600 text-xs w-full justify-center disabled:opacity-50"
+                onClick={runAiGeo}
+                disabled={aiBusy || !openaiKey}
+                title={openaiKey ? 'Ask the OpenAI vision model where this was taken' : 'Add an OpenAI API key in Settings'}
+              >
+                {aiBusy ? <Loader2 size={13} className="animate-spin" /> : <Sparkles size={13} className="text-accent" />}
+                {aiBusy ? 'Analyzing image…' : 'AI best guess (OpenAI)'}
+              </button>
+              {!openaiKey && (
+                <button className="text-[11px] text-brand-glow hover:underline mt-1" onClick={() => navigate('/settings')}>
+                  Add an OpenAI API key in Settings →
+                </button>
+              )}
+              {aiErr && <div className="text-[11px] text-warn mt-1">{aiErr}</div>}
+              {aiGeo && (
+                <div className="mt-2 space-y-1.5">
+                  {aiGeo.summary && <p className="text-[11px] text-slate-400">{aiGeo.summary}</p>}
+                  {aiGeo.guesses.length === 0 && !aiGeo.summary && (
+                    <p className="text-[11px] text-slate-500">No confident location from the visible cues.</p>
+                  )}
+                  {aiGeo.guesses.map((g, i) => (
+                    <div key={i} className="rounded-md border border-ink-700 p-2 text-xs">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="font-medium text-slate-200 break-words">
+                          {g.place}
+                          {g.country ? `, ${g.country}` : ''}
+                        </span>
+                        {g.confidence != null && <span className="text-[10px] text-slate-500 shrink-0">{Math.round(g.confidence)}%</span>}
+                      </div>
+                      {g.reasoning && <div className="text-[11px] text-slate-500 mt-0.5">{g.reasoning}</div>}
+                      {g.lat != null && g.lng != null && (
+                        <button
+                          className="text-[11px] text-brand-glow hover:underline mt-1 flex items-center gap-1"
+                          onClick={() => pinOnMap(g.lat!, g.lng!, `${g.place}${g.country ? `, ${g.country}` : ''}`)}
+                        >
+                          <MapPinned size={11} /> Pin on map
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                  <p className="text-[10px] text-slate-600">AI estimate — verify before relying on it.</p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Chain of custody */}
         <div className="space-y-2">

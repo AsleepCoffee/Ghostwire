@@ -92,6 +92,11 @@ export function MapView(): JSX.Element {
       }
       const ev = (await api.evidence.list(projectId)).filter((x) => x.kind !== 'file')
       for (const item of ev) {
+        // A pinned location (from EXIF, an AI guess, or set by hand) wins; else fall back to raw EXIF GPS.
+        if (item.geoLat != null && item.geoLng != null) {
+          out.push({ lat: item.geoLat, lng: item.geoLng, label: item.geoLabel || item.title || 'Evidence', kind: 'evidence' })
+          continue
+        }
         const ex = await api.files.exif(item.path)
         if (ex.gps) out.push({ lat: ex.gps.lat, lng: ex.gps.lng, label: item.title || 'Evidence', kind: 'evidence' })
       }

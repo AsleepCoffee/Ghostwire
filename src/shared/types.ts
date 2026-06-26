@@ -298,6 +298,26 @@ export interface Evidence {
   note?: string
   /** Text extracted from the image via OCR. */
   ocr?: string
+  /** A location assigned to this exhibit (from EXIF, an AI guess, or set by hand). */
+  geoLat?: number | null
+  geoLng?: number | null
+  geoLabel?: string
+}
+
+/** One candidate location for an image, from the AI geolocation model. */
+export interface GeoGuess {
+  place: string
+  country?: string
+  lat?: number | null
+  lng?: number | null
+  /** 0–100. */
+  confidence?: number
+  reasoning?: string
+}
+
+export interface GeoResult {
+  guesses: GeoGuess[]
+  summary?: string
 }
 
 /** Result of re-hashing a stored exhibit to confirm it is unaltered. */
@@ -351,6 +371,10 @@ export interface OsintApi {
     /** Re-hash the stored file and compare to the capture-time hash (chain of custody). */
     verify(id: string): Promise<EvidenceVerify>
     fromUrl(url: string, projectId: string | null): Promise<Evidence>
+    /** Assign (or clear, with null lat/lng) a map location for this exhibit. */
+    setGeo(id: string, lat: number | null, lng: number | null, label?: string): Promise<void>
+    /** Copy the stored image to the OS clipboard (so it can be pasted into a reverse-image engine). */
+    copyImage(id: string): Promise<boolean>
   }
   personas: {
     list(): Promise<Persona[]>
@@ -435,6 +459,8 @@ export interface OsintApi {
   intel: {
     gravatar(email: string): Promise<GravatarResult>
     hibp(email: string, key: string): Promise<{ ok: boolean; error?: string; breaches?: HibpBreach[] }>
+    /** AI geolocation: ask a vision model where an evidence image was taken. */
+    geolocate(evidenceId: string): Promise<GeoResult>
   }
   app: {
     version(): Promise<string>

@@ -126,7 +126,10 @@ CREATE TABLE IF NOT EXISTS evidence (
   sha256 TEXT,
   capturedAt INTEGER,
   note TEXT,
-  ocr TEXT
+  ocr TEXT,
+  geoLat REAL,
+  geoLng REAL,
+  geoLabel TEXT
 );
 
 CREATE TABLE IF NOT EXISTS activity (
@@ -192,7 +195,10 @@ function migrate(): void {
     'ALTER TABLE personas ADD COLUMN nationality TEXT',
     'ALTER TABLE personas ADD COLUMN phone TEXT',
     "ALTER TABLE projects ADD COLUMN timezone TEXT DEFAULT ''",
-    'ALTER TABLE evidence ADD COLUMN ocr TEXT'
+    'ALTER TABLE evidence ADD COLUMN ocr TEXT',
+    'ALTER TABLE evidence ADD COLUMN geoLat REAL',
+    'ALTER TABLE evidence ADD COLUMN geoLng REAL',
+    'ALTER TABLE evidence ADD COLUMN geoLabel TEXT'
   ]
   for (const sql of adds) {
     try {

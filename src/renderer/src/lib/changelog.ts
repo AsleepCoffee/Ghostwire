@@ -7,6 +7,15 @@ export interface ChangelogEntry {
 /** In-app patch notes. Newest first. Keep in sync with CHANGELOG.md. */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.1.52',
+    date: '2026-06-25',
+    notes: [
+      'Reverse image search now actually uploads your image — Google Lens / Yandex / Bing / TinEye / PimEyes open in-app and the saved image is dropped straight into the upload box (and copied to your clipboard as a fallback — Ctrl+V). No public URL needed.',
+      'New Geolocate panel on every image exhibit — pin a location on the case Map from EXIF GPS, an AI guess, or by hand, with quick links to Street View, Google Earth and SunCalc. Pinned locations plot on the Map.',
+      'AI image geolocation (optional) — with an OpenAI key, “AI best guess” reads the photo’s visual cues (signage, language, plates, architecture, terrain) and returns ranked locations you can pin. Add the key in Settings.'
+    ]
+  },
+  {
     version: '0.1.51',
     date: '2026-06-25',
     notes: [

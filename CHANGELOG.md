@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.1.52
+- Reverse image search now uploads your image — Lens/Yandex/Bing/TinEye/PimEyes open in-app and the saved image is dropped into the engine's upload box (also copied to clipboard as a Ctrl+V fallback). No public URL needed.
+- New Geolocate panel on every image exhibit — pin a location on the case Map from EXIF GPS, an AI guess, or by hand; quick links to Street View, Google Earth, SunCalc. Pinned locations plot on the Map.
+- AI image geolocation (optional, OpenAI key) — analyzes a photo's visual cues and returns ranked candidate locations you can pin. Add the key in Settings → API keys.
+
 ## v0.1.51
 - Everything stays in the app — links, pivots, search engines, photo GPS locations, context-menu actions and pop-ups (target=_blank/window.open) now always open in the in-app browser, never the system browser.
 - Fixed a runaway loop where some embedded pages (e.g. Google Lens) could spawn tabs endlessly — repeated/rapid opens are de-duplicated and rate-limited.

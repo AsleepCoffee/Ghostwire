@@ -23,6 +23,7 @@ const TESTS: Record<string, Build> = {
     headers: { Key: k, Accept: 'application/json' }
   }),
   ipinfo: (k) => ({ url: `https://ipinfo.io/8.8.8.8/json?token=${enc(k)}` }),
+  openai: (k) => ({ url: 'https://api.openai.com/v1/models', headers: { Authorization: `Bearer ${k}` } }),
   hunter: (k) => ({ url: `https://api.hunter.io/v2/account?api_key=${enc(k)}` }),
   securitytrails: (k) => ({ url: 'https://api.securitytrails.com/v1/ping', headers: { APIKEY: k, Accept: 'application/json' } }),
   pulsedive: (k) => ({ url: `https://pulsedive.com/api/info.php?indicator=google.com&pretty=1&key=${enc(k)}` }),

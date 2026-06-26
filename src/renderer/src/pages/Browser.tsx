@@ -43,6 +43,8 @@ interface Tab {
   failed: boolean
   personaId?: string
   autofill?: Autofill
+  /** Pending image (data URL) to auto-upload into the page's file input. */
+  upload?: string
 }
 
 function toUrl(input: string): string {
@@ -166,6 +168,47 @@ function fillScript(a: Autofill): string {
   })();`
 }
 
+/** A page script that drops an image (data URL) into the page's file input — used
+ *  to auto-submit a local evidence image to a reverse-image-search engine. Retries
+ *  for a few seconds because upload inputs often render late, and runs at most once. */
+function uploadScript(dataUrl: string): string {
+  return `(function(){ try {
+    if (window.__gwUploadDone) return;
+    var DATA = ${JSON.stringify(dataUrl)};
+    function toFile(d){
+      var arr=d.split(','), m=arr[0].match(/:(.*?);/), mime=m?m[1]:'image/png';
+      var b=atob(arr[1]), n=b.length, u=new Uint8Array(n);
+      while(n--) u[n]=b.charCodeAt(n);
+      var ext = mime.indexOf('png')>=0?'png':mime.indexOf('webp')>=0?'webp':mime.indexOf('gif')>=0?'gif':'jpg';
+      return new File([u], 'image.'+ext, {type:mime});
+    }
+    var file = toFile(DATA);
+    var tries = 0;
+    function attempt(){
+      if (window.__gwUploadDone) return;
+      tries++;
+      var inputs = Array.prototype.slice.call(document.querySelectorAll('input[type=file]')).filter(function(i){
+        var a=(i.getAttribute('accept')||'').toLowerCase();
+        return !a || a.indexOf('image')>=0 || a.indexOf('*')>=0;
+      });
+      var input = inputs[inputs.length-1];
+      if (input){
+        try {
+          var dt = new DataTransfer();
+          dt.items.add(file);
+          input.files = dt.files;
+          input.dispatchEvent(new Event('input',{bubbles:true}));
+          input.dispatchEvent(new Event('change',{bubbles:true}));
+          window.__gwUploadDone = true;
+          return;
+        } catch(e){}
+      }
+      if (tries < 14) setTimeout(attempt, 600);
+    }
+    attempt();
+  } catch(e){} })();`
+}
+
 let tabSeq = 0
 const newId = (): string => `tab_${Date.now()}_${tabSeq++}`
 
@@ -246,7 +289,8 @@ export function Browser(): JSX.Element {
           loading: true,
           failed: false,
           personaId: t.personaId,
-          autofill: t.autofill
+          autofill: t.autofill,
+          upload: t.upload
         }))
         if (created.length) setActiveId(created[0].id)
         return [...prev, ...created]
@@ -575,6 +619,7 @@ function BrowserView({
   const persona = personas.find((p) => p.id === tab.personaId)
   const partition = persona ? persona.partition : 'persist:default-browser'
   const localRef = useRef<WebviewEl | null>(null)
+  const uploadedRef = useRef(false)
 
   const attach = useCallback(
     (el: WebviewEl | null) => {
@@ -594,17 +639,22 @@ function BrowserView({
     const onStart = (): void => onState({ loading: true })
     const onStop = (): void => onState({ loading: false })
     const onTitle = (e: Event): void => onState({ title: (e as unknown as { title: string }).title })
-    const onFinish = (): void => {
-      // Idempotent autofill (only fills empty fields). executeJavaScript throws
-      // synchronously if the guest isn't ready, so guard it (a .catch only
-      // handles the promise rejection).
-      if (!tab.autofill) return
+    const inject = (script: string): void => {
       try {
-        const r = wv.executeJavaScript(fillScript(tab.autofill)) as Promise<unknown> | undefined
+        const r = wv.executeJavaScript(script) as Promise<unknown> | undefined
         if (r && typeof r.catch === 'function') r.catch(() => {})
       } catch {
         /* not dom-ready yet — a later event retries */
       }
+    }
+    const onFinish = (): void => {
+      // Auto-upload a local image into a reverse-image-search engine (once per tab).
+      if (tab.upload && !uploadedRef.current) {
+        uploadedRef.current = true
+        inject(uploadScript(tab.upload))
+      }
+      // Idempotent autofill (only fills empty fields).
+      if (tab.autofill) inject(fillScript(tab.autofill))
     }
     const onFail = (e: Event): void => {
       const ev = e as unknown as { errorCode: number; isMainFrame: boolean }
@@ -633,7 +683,7 @@ function BrowserView({
       wv.removeEventListener('did-fail-load', onFail as EventListener)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [partition, tab.autofill])
+  }, [partition, tab.autofill, tab.upload])
 
   return (
     <div className="absolute inset-0" style={{ display: active ? 'block' : 'none' }}>

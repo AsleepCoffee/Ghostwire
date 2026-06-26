@@ -117,6 +117,15 @@ export const API_SERVICES: ApiService[] = [
     signup: 'https://opencagedata.com/users/sign_up',
     unlocks: 'Geocoding (API).'
   },
+  {
+    id: 'openai',
+    name: 'OpenAI (vision)',
+    description: 'Vision model for AI image geolocation ("best guess" from what the photo shows).',
+    free: 'Paid, usage-based. A few cents per image.',
+    tier: 'paid',
+    signup: 'https://platform.openai.com/api-keys',
+    unlocks: 'AI geolocation on the Evidence Board (Geolocate → AI best guess).'
+  },
 
   // ---------------- Paid ----------------
   {

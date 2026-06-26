@@ -22,7 +22,9 @@ const api: OsintApi = {
     setOcr: (id, ocr) => ipcRenderer.invoke('evidence:setOcr', id, ocr),
     ocr: (id) => ipcRenderer.invoke('evidence:ocr', id),
     verify: (id) => ipcRenderer.invoke('evidence:verify', id),
-    fromUrl: (url, projectId) => ipcRenderer.invoke('evidence:fromUrl', url, projectId)
+    fromUrl: (url, projectId) => ipcRenderer.invoke('evidence:fromUrl', url, projectId),
+    setGeo: (id, lat, lng, label) => ipcRenderer.invoke('evidence:setGeo', id, lat, lng, label),
+    copyImage: (id) => ipcRenderer.invoke('evidence:copyImage', id)
   },
   personas: {
     list: () => ipcRenderer.invoke('personas:list'),
@@ -101,7 +103,8 @@ const api: OsintApi = {
   },
   intel: {
     gravatar: (email) => ipcRenderer.invoke('intel:gravatar', email),
-    hibp: (email, key) => ipcRenderer.invoke('intel:hibp', email, key)
+    hibp: (email, key) => ipcRenderer.invoke('intel:hibp', email, key),
+    geolocate: (evidenceId) => ipcRenderer.invoke('intel:geolocate', evidenceId)
   },
   app: {
     version: () => ipcRenderer.invoke('app:version'),
