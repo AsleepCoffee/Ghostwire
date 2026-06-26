@@ -110,7 +110,8 @@ const api: OsintApi = {
     verifyEmail: (email, key) => ipcRenderer.invoke('intel:verifyEmail', email, key),
     leakcheck: (query) => ipcRenderer.invoke('intel:leakcheck', query),
     hudsonrock: (email) => ipcRenderer.invoke('intel:hudsonrock', email),
-    facebookId: (input) => ipcRenderer.invoke('intel:facebookId', input)
+    facebookId: (input) => ipcRenderer.invoke('intel:facebookId', input),
+    instagramId: (input) => ipcRenderer.invoke('intel:instagramId', input)
   },
   app: {
     version: () => ipcRenderer.invoke('app:version'),

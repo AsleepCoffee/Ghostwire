@@ -1,31 +1,58 @@
 import { useState } from 'react'
 import { Fingerprint, Loader2, Search, DownloadCloud, Copy, Check, ExternalLink } from 'lucide-react'
-import { api } from '../lib/api'
+import { api, type FacebookId } from '../lib/api'
 import { useOpenInBrowser, readActiveTabHtml } from '../lib/browserBus'
 
 const enc = encodeURIComponent
+type Platform = 'facebook' | 'instagram'
 
-function parseId(html: string): string {
+// --- Facebook patterns ---
+function fbId(html: string): string {
   const m =
     html.match(/"userID":"(\d+)"/) ||
     html.match(/"entity_id":"(\d+)"/) ||
     html.match(/"pageID":"(\d+)"/) ||
     html.match(/"actorID":"(\d+)"/) ||
     html.match(/fb:\/\/(?:profile|page|group)\/(\d+)/) ||
-    html.match(/profile_id=(\d+)/) ||
-    html.match(/"identifier":(\d+)/)
+    html.match(/profile_id=(\d+)/)
   return m ? m[1] : ''
 }
-function parseVanity(html: string): string {
-  const v =
-    html.match(/"vanity":"([^"]+)"/) ||
-    html.match(/content="https:\/\/www\.facebook\.com\/([^"/?]+)\/?"/) ||
-    html.match(/"username":"([^"]+)"/)
+function fbVanity(html: string): string {
+  const v = html.match(/"vanity":"([^"]+)"/) || html.match(/content="https:\/\/www\.facebook\.com\/([^"/?]+)\/?"/)
   return v && !/^profile\.php/.test(v[1]) && !/^\d+$/.test(v[1]) ? v[1] : ''
+}
+// --- Instagram patterns ---
+function igId(html: string): string {
+  const m =
+    html.match(/instagram:\/\/user\?id=(\d+)/) ||
+    html.match(/"profile_id":"(\d+)"/) ||
+    html.match(/"owner":\{"id":"(\d+)"/) ||
+    html.match(/"user_id":"(\d+)"/) ||
+    html.match(/profilePage_(\d+)/) ||
+    html.match(/"id":"(\d+)","username"/)
+  return m ? m[1] : ''
+}
+function igUser(html: string): string {
+  const v = html.match(/"username":"([^"]+)"/)
+  return v ? v[1] : ''
+}
+
+const PLATFORMS: Record<Platform, { name: string; byId: (id: string) => string; byName: (n: string) => string }> = {
+  facebook: {
+    name: 'Facebook',
+    byId: (id) => `https://www.facebook.com/profile.php?id=${id}`,
+    byName: (n) => `https://www.facebook.com/${n}`
+  },
+  instagram: {
+    name: 'Instagram',
+    byId: (id) => `https://www.instagram.com/web/profile/${id}/`,
+    byName: (n) => `https://www.instagram.com/${n}/`
+  }
 }
 
 export function FbId(): JSX.Element {
   const openInBrowser = useOpenInBrowser()
+  const [platform, setPlatform] = useState<Platform>('facebook')
   const [input, setInput] = useState('')
   const [busy, setBusy] = useState('')
   const [err, setErr] = useState('')
@@ -39,12 +66,19 @@ export function FbId(): JSX.Element {
     setVanity('')
   }
 
+  // Auto-switch platform from a pasted URL.
+  const onInput = (val: string): void => {
+    setInput(val)
+    if (/instagram\.com/i.test(val)) setPlatform('instagram')
+    else if (/facebook\.com|fb\.com/i.test(val)) setPlatform('facebook')
+  }
+
   const resolve = async (): Promise<void> => {
     if (!input.trim()) return
     reset()
     setBusy('resolve')
     try {
-      const r = await api.intel.facebookId(input.trim())
+      const r: FacebookId = platform === 'instagram' ? await api.intel.instagramId(input.trim()) : await api.intel.facebookId(input.trim())
       if (!r.ok) setErr(r.error || 'Could not resolve.')
       else {
         setId(r.id || '')
@@ -61,28 +95,30 @@ export function FbId(): JSX.Element {
     try {
       const snap = await readActiveTabHtml()
       if (!snap) {
-        setErr('No open browser tab to read. Open the Facebook profile in the in-app browser first.')
+        setErr('No open browser tab to read. Open the profile in the in-app browser first.')
         return
       }
-      let foundId = parseId(snap.html)
-      let foundVanity = parseVanity(snap.html)
-      // Fall back to the tab URL for id/vanity.
+      const isIg = /instagram\.com/i.test(snap.url)
+      const plat: Platform = isIg ? 'instagram' : 'facebook'
+      setPlatform(plat)
+      let foundId = isIg ? igId(snap.html) : fbId(snap.html)
+      let foundName = isIg ? igUser(snap.html) : fbVanity(snap.html)
       try {
         const u = new URL(snap.url)
         const idp = u.searchParams.get('id')
-        if (!foundId && idp && /^\d+$/.test(idp)) foundId = idp
         const seg = u.pathname.split('/').filter(Boolean)[0] ?? ''
-        if (!foundVanity && seg && seg !== 'profile.php' && !/^\d+$/.test(seg)) foundVanity = decodeURIComponent(seg)
+        if (!foundId && idp && /^\d+$/.test(idp)) foundId = idp
+        if (!foundName && seg && seg !== 'profile.php' && !/^\d+$/.test(seg)) foundName = decodeURIComponent(seg)
       } catch {
         /* ignore */
       }
-      if (!foundId && !foundVanity) {
-        setErr(`Couldn't find an ID on “${snap.url}”. Make sure a Facebook profile is the active tab.`)
+      if (!foundId && !foundName) {
+        setErr(`Couldn't find an ID on “${snap.url}”. Make sure a Facebook or Instagram profile is the active tab.`)
         return
       }
-      if (input.trim() === '') setInput(snap.url)
+      if (!input.trim()) setInput(snap.url)
       setId(foundId)
-      setVanity(foundVanity)
+      setVanity(foundName)
     } finally {
       setBusy('')
     }
@@ -113,25 +149,39 @@ export function FbId(): JSX.Element {
     </div>
   )
 
+  const P = PLATFORMS[platform]
+
   return (
     <div className="h-full overflow-y-auto">
       <div className="px-6 py-4 border-b border-ink-700">
         <h1 className="text-xl font-bold text-slate-100 flex items-center gap-2">
-          <Fingerprint size={20} className="text-brand-glow" /> Facebook ID
+          <Fingerprint size={20} className="text-brand-glow" /> Profile ID
         </h1>
         <p className="text-sm text-slate-500 mt-0.5">
-          Pull the numeric user ID and the vanity (custom username) from a Facebook profile. Paste a URL/username, or open
-          the profile in the in-app browser and grab it from the page.
+          Pull the numeric user ID and the username/vanity from a Facebook or Instagram profile. Paste a URL/username, or
+          open the profile in the in-app browser and grab it from the page.
         </p>
       </div>
 
       <div className="p-6 max-w-2xl space-y-4">
+        <div className="flex rounded-lg border border-ink-600 overflow-hidden w-fit">
+          {(['facebook', 'instagram'] as Platform[]).map((p) => (
+            <button
+              key={p}
+              className={`px-3 py-1.5 text-sm ${platform === p ? 'bg-brand/15 text-brand-glow' : 'text-slate-400 hover:bg-ink-800'}`}
+              onClick={() => setPlatform(p)}
+            >
+              {PLATFORMS[p].name}
+            </button>
+          ))}
+        </div>
+
         <div className="flex gap-2">
           <input
             className="input flex-1"
-            placeholder="facebook.com/zuck, a profile.php?id= URL, or a username"
+            placeholder={platform === 'instagram' ? 'instagram.com/username, or a username' : 'facebook.com/zuck, a profile.php?id= URL, or a username'}
             value={input}
-            onChange={(e) => setInput(e.target.value)}
+            onChange={(e) => onInput(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && resolve()}
           />
           <button className="btn-primary" onClick={resolve} disabled={!input.trim() || !!busy}>
@@ -146,25 +196,38 @@ export function FbId(): JSX.Element {
 
         {(id || vanity) && (
           <div className="space-y-2">
-            {id && <Row label="Numeric ID" value={id} openUrl={`https://www.facebook.com/profile.php?id=${id}`} />}
-            {vanity && <Row label="Vanity (username)" value={vanity} openUrl={`https://www.facebook.com/${vanity}`} />}
-            {id && !vanity && <p className="text-[11px] text-slate-500">No custom username set (or not exposed) — this profile uses its numeric ID.</p>}
+            {id && <Row label={`${P.name} numeric ID`} value={id} openUrl={P.byId(id)} />}
+            {vanity && <Row label="Username / vanity" value={vanity} openUrl={P.byName(vanity)} />}
+            {id && !vanity && <p className="text-[11px] text-slate-500">No username found — this profile is reachable by its numeric ID.</p>}
           </div>
         )}
 
         <div className="card p-3">
           <div className="text-[10px] uppercase tracking-widest text-slate-500 mb-1.5">If a profile won’t resolve</div>
           <p className="text-xs text-slate-400">
-            Facebook requires login for most profiles, so the server lookup can fail. Open the profile in the in-app
-            browser (as your sock puppet) and use “Grab from the open tab”, or try a dedicated resolver:
+            Facebook and Instagram require login for most profiles, so the server lookup can fail. Open the profile in the
+            in-app browser (as your sock puppet) and use “Grab from the open tab”, or try a dedicated resolver:
           </p>
           <div className="flex flex-wrap gap-1.5 mt-2">
-            <button className="btn-ghost border border-ink-600 text-xs" onClick={() => openInBrowser([input.trim() ? `https://lookup-id.com/#${enc(input.trim())}` : 'https://lookup-id.com/'])}>
-              <ExternalLink size={12} /> lookup-id.com
-            </button>
-            <button className="btn-ghost border border-ink-600 text-xs" onClick={() => openInBrowser(['https://findidfb.com/'])}>
-              <ExternalLink size={12} /> findidfb.com
-            </button>
+            {platform === 'facebook' ? (
+              <>
+                <button className="btn-ghost border border-ink-600 text-xs" onClick={() => openInBrowser([input.trim() ? `https://lookup-id.com/#${enc(input.trim())}` : 'https://lookup-id.com/'])}>
+                  <ExternalLink size={12} /> lookup-id.com
+                </button>
+                <button className="btn-ghost border border-ink-600 text-xs" onClick={() => openInBrowser(['https://findidfb.com/'])}>
+                  <ExternalLink size={12} /> findidfb.com
+                </button>
+              </>
+            ) : (
+              <>
+                <button className="btn-ghost border border-ink-600 text-xs" onClick={() => openInBrowser([input.trim() ? `https://imginn.com/${enc(input.trim().replace(/^@/, '').replace(/^.*instagram\.com\//, '').replace(/\/.*$/, ''))}/` : 'https://imginn.com/'])}>
+                  <ExternalLink size={12} /> Imginn
+                </button>
+                <button className="btn-ghost border border-ink-600 text-xs" onClick={() => openInBrowser(['https://commentpicker.com/instagram-user-id.php'])}>
+                  <ExternalLink size={12} /> CommentPicker
+                </button>
+              </>
+            )}
           </div>
         </div>
       </div>

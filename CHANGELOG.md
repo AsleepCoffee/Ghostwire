@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.1.72
+- View Instagram without an account — username pivot adds Imginn (imginn.com profile/stories viewer) and a Google site:instagram.com dork.
+- Profile ID tool (was "Facebook ID") now resolves Instagram too — numeric user ID ↔ username for Facebook or Instagram, via paste/resolve or "Grab from the open tab".
+
 ## v0.1.71
 - New Facebook ID tool (Research) — resolve a Facebook profile's numeric user ID and vanity. Paste a URL/username, or "Grab from the open tab" to scrape it from a profile loaded in the in-app browser (works around FB's login wall). Copy/open actions + lookup-id.com fallback.
 

@@ -544,6 +544,8 @@ export interface OsintApi {
     hudsonrock(email: string): Promise<HudsonResult>
     /** Resolve a Facebook numeric ID <-> vanity from a profile URL/username. */
     facebookId(input: string): Promise<FacebookId>
+    /** Resolve an Instagram numeric ID <-> username from a profile URL/username. */
+    instagramId(input: string): Promise<FacebookId>
   }
   app: {
     version(): Promise<string>

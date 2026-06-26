@@ -46,7 +46,7 @@ const GROUPS: { heading?: string; items: NavItem[]; toggle?: 'courseNotes' }[] =
       { to: '/infra', label: 'Domain & IP', icon: 'Server' },
       { to: '/cross-ref', label: 'Cross-Reference', icon: 'Layers' },
       { to: '/co-locate', label: 'Proximity', icon: 'Crosshair' },
-      { to: '/fb-id', label: 'Facebook ID', icon: 'Fingerprint' },
+      { to: '/fb-id', label: 'Profile ID', icon: 'Fingerprint' },
       { to: '/dork', label: 'Dork & Pivot', icon: 'Binoculars' },
       { to: '/tools', label: 'Tools & Resources', icon: 'Wrench' }
     ]

@@ -121,6 +121,9 @@ export function generatePivots(subject: PivotSubject, raw: string): PivotQuery[]
       out.push({ group: 'Twitter / X (no login)', label: 'Nitter — their tweets', url: `https://xcancel.com/search?q=${enc(`from:${u}`)}&f=tweets` })
       out.push({ group: 'Twitter / X (no login)', label: 'Sotwe', url: `https://www.sotwe.com/${u}` })
       out.push({ group: 'Twitter / X (no login)', label: 'Google — on X', url: g(`(site:x.com OR site:twitter.com) ("@${u}" OR "${u}")`) })
+      // View an Instagram profile without an account (Imginn front-end + dork).
+      out.push({ group: 'Instagram (no login)', label: 'Imginn', url: `https://imginn.com/${u}/` })
+      out.push({ group: 'Instagram (no login)', label: 'Google — on Instagram', url: g(`site:instagram.com "${u}"`) })
       for (const s of USERNAME_SITES) out.push({ group: 'Profiles', label: s.label, url: s.url(u) })
       break
     }

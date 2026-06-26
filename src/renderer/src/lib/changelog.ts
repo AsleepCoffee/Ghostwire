@@ -7,6 +7,14 @@ export interface ChangelogEntry {
 /** In-app patch notes. Newest first. Keep in sync with CHANGELOG.md. */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.1.72',
+    date: '2026-06-26',
+    notes: [
+      'View Instagram without an account — pivoting a username now offers Imginn (profile/posts/stories viewer) and a Google site:instagram.com dork.',
+      'The Facebook ID tool is now “Profile ID” and also resolves Instagram — get the numeric user ID and username for a Facebook or Instagram profile (paste a URL/username, or grab it from the profile open in the in-app browser).'
+    ]
+  },
+  {
     version: '0.1.71',
     date: '2026-06-26',
     notes: [

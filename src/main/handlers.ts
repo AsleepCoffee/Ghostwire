@@ -1211,6 +1211,55 @@ export function registerHandlers(): void {
     return { ok: true, id, vanity }
   })
 
+  // Resolve an Instagram numeric ID <-> username from a profile URL/username.
+  ipcMain.handle('intel:instagramId', async (_e, input: string) => {
+    const raw = String(input ?? '').trim()
+    if (!raw) return { ok: false, error: 'Enter an Instagram profile URL or username.' }
+    const IG_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36'
+    let id = ''
+    let user = ''
+    if (/^https?:\/\//i.test(raw)) {
+      try {
+        user = new URL(raw).pathname.split('/').filter(Boolean)[0] ?? ''
+      } catch {
+        /* not a URL */
+      }
+    } else if (/^\d+$/.test(raw)) id = raw
+    else user = raw.replace(/^@/, '')
+
+    const parse = (html: string): void => {
+      if (!id) {
+        const m =
+          html.match(/instagram:\/\/user\?id=(\d+)/) ||
+          html.match(/"profile_id":"(\d+)"/) ||
+          html.match(/"owner":\{"id":"(\d+)"/) ||
+          html.match(/"user_id":"(\d+)"/) ||
+          html.match(/profilePage_(\d+)/) ||
+          html.match(/"id":"(\d+)","username"/)
+        if (m) id = m[1]
+      }
+      if (!user) {
+        const v = html.match(/"username":"([^"]+)"/)
+        if (v) user = v[1]
+      }
+    }
+    if (user && !id) {
+      for (const t of [`https://www.instagram.com/${encodeURIComponent(user)}/`, `https://imginn.com/${encodeURIComponent(user)}/`]) {
+        try {
+          const res = await net.fetch(t, { headers: { 'User-Agent': IG_UA, 'Accept-Language': 'en-US,en;q=0.9' } })
+          if (res.ok) {
+            parse(await res.text())
+            if (id) break
+          }
+        } catch {
+          /* try next */
+        }
+      }
+    }
+    if (!id && !user) return { ok: false, error: 'Could not resolve. Instagram requires login — open the profile in the in-app browser and use “Grab from open tab”.' }
+    return { ok: true, id, vanity: user }
+  })
+
   // LeakCheck public API (no key) — which breaches an email/username appears in.
   ipcMain.handle('intel:leakcheck', async (_e, query: string) => {
     const q = String(query ?? '').trim()
