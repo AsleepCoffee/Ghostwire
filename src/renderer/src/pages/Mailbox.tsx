@@ -287,7 +287,7 @@ export function Mailbox(): JSX.Element {
           <button className="btn-ghost !px-2" onClick={() => ref.current?.reload()} title="Reload">
             <RotateCw size={16} />
           </button>
-          <button className="btn-ghost !px-2" onClick={() => api.shell.openExternal(webmail.url)} title="Open in system browser">
+          <button className="btn-ghost !px-2" onClick={() => api.shell.openExternal(webmail.url)} title="Open in a browser tab">
             <ExternalLink size={16} />
           </button>
           <button className="btn-ghost text-xs" onClick={() => nav('/settings')}>

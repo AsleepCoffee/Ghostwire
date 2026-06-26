@@ -29,13 +29,38 @@ export interface OpenRequest {
 let pending: OpenRequest | null = null
 const subs = new Set<(r: OpenRequest) => void>()
 
+// Loop protection: misbehaving embedded pages (e.g. Google Lens) can spawn
+// popups / redirect repeatedly, which would otherwise pile up infinite tabs.
+const recentUrl = new Map<string, number>()
+let batchTimes: number[] = []
+const DEDUPE_MS = 1500
+const RATE_WINDOW_MS = 3000
+const RATE_MAX = 6
+
 /** Queue a browser-open request and deliver to a live Browser, or stash until one mounts. */
 export function requestOpen(req: OpenRequest): void {
-  if (req.tabs.length === 0) return
+  const now = Date.now()
+  // Prune old dedupe entries so the map can't grow unbounded.
+  if (recentUrl.size > 200) for (const [u, t] of recentUrl) if (now - t > 60000) recentUrl.delete(u)
+
+  // Drop URLs opened in the last moment — breaks redirect/popup loops.
+  const tabs = req.tabs.filter((t) => {
+    const last = recentUrl.get(t.url) ?? 0
+    recentUrl.set(t.url, now)
+    return now - last >= DEDUPE_MS
+  })
+  if (tabs.length === 0) return
+
+  // If many open-bursts fire in a short window, something is looping — stop opening.
+  batchTimes = batchTimes.filter((t) => now - t < RATE_WINDOW_MS)
+  if (batchTimes.length >= RATE_MAX) return
+  batchTimes.push(now)
+
+  const out: OpenRequest = { tabs }
   if (subs.size > 0) {
-    subs.forEach((s) => s(req))
+    subs.forEach((s) => s(out))
   } else {
-    pending = req
+    pending = out
   }
 }
 
@@ -50,6 +75,23 @@ export function subscribeOpen(cb: (r: OpenRequest) => void): () => void {
   return () => {
     subs.delete(cb)
   }
+}
+
+// A navigator registered once by <App>, so non-React code (the api wrapper, IPC
+// listeners) can route URLs into the in-app browser without a hook.
+let navigateTo: ((path: string) => void) | null = null
+export function setBrowserNavigator(fn: ((path: string) => void) | null): void {
+  navigateTo = fn
+}
+
+/** Open URLs as tabs in the in-app browser and switch to it. Safe to call from
+ *  anywhere (no React context needed). This is how the app guarantees that
+ *  nothing ever opens in an external/system browser. */
+export function openInAppBrowser(urls: string[], personaId?: string): void {
+  const list = urls.filter((u) => typeof u === 'string' && u.trim().length > 0)
+  if (list.length === 0) return
+  requestOpen({ tabs: list.map((url) => ({ url, personaId })) })
+  navigateTo?.('/browser')
 }
 
 /** Hook: navigate to the browser and open URLs as tabs (optionally under a persona). */

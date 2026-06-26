@@ -77,6 +77,13 @@ const api: OsintApi = {
   shell: {
     openExternal: (url) => ipcRenderer.invoke('shell:openExternal', url)
   },
+  browser: {
+    onOpen: (cb) => {
+      const listener = (_e: unknown, urls: string[]): void => cb(urls)
+      ipcRenderer.on('browser:open', listener as never)
+      return () => ipcRenderer.removeListener('browser:open', listener as never)
+    }
+  },
   clipboard: {
     writeText: (text) => ipcRenderer.invoke('clipboard:write', text)
   },

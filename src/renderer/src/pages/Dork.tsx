@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Search, Copy, ExternalLink, Wand2, Crosshair, Check } from 'lucide-react'
+import { Search, Copy, Wand2, Crosshair, Check } from 'lucide-react'
 import { Icon } from '../components/ui'
 import { PivotModal } from '../components/PivotModal'
 import {
@@ -87,9 +87,6 @@ export function Dork(): JSX.Element {
               <button className="btn-primary flex-1 justify-center" disabled={!query} onClick={() => openInBrowser([dorkUrl(query)])}>
                 <Search size={15} /> Run in tab
               </button>
-              <button className="btn-ghost border border-ink-600" disabled={!query} onClick={() => api.shell.openExternal(dorkUrl(query))} title="Open in system browser">
-                <ExternalLink size={15} />
-              </button>
               <button className="btn-ghost border border-ink-600" disabled={!query} onClick={copy} title="Copy query">
                 {copied ? <Check size={15} className="text-ok" /> : <Copy size={15} />}
               </button>
@@ -104,11 +101,7 @@ export function Dork(): JSX.Element {
                       key={e.label}
                       className="btn-ghost border border-ink-600 text-xs"
                       onClick={() => openInBrowser([e.url(query)])}
-                      onContextMenu={(ev) => {
-                        ev.preventDefault()
-                        api.shell.openExternal(e.url(query))
-                      }}
-                      title={`Open on ${e.label} (right-click = system browser)`}
+                      title={`Open on ${e.label}`}
                     >
                       {e.label}
                     </button>

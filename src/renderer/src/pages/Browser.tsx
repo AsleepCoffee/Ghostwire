@@ -10,7 +10,7 @@ import {
   Lock,
   Plus,
   X,
-  ExternalLink,
+  RefreshCw,
   Loader2,
   AlertTriangle,
   KeyRound,
@@ -402,15 +402,6 @@ export function Browser(): JSX.Element {
           <Camera size={17} />
         </button>
 
-        <button
-          className="btn-ghost !px-2"
-          title="Open in system browser"
-          onClick={() => active && api.shell.openExternal(active.url)}
-          disabled={!active}
-        >
-          <ExternalLink size={17} />
-        </button>
-
         <div className="relative">
           <select
             className="input !w-auto pl-9 pr-8 py-1.5 text-sm"
@@ -481,7 +472,6 @@ export function Browser(): JSX.Element {
               else refs.current.delete(t.id)
             }}
             onState={(patch) => updateTab(t.id, patch)}
-            onExternal={() => api.shell.openExternal(t.url)}
           />
         ))}
 
@@ -574,15 +564,13 @@ function BrowserView({
   active,
   personas,
   registerRef,
-  onState,
-  onExternal
+  onState
 }: {
   tab: Tab
   active: boolean
   personas: Persona[]
   registerRef: (el: WebviewEl | null) => void
   onState: (patch: Partial<Tab>) => void
-  onExternal: () => void
 }): JSX.Element {
   const persona = personas.find((p) => p.id === tab.personaId)
   const partition = persona ? persona.partition : 'persist:default-browser'
@@ -654,10 +642,16 @@ function BrowserView({
           <AlertTriangle size={36} className="text-warn mb-3" />
           <h3 className="text-slate-200 font-semibold">This site wouldn’t load in the in-app browser</h3>
           <p className="text-sm text-slate-500 mt-1 max-w-md">
-            It may block embedding or require a different context. Open it in your system browser instead.
+            It may block embedding or have failed to connect (check your VPN/proxy). Try reloading the page.
           </p>
-          <button className="btn-primary mt-4" onClick={onExternal}>
-            <ExternalLink size={16} /> Open in system browser
+          <button
+            className="btn-primary mt-4"
+            onClick={() => {
+              onState({ failed: false, loading: true })
+              localRef.current?.reload()
+            }}
+          >
+            <RefreshCw size={16} /> Reload page
           </button>
         </div>
       )}

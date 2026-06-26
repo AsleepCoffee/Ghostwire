@@ -1,4 +1,7 @@
-import { Routes, Route, useLocation } from 'react-router-dom'
+import { useEffect } from 'react'
+import { Routes, Route, useLocation, useNavigate } from 'react-router-dom'
+import { api } from './lib/api'
+import { setBrowserNavigator, openInAppBrowser } from './lib/browserBus'
 import { Sidebar } from './components/Sidebar'
 import { Topbar } from './components/Topbar'
 import { TitleBar } from './components/TitleBar'
@@ -27,12 +30,28 @@ import { Vpn } from './pages/Vpn'
 import { WhatsNew } from './pages/WhatsNew'
 import { Settings } from './pages/Settings'
 
+/** Registers the in-app browser as the sink for every link-open request, so
+ *  nothing is ever handed to the system browser. */
+function BrowserRouting(): null {
+  const navigate = useNavigate()
+  useEffect(() => {
+    setBrowserNavigator((path) => navigate(path))
+    const off = api.browser.onOpen((urls) => openInAppBrowser(urls))
+    return () => {
+      setBrowserNavigator(null)
+      off()
+    }
+  }, [navigate])
+  return null
+}
+
 export default function App(): JSX.Element {
   const loc = useLocation()
   const onBrowser = loc.pathname === '/browser'
 
   return (
     <PersonaDockProvider>
+    <BrowserRouting />
     <div className="flex flex-col h-full w-full overflow-hidden">
       <TitleBar />
       <div className="flex flex-1 min-h-0 w-full overflow-hidden">

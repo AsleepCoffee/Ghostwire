@@ -1,4 +1,4 @@
-import { ipcMain, dialog, shell, BrowserWindow, clipboard, app, net } from 'electron'
+import { ipcMain, dialog, BrowserWindow, clipboard, app, net } from 'electron'
 import { randomUUID, createHash } from 'crypto'
 import { existsSync, mkdirSync, writeFileSync, copyFileSync, unlinkSync } from 'fs'
 import { join, dirname, basename } from 'path'
@@ -11,6 +11,7 @@ import { testApiKey } from './apitest'
 import { createMailbox, listMessages, getMessage } from './mail'
 import { buildHtmlReport, buildPrintReport, buildDocxHtml, type ReportData } from './report'
 import HTMLtoDOCX from 'html-to-docx'
+import { openInAppTabs } from './browserbridge'
 import { ocrImage } from './ocr'
 import { applyPersonaProxies } from './vpn'
 import type {
@@ -875,8 +876,9 @@ export function registerHandlers(): void {
   ipcMain.handle('apikeys:test', (_e, id: string, key: string) => testApiKey(id, key))
 
   // ===== Shell =====
+  // Links never leave the app — route to the in-app browser instead of the OS browser.
   ipcMain.handle('shell:openExternal', async (_e, url: string) => {
-    if (/^https?:\/\//i.test(url)) await shell.openExternal(url)
+    openInAppTabs([url])
   })
 
   // ===== Clipboard (the web Clipboard API is unavailable under file://) =====

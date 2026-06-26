@@ -22,7 +22,7 @@ import {
 } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 import { toPng } from 'html-to-image'
-import { Plus, Trash2, X, ImagePlus, Crosshair, Sparkles, Loader2, ImageDown, Check, AlertTriangle, KeyRound, Minus, ChevronDown, ChevronUp, Globe, ExternalLink, BoxSelect, Hand, Search, LayoutGrid, Combine } from 'lucide-react'
+import { Plus, Trash2, X, ImagePlus, Crosshair, Sparkles, Loader2, ImageDown, Check, AlertTriangle, KeyRound, Minus, ChevronDown, ChevronUp, Globe, BoxSelect, Hand, Search, LayoutGrid, Combine } from 'lucide-react'
 import { api, type Board, type EntityNode, type EntityType, type Project, type Evidence } from '../lib/api'
 import { ENTITY_TYPES } from '../lib/constants'
 import { Icon, EmptyState, Modal } from '../components/ui'
@@ -376,14 +376,13 @@ function GraphInner(): JSX.Element {
     updateSelected({ props: next })
   }
 
-  const openLink = (entity: EntityNode, external = false): void => {
+  const openLink = (entity: EntityNode): void => {
     const url = entityUrl(entity)
     if (!url) {
       flash('No link on this entity — run a transform or add a “url” property.')
       return
     }
-    if (external) api.shell.openExternal(url)
-    else openInBrowser([url])
+    openInBrowser([url])
   }
 
   // Double-clicking a node opens its link in the in-app browser.
@@ -927,15 +926,6 @@ function GraphInner(): JSX.Element {
                   }}
                 >
                   <Globe size={14} /> Open link in browser
-                </button>
-                <button
-                  className="w-full flex items-center gap-2 px-3 py-1.5 text-sm text-slate-200 hover:bg-ink-700"
-                  onClick={() => {
-                    openLink(menu.entity, true)
-                    setMenu(null)
-                  }}
-                >
-                  <ExternalLink size={14} /> Open in system browser
                 </button>
                 <div className="border-t border-ink-700 my-1" />
               </>

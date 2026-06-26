@@ -1,5 +1,6 @@
-import { Menu, MenuItem, BrowserWindow, clipboard, shell, Notification, type WebContents } from 'electron'
+import { Menu, MenuItem, BrowserWindow, clipboard, Notification, type WebContents } from 'electron'
 import { addEvidenceFromUrl, getSettings } from './handlers'
+import { openInAppTabs } from './browserbridge'
 
 const enc = encodeURIComponent
 const REVERSE: [string, (u: string) => string][] = [
@@ -41,9 +42,9 @@ export function attachContextMenu(contents: WebContents): void {
       )
       if (/^https?:\/\//i.test(imgUrl)) {
         const sub = new Menu()
-        for (const [label, fn] of REVERSE) sub.append(new MenuItem({ label, click: () => shell.openExternal(fn(imgUrl)) }))
+        for (const [label, fn] of REVERSE) sub.append(new MenuItem({ label, click: () => openInAppTabs([fn(imgUrl)]) }))
         menu.append(new MenuItem({ label: 'Reverse image search', submenu: sub }))
-        menu.append(new MenuItem({ label: 'Open image in browser', click: () => shell.openExternal(imgUrl) }))
+        menu.append(new MenuItem({ label: 'Open image in new tab', click: () => openInAppTabs([imgUrl]) }))
       }
       menu.append(new MenuItem({ label: 'Copy image address', click: () => clipboard.writeText(imgUrl) }))
       menu.append(new MenuItem({ type: 'separator' }))
@@ -51,7 +52,7 @@ export function attachContextMenu(contents: WebContents): void {
 
     if (params.linkURL) {
       menu.append(new MenuItem({ label: 'Copy link', click: () => clipboard.writeText(params.linkURL) }))
-      menu.append(new MenuItem({ label: 'Open link in system browser', click: () => shell.openExternal(params.linkURL) }))
+      menu.append(new MenuItem({ label: 'Open link in new tab', click: () => openInAppTabs([params.linkURL]) }))
       menu.append(new MenuItem({ type: 'separator' }))
     }
 
@@ -65,7 +66,7 @@ export function attachContextMenu(contents: WebContents): void {
       menu.append(
         new MenuItem({
           label: 'Search selection on Google',
-          click: () => shell.openExternal(`https://www.google.com/search?q=${enc(params.selectionText)}`)
+          click: () => openInAppTabs([`https://www.google.com/search?q=${enc(params.selectionText)}`])
         })
       )
     }

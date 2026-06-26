@@ -7,6 +7,14 @@ export interface ChangelogEntry {
 /** In-app patch notes. Newest first. Keep in sync with CHANGELOG.md. */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.1.51',
+    date: '2026-06-25',
+    notes: [
+      'Everything stays in the app — links, pivots, search engines, photo GPS locations, context-menu actions and pop-ups now always open in the in-app browser, never your system browser.',
+      'Fixed a runaway loop where some embedded pages (e.g. Google Lens) could spawn tabs endlessly — repeated/rapid opens are now de-duplicated and rate-limited.'
+    ]
+  },
+  {
     version: '0.1.50',
     date: '2026-06-25',
     notes: [

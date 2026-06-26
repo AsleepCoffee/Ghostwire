@@ -78,11 +78,6 @@ export function PivotModal({
     onClose()
   }
 
-  const openExternally = (): void => {
-    selectedUrls().forEach((u) => api.shell.openExternal(u))
-    onClose()
-  }
-
   return (
     <Modal open={open} onClose={onClose} title="Pivot — search this everywhere" wide>
       <div className="space-y-4">
@@ -137,10 +132,11 @@ export function PivotModal({
                         type="button"
                         onClick={(e) => {
                           e.preventDefault()
-                          api.shell.openExternal(q.url)
+                          openInBrowser([q.url], personaId || undefined)
+                          onClose()
                         }}
                         className="opacity-50 hover:opacity-100"
-                        title="Open externally"
+                        title="Open just this one in the browser"
                       >
                         <ExternalLink size={13} />
                       </button>
@@ -169,14 +165,6 @@ export function PivotModal({
             <Crosshair size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
           </div>
           <div className="ml-auto flex gap-2">
-            <button
-              className="btn-ghost border border-ink-600"
-              onClick={openExternally}
-              disabled={selected.size === 0}
-              title="Open in your system browser instead"
-            >
-              <ExternalLink size={15} /> System browser
-            </button>
             <button
               className="btn-primary"
               onClick={openSelected}

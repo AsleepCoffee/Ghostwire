@@ -527,7 +527,8 @@ function EvidenceDetail({
               {exif.gps && (
                 <button
                   className="flex items-center gap-1.5 text-sm text-brand-glow hover:underline"
-                  onClick={() => api.shell.openExternal(`https://www.google.com/maps?q=${exif.gps!.lat},${exif.gps!.lng}`)}
+                  title="Open this location in the in-app browser"
+                  onClick={() => openInBrowser([`https://www.google.com/maps?q=${exif.gps!.lat},${exif.gps!.lng}`])}
                 >
                   <MapPin size={13} /> {exif.gps.lat.toFixed(5)}, {exif.gps.lng.toFixed(5)}
                 </button>

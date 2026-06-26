@@ -5,7 +5,6 @@ import {
   Check,
   X,
   HelpCircle,
-  ExternalLink,
   Workflow,
   Crosshair,
   Globe
@@ -173,11 +172,8 @@ export function Enumerate(): JSX.Element {
                   </div>
                   {r.status !== 'checking' && r.status !== 'missing' && (
                     <>
-                      <button className="btn-ghost !p-1.5" title="Open profile" onClick={() => openInBrowser([r.url])}>
+                      <button className="btn-ghost !p-1.5" title="Open profile in browser" onClick={() => openInBrowser([r.url])}>
                         <Globe size={14} />
-                      </button>
-                      <button className="btn-ghost !p-1.5" title="Open in system browser" onClick={() => api.shell.openExternal(r.url)}>
-                        <ExternalLink size={14} />
                       </button>
                       <input type="checkbox" className="accent-brand" checked={on} onChange={() => toggle(r.label)} title="Select for link chart" />
                     </>

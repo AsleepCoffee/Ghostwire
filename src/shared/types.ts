@@ -406,7 +406,12 @@ export interface OsintApi {
     list(projectId: string): Promise<Activity[]>
   }
   shell: {
+    /** Opens the URL as a tab in the in-app browser (never the system browser). */
     openExternal(url: string): Promise<void>
+  }
+  browser: {
+    /** Subscribe to main-process requests to open URLs as in-app browser tabs. */
+    onOpen(cb: (urls: string[]) => void): () => void
   }
   clipboard: {
     writeText(text: string): Promise<void>

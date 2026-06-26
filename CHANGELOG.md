@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.1.51
+- Everything stays in the app — links, pivots, search engines, photo GPS locations, context-menu actions and pop-ups (target=_blank/window.open) now always open in the in-app browser, never the system browser.
+- Fixed a runaway loop where some embedded pages (e.g. Google Lens) could spawn tabs endlessly — repeated/rapid opens are de-duplicated and rate-limited.
+
 ## v0.1.50
 - Fixed OCR in the installed app — "Run OCR" failed with "Only absolute URLs are supported" because tesseract tried to fetch the bundled language model over the network (its worker reports an `electron` environment). The model is now decompressed straight into the cache and read from disk, so OCR works offline on Windows and Linux.
 

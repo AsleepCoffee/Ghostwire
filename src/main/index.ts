@@ -1,6 +1,7 @@
-import { app, shell, BrowserWindow, session } from 'electron'
+import { app, BrowserWindow, session } from 'electron'
 import { join } from 'path'
 import { initDb } from './db'
+import { openInAppTabs } from './browserbridge'
 import { registerHandlers } from './handlers'
 import { registerMediaScheme, registerMediaProtocol } from './media'
 import { initUpdater } from './updater'
@@ -40,9 +41,9 @@ function createWindow(): void {
   win.on('maximize', () => win.webContents.send('win:maximized', true))
   win.on('unmaximize', () => win.webContents.send('win:maximized', false))
 
-  // Open target=_blank / window.open links in the OS browser, not new Electron windows.
+  // Open target=_blank / window.open links as in-app browser tabs — never the OS browser.
   win.webContents.setWindowOpenHandler(({ url }) => {
-    if (url.startsWith('http')) shell.openExternal(url)
+    openInAppTabs([url])
     return { action: 'deny' }
   })
 
@@ -97,6 +98,13 @@ app.whenReady().then(async () => {
     if (contents.session === session.fromPartition('persist:gw-mailbox')) {
       contents.setWindowOpenHandler(({ url }) => {
         if (url && /^https?:\/\//i.test(url)) contents.loadURL(url).catch(() => {})
+        return { action: 'deny' }
+      })
+    } else {
+      // Any other embedded page: open popups / target=_blank as a new in-app tab,
+      // never an external window.
+      contents.setWindowOpenHandler(({ url }) => {
+        openInAppTabs([url])
         return { action: 'deny' }
       })
     }
