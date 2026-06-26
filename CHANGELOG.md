@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.1.49
+- Chain of custody — every exhibit has a "Verify integrity" check that re-hashes the stored file against the SHA-256 recorded at capture (verified / altered / missing), shown in a dedicated custody panel. Legacy exhibits are hashed on first check.
+- Reports, reimagined — export as an interactive HTML deliverable (sidebar nav, click-to-zoom evidence, dark-mode toggle, copy-hash, chain-of-custody appendix), an editable Word (.docx), a print-ready PDF, or Markdown — chosen from the Report menu.
+
 ## v0.1.48
 - New Domain & Infrastructure Intelligence (Research) — for a domain: WHOIS, full DNS (A/MX/NS/TXT/CNAME), crt.sh subdomains and hosting org/geo; for an IP: organization, ASN, location, network and reverse DNS. One-click add-to-chart and pivots. No API key required.
 - OCR now works fully offline — the English text model ships with the app, so "Run OCR" no longer needs an internet connection.

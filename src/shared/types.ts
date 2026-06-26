@@ -300,6 +300,15 @@ export interface Evidence {
   ocr?: string
 }
 
+/** Result of re-hashing a stored exhibit to confirm it is unaltered. */
+export interface EvidenceVerify {
+  /** verified = matches capture hash · altered = mismatch · recorded = legacy item just hashed · missing = file gone. */
+  status: 'verified' | 'altered' | 'recorded' | 'missing'
+  sizeBytes: number
+  storedHash: string
+  currentHash: string
+}
+
 export interface UpdateStatus {
   state: 'checking' | 'available' | 'none' | 'downloading' | 'ready' | 'error' | 'dev'
   version?: string
@@ -322,6 +331,8 @@ export interface OsintApi {
     exportReportHtml(id: string): Promise<string | null>
     /** Export the report rendered to PDF. */
     exportReportPdf(id: string): Promise<string | null>
+    /** Export the report as an editable Word (.docx) document. */
+    exportReportDocx(id: string): Promise<string | null>
   }
   evidence: {
     capture(payload: {
@@ -337,6 +348,8 @@ export interface OsintApi {
     setOcr(id: string, ocr: string): Promise<void>
     /** Run offline OCR on a stored image; returns the extracted text. */
     ocr(id: string): Promise<string>
+    /** Re-hash the stored file and compare to the capture-time hash (chain of custody). */
+    verify(id: string): Promise<EvidenceVerify>
     fromUrl(url: string, projectId: string | null): Promise<Evidence>
   }
   personas: {

@@ -7,6 +7,14 @@ export interface ChangelogEntry {
 /** In-app patch notes. Newest first. Keep in sync with CHANGELOG.md. */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.1.49',
+    date: '2026-06-25',
+    notes: [
+      'Chain of custody — each exhibit now has a "Verify integrity" check that re-hashes the stored file and compares it to the SHA-256 recorded at capture (verified / altered / missing), shown in a dedicated custody panel. Older exhibits get hashed on first check.',
+      'Reports, reimagined — export as an interactive HTML deliverable (sidebar navigation, click-to-zoom evidence, dark-mode toggle, copy-hash, and a chain-of-custody appendix), an editable Word .docx, a print-ready PDF, or Markdown. Choose the format from the Report menu.'
+    ]
+  },
+  {
     version: '0.1.48',
     date: '2026-06-25',
     notes: [

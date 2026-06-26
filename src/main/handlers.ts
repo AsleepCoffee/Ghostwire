@@ -9,7 +9,8 @@ import { pickImage, saveDataUrl, resolveMediaPath, importImageFromUrl, readMedia
 import { testAllTools } from './toolcheck'
 import { testApiKey } from './apitest'
 import { createMailbox, listMessages, getMessage } from './mail'
-import { buildHtmlReport, type ReportData } from './report'
+import { buildHtmlReport, buildPrintReport, buildDocxHtml, type ReportData } from './report'
+import HTMLtoDOCX from 'html-to-docx'
 import { ocrImage } from './ocr'
 import { applyPersonaProxies } from './vpn'
 import type {
@@ -450,7 +451,7 @@ export function registerHandlers(): void {
     })
     if (res.canceled || !res.filePath) return null
     const tmp = join(app.getPath('temp'), `gw-report-${randomUUID()}.html`)
-    writeFileSync(tmp, buildHtmlReport(data), 'utf-8')
+    writeFileSync(tmp, buildPrintReport(data), 'utf-8')
     const w = new BrowserWindow({ show: false, webPreferences: { sandbox: true, javascript: false } })
     try {
       await w.loadFile(tmp)
@@ -465,6 +466,26 @@ export function registerHandlers(): void {
       }
     }
     logActivity(id, 'report', 'Exported PDF report')
+    return res.filePath
+  })
+
+  ipcMain.handle('projects:exportReportDocx', async (_e, id: string) => {
+    const data = gatherReport(id)
+    if (!data) return null
+    const safe = data.project.name.replace(/[\\/:*?"<>|]/g, '-').slice(0, 100) || 'investigation'
+    const win = BrowserWindow.getFocusedWindow()
+    const res = await dialog.showSaveDialog(win!, {
+      title: 'Save Word report',
+      defaultPath: `${safe}.docx`,
+      filters: [{ name: 'Word document', extensions: ['docx'] }]
+    })
+    if (res.canceled || !res.filePath) return null
+    const buf = (await HTMLtoDOCX(buildDocxHtml(data), null, {
+      title: `${data.project.name} — Investigation report`,
+      margins: { top: 720, right: 720, bottom: 720, left: 720 }
+    })) as Buffer | ArrayBuffer
+    writeFileSync(res.filePath, Buffer.isBuffer(buf) ? buf : Buffer.from(buf as ArrayBuffer))
+    logActivity(id, 'report', 'Exported Word report (.docx)')
     return res.filePath
   })
 
@@ -513,6 +534,28 @@ export function registerHandlers(): void {
   })
   // Download an image from a URL straight into the evidence locker (with SHA-256).
   ipcMain.handle('evidence:fromUrl', (_e, url: string, projectId: string | null) => addEvidenceFromUrl(url, projectId))
+  // Re-hash a stored exhibit and compare it to the hash recorded at capture — proves integrity.
+  ipcMain.handle('evidence:verify', (_e, id: string) => {
+    const r = get('SELECT path, sha256, capturedAt FROM evidence WHERE id = ?', [id]) as
+      | { path: string; sha256: string; capturedAt: number }
+      | undefined
+    if (!r) return { status: 'missing', sizeBytes: 0, storedHash: '', currentHash: '' }
+    const buf = readMedia(r.path)
+    if (!buf) return { status: 'missing', sizeBytes: 0, storedHash: r.sha256 ?? '', currentHash: '' }
+    const current = createHash('sha256').update(buf).digest('hex')
+    const stored = r.sha256 ?? ''
+    if (!stored) {
+      // Legacy exhibit captured before hashing — backfill it now and treat as the baseline.
+      run('UPDATE evidence SET sha256 = ? WHERE id = ?', [current, id])
+      return { status: 'recorded', sizeBytes: buf.length, storedHash: current, currentHash: current }
+    }
+    return {
+      status: current === stored ? 'verified' : 'altered',
+      sizeBytes: buf.length,
+      storedHash: stored,
+      currentHash: current
+    }
+  })
 
   // ===== Personas =====
   ipcMain.handle('personas:list', () =>

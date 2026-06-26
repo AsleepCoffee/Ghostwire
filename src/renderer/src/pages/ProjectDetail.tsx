@@ -97,7 +97,7 @@ export function ProjectDetail(): JSX.Element {
     setActivity(await api.activity.list(id))
   }
 
-  const doExport = async (kind: 'pdf' | 'html' | 'md'): Promise<void> => {
+  const doExport = async (kind: 'pdf' | 'html' | 'md' | 'docx'): Promise<void> => {
     setReportOpen(false)
     setReportBusy(true)
     try {
@@ -106,7 +106,9 @@ export function ProjectDetail(): JSX.Element {
           ? await api.projects.exportReportPdf(id)
           : kind === 'html'
             ? await api.projects.exportReportHtml(id)
-            : await api.projects.exportReport(id)
+            : kind === 'docx'
+              ? await api.projects.exportReportDocx(id)
+              : await api.projects.exportReport(id)
       if (path) flash(`Report saved → ${path}`)
     } catch (e) {
       flash(`Export failed: ${String((e as Error)?.message ?? e)}`)
@@ -301,11 +303,14 @@ export function ProjectDetail(): JSX.Element {
                 <div className="fixed inset-0 z-30" onClick={() => setReportOpen(false)} />
                 <div className="absolute right-0 mt-1 z-40 w-52 card py-1 shadow-2xl">
                   <div className="px-3 py-1 text-[10px] uppercase tracking-widest text-slate-600">Export report</div>
-                  <button className="w-full text-left px-3 py-1.5 text-sm text-slate-200 hover:bg-ink-700" onClick={() => doExport('pdf')}>
-                    PDF — graph, evidence, timeline
-                  </button>
                   <button className="w-full text-left px-3 py-1.5 text-sm text-slate-200 hover:bg-ink-700" onClick={() => doExport('html')}>
-                    HTML (self-contained)
+                    HTML — interactive deliverable
+                  </button>
+                  <button className="w-full text-left px-3 py-1.5 text-sm text-slate-200 hover:bg-ink-700" onClick={() => doExport('docx')}>
+                    Word (.docx) — editable
+                  </button>
+                  <button className="w-full text-left px-3 py-1.5 text-sm text-slate-200 hover:bg-ink-700" onClick={() => doExport('pdf')}>
+                    PDF — print-ready
                   </button>
                   <button className="w-full text-left px-3 py-1.5 text-sm text-slate-200 hover:bg-ink-700" onClick={() => doExport('md')}>
                     Markdown (for Obsidian)

@@ -11,7 +11,8 @@ const api: OsintApi = {
     contents: (id) => ipcRenderer.invoke('projects:contents', id),
     exportReport: (id) => ipcRenderer.invoke('projects:exportReport', id),
     exportReportHtml: (id) => ipcRenderer.invoke('projects:exportReportHtml', id),
-    exportReportPdf: (id) => ipcRenderer.invoke('projects:exportReportPdf', id)
+    exportReportPdf: (id) => ipcRenderer.invoke('projects:exportReportPdf', id),
+    exportReportDocx: (id) => ipcRenderer.invoke('projects:exportReportDocx', id)
   },
   evidence: {
     capture: (payload) => ipcRenderer.invoke('evidence:capture', payload),
@@ -20,6 +21,7 @@ const api: OsintApi = {
     setNote: (id, note) => ipcRenderer.invoke('evidence:setNote', id, note),
     setOcr: (id, ocr) => ipcRenderer.invoke('evidence:setOcr', id, ocr),
     ocr: (id) => ipcRenderer.invoke('evidence:ocr', id),
+    verify: (id) => ipcRenderer.invoke('evidence:verify', id),
     fromUrl: (url, projectId) => ipcRenderer.invoke('evidence:fromUrl', url, projectId)
   },
   personas: {

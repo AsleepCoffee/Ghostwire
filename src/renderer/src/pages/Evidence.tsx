@@ -16,9 +16,12 @@ import {
   FileText,
   Loader2,
   Search,
-  NotebookPen
+  NotebookPen,
+  ShieldCheck,
+  ShieldAlert,
+  ShieldQuestion
 } from 'lucide-react'
-import { api, type Evidence, type Project, type ExifResult } from '../lib/api'
+import { api, type Evidence, type Project, type ExifResult, type EvidenceVerify } from '../lib/api'
 import { useSettings } from '../lib/settings'
 import { useConfirm } from '../lib/confirm'
 import { useOpenInBrowser } from '../lib/browserBus'
@@ -366,12 +369,24 @@ function EvidenceDetail({
   const [note, setNote] = useState(ev.note ?? '')
   const [ocrBusy, setOcrBusy] = useState(false)
   const [ocrErr, setOcrErr] = useState('')
+  const [verify, setVerify] = useState<EvidenceVerify | null>(null)
+  const [verifying, setVerifying] = useState(false)
 
   useEffect(() => {
     setNote(ev.note ?? '')
+    setVerify(null)
     if (ev.kind !== 'file') api.files.exif(ev.path).then(setExif)
     else setExif(null)
   }, [ev.id, ev.path, ev.kind, ev.note])
+
+  const doVerify = async (): Promise<void> => {
+    setVerifying(true)
+    try {
+      setVerify(await api.evidence.verify(ev.id))
+    } finally {
+      setVerifying(false)
+    }
+  }
 
   const runOcr = async (): Promise<void> => {
     setOcrBusy(true)
@@ -428,26 +443,68 @@ function EvidenceDetail({
           )}
         </div>
 
-        {/* Metadata */}
+        {/* Chain of custody */}
         <div className="space-y-2">
-          <div>
-            <div className="label">Captured</div>
-            <div className="text-sm text-slate-300">{fmtDateTime(ev.capturedAt)}</div>
-          </div>
-          {ev.sourceUrl && (
-            <div>
-              <div className="label">Source</div>
-              <button className="text-xs text-brand-glow hover:underline break-all text-left" onClick={() => api.shell.openExternal(ev.sourceUrl!)}>
-                {ev.sourceUrl}
+          <div className="rounded-lg border border-ink-700 p-2.5 space-y-2">
+            <div className="flex items-center justify-between">
+              <div className="text-[10px] uppercase tracking-widest text-slate-500">Chain of custody</div>
+              <button
+                className="text-[11px] text-slate-400 hover:text-accent-glow flex items-center gap-1 disabled:opacity-50"
+                onClick={doVerify}
+                disabled={verifying}
+                title="Re-hash the stored file and compare to the hash recorded at capture"
+              >
+                {verifying ? <Loader2 size={11} className="animate-spin" /> : <ShieldCheck size={11} />}
+                {verifying ? 'Checking…' : 'Verify integrity'}
               </button>
             </div>
-          )}
-          {ev.sha256 && (
             <div>
-              <div className="label">SHA-256</div>
-              <CopyChip label="SHA-256" value={ev.sha256} />
+              <div className="label">Captured</div>
+              <div className="text-sm text-slate-300">{fmtDateTime(ev.capturedAt)}</div>
             </div>
-          )}
+            {ev.sourceUrl && (
+              <div>
+                <div className="label">Source</div>
+                <button className="text-xs text-brand-glow hover:underline break-all text-left" onClick={() => api.shell.openExternal(ev.sourceUrl!)}>
+                  {ev.sourceUrl}
+                </button>
+              </div>
+            )}
+            {ev.sha256 && (
+              <div>
+                <div className="label">SHA-256 (at capture)</div>
+                <CopyChip label="SHA-256" value={ev.sha256} />
+              </div>
+            )}
+            {verify && (
+              <div
+                className={`flex items-start gap-1.5 text-xs rounded-md px-2 py-1.5 ${
+                  verify.status === 'altered'
+                    ? 'bg-warn/10 text-warn'
+                    : verify.status === 'missing'
+                      ? 'bg-warn/10 text-warn'
+                      : 'bg-ok/10 text-ok'
+                }`}
+              >
+                {verify.status === 'altered' || verify.status === 'missing' ? (
+                  <ShieldAlert size={13} className="shrink-0 mt-0.5" />
+                ) : verify.status === 'recorded' ? (
+                  <ShieldQuestion size={13} className="shrink-0 mt-0.5" />
+                ) : (
+                  <ShieldCheck size={13} className="shrink-0 mt-0.5" />
+                )}
+                <span>
+                  {verify.status === 'verified' &&
+                    `Verified — file is unaltered since capture (${(verify.sizeBytes / 1024).toFixed(1)} KB).`}
+                  {verify.status === 'altered' &&
+                    'Mismatch — the stored file no longer matches its capture hash. It may have been modified.'}
+                  {verify.status === 'recorded' &&
+                    `Hash recorded now (this exhibit predates hashing) — future checks will verify against it.`}
+                  {verify.status === 'missing' && 'The stored file could not be found.'}
+                </span>
+              </div>
+            )}
+          </div>
           {exif && (
             <div className="rounded-lg border border-ink-700 p-2.5 space-y-1.5">
               <div className="flex items-center justify-between">
