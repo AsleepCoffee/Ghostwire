@@ -36,6 +36,9 @@ jobs:
 
       - name: Set release notes from CHANGELOG
         shell: bash
+        # Cosmetic — never let a notes hiccup fail the job (which would skip the
+        # Linux build via `needs: release-win`).
+        continue-on-error: true
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -46,8 +49,21 @@ jobs:
             flag {print}
           ' CHANGELOG.md)
           if [ -z "$NOTES" ]; then NOTES="See the commit history for changes in ${TAG}."; fi
-          printf '%s\n' "$NOTES" > release-notes.md
-          gh release edit "$TAG" --notes-file release-notes.md
+          # Patch ONLY the body of the release electron-builder already published
+          # for this tag (gh release edit can 422 on tag_name; gh api PATCH by id
+          # avoids that). Retry briefly for API eventual-consistency.
+          RID=""
+          for i in 1 2 3 4 5 6; do
+            RID=$(gh api "repos/${GITHUB_REPOSITORY}/releases/tags/${TAG}" --jq .id 2>/dev/null || true)
+            [ -n "$RID" ] && break
+            sleep 5
+          done
+          if [ -n "$RID" ]; then
+            gh api -X PATCH "repos/${GITHUB_REPOSITORY}/releases/${RID}" -f body="$NOTES" >/dev/null
+            echo "Updated release notes for ${TAG} (release ${RID})."
+          else
+            echo "No published release found for ${TAG}; leaving notes as-is."
+          fi
 
   release-linux:
     runs-on: ubuntu-latest

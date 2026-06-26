@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.1.56
+- Fixed the in-app browser reloading pages on its own — the webview's `src` was bound to the live, navigation-updated URL, so every redirect rewrote `src` and forced another load (looping on challenge/redirect pages). `src` is now a stable initial URL; navigation only drives the address bar.
+- Restored the Linux build — the release-notes step (`gh release edit`) was 422-ing under electron-builder 26, failing the Windows job and skipping the dependent Linux job. The step now patches the release body by ID and is `continue-on-error`, so both platforms always build.
+
 ## v0.1.55
 - Fixed pages constantly refreshing / the URL endlessly changing in the in-app browser — the browser now presents a consistent desktop-Chrome identity (User-Agent matches the Sec-CH-UA client hints), so Google/Cloudflare stop looping bot checks. (Replaces the v0.1.53 hardcoded UA, which mismatched the client hints.)
 - Security: upgraded to Electron 42 + electron-builder 26 (npm vulnerabilities 13 → 3, remaining are dev-only build tooling). CI actions bumped to the Node 24 runtime.

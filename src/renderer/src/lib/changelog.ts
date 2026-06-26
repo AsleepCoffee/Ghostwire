@@ -7,6 +7,14 @@ export interface ChangelogEntry {
 /** In-app patch notes. Newest first. Keep in sync with CHANGELOG.md. */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.1.56',
+    date: '2026-06-26',
+    notes: [
+      'Fixed the in-app browser reloading pages on its own — it was rewriting each tab\'s address on every navigation, which forced a reload (and looped on redirect-heavy sites). Tabs now navigate cleanly.',
+      'Restored the Linux build — a release-pipeline error was failing the Windows job and skipping the Linux (AppImage/.deb) build entirely; the release step is now resilient and runs both platforms.'
+    ]
+  },
+  {
     version: '0.1.55',
     date: '2026-06-26',
     notes: [

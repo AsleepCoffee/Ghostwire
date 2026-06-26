@@ -39,7 +39,11 @@ interface WebviewEl extends HTMLElement {
 
 interface Tab {
   id: string
+  /** Live URL (tracks navigation, drives the address bar). */
   url: string
+  /** The URL the webview was created with — bound to <webview src> and never
+   *  updated, so navigation/redirects don't rewrite src and re-trigger loads. */
+  initialUrl: string
   title: string
   loading: boolean
   failed: boolean
@@ -270,6 +274,7 @@ export function Browser(): JSX.Element {
         const created: Tab[] = req.tabs.map((t) => ({
           id: newId(),
           url: toUrl(t.url),
+          initialUrl: toUrl(t.url),
           title: 'Loading…',
           loading: true,
           failed: false,
@@ -705,7 +710,7 @@ function BrowserView({
       <webview
         key={partition}
         ref={attach as never}
-        src={tab.url}
+        src={tab.initialUrl}
         partition={partition}
         allowpopups="true"
         style={{ width: '100%', height: '100%', display: 'inline-flex' }}
