@@ -287,6 +287,35 @@ export interface EmailVerify {
   catchAll?: boolean
 }
 
+export interface ShodanService {
+  port: number
+  transport: string
+  product: string
+  version: string
+  module: string
+  banner: string
+}
+
+export interface ShodanResult {
+  ok: boolean
+  error?: string
+  note?: string
+  ip?: string
+  org?: string
+  isp?: string
+  asn?: string
+  os?: string
+  country?: string
+  city?: string
+  lastUpdate?: string
+  hostnames?: string[]
+  ports?: number[]
+  services?: ShodanService[]
+  vulns?: string[]
+  tags?: string[]
+  subdomains?: string[]
+}
+
 export interface FacebookId {
   ok: boolean
   error?: string
@@ -546,6 +575,8 @@ export interface OsintApi {
     facebookId(input: string): Promise<FacebookId>
     /** Resolve an Instagram numeric ID <-> username from a profile URL/username. */
     instagramId(input: string): Promise<FacebookId>
+    /** Verbose Shodan host/domain intelligence (needs a Shodan key). */
+    shodan(target: string, key: string): Promise<ShodanResult>
   }
   app: {
     version(): Promise<string>

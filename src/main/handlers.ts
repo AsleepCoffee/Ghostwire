@@ -1144,6 +1144,68 @@ export function registerHandlers(): void {
     }
   })
 
+  // Shodan host/domain intelligence (verbose) — needs a Shodan API key.
+  ipcMain.handle('intel:shodan', async (_e, target: string, key: string) => {
+    if (!key) return { ok: false, error: 'Add a Shodan API key in Settings → API keys.' }
+    const t = String(target ?? '').trim()
+    if (!t) return { ok: false, error: 'No target.' }
+    const isIp = /^(\d{1,3}\.){3}\d{1,3}$/.test(t) || t.includes(':')
+    const k = encodeURIComponent(key)
+    let ip = t
+    let subdomains: string[] | undefined
+    try {
+      if (!isIp) {
+        const r = await net.fetch(`https://api.shodan.io/dns/resolve?hostnames=${encodeURIComponent(t)}&key=${k}`)
+        if (r.status === 401) return { ok: false, error: 'Shodan key rejected (401).' }
+        const j = (await r.json().catch(() => ({}))) as Record<string, string>
+        ip = j[t] || ''
+        try {
+          const dr = await net.fetch(`https://api.shodan.io/dns/domain/${encodeURIComponent(t)}?key=${k}`)
+          if (dr.ok) {
+            const dj = (await dr.json()) as { subdomains?: string[] }
+            subdomains = (dj.subdomains ?? []).slice(0, 60)
+          }
+        } catch {
+          /* domain endpoint may need membership */
+        }
+        if (!ip) return { ok: true, ip: '', hostnames: [], ports: [], services: [], vulns: [], tags: [], subdomains, note: 'Shodan has no resolved IP for this domain.' }
+      }
+      const res = await net.fetch(`https://api.shodan.io/shodan/host/${encodeURIComponent(ip)}?key=${k}`)
+      if (res.status === 401) return { ok: false, error: 'Shodan key rejected (401).' }
+      if (res.status === 404) return { ok: true, ip, hostnames: [], ports: [], services: [], vulns: [], tags: [], subdomains, note: 'No Shodan data for this host.' }
+      const j = (await res.json()) as Record<string, unknown>
+      if (!res.ok) return { ok: false, error: (j?.error as string) ?? `Shodan HTTP ${res.status}` }
+      const services = ((j.data as Record<string, unknown>[]) ?? []).slice(0, 40).map((s) => ({
+        port: Number(s.port ?? 0),
+        transport: String(s.transport ?? ''),
+        product: String(s.product ?? ''),
+        version: String(s.version ?? ''),
+        module: String((s._shodan as { module?: string })?.module ?? ''),
+        banner: String(s.data ?? '').slice(0, 280).trim()
+      }))
+      const vulns = Array.isArray(j.vulns) ? (j.vulns as string[]) : Object.keys((j.vulns as object) ?? {})
+      return {
+        ok: true,
+        ip: String(j.ip_str ?? ip),
+        org: String(j.org ?? ''),
+        isp: String(j.isp ?? ''),
+        asn: String(j.asn ?? ''),
+        os: String(j.os ?? ''),
+        country: String(j.country_name ?? ''),
+        city: String(j.city ?? ''),
+        lastUpdate: String(j.last_update ?? ''),
+        hostnames: (j.hostnames as string[]) ?? [],
+        ports: (j.ports as number[]) ?? [],
+        services,
+        vulns,
+        tags: (j.tags as string[]) ?? [],
+        subdomains
+      }
+    } catch (e) {
+      return { ok: false, error: String((e as Error)?.message ?? e) }
+    }
+  })
+
   // Resolve a Facebook numeric ID <-> vanity from a profile URL/username.
   ipcMain.handle('intel:facebookId', async (_e, input: string) => {
     const raw = String(input ?? '').trim()

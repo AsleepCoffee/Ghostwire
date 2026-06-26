@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.1.75
+- Shodan API integration on the Domain & IP page — "Load verbose data" returns host org/ISP/ASN/OS, open ports + service banners, CVEs, tags and subdomains, with Shodan-facet pivots (org/ASN/product search, open host). Uses your Shodan key.
+- Domain pivot adds DNSdumpster and Web Check (web-check.as93.net).
+- Business pivots for organizations — OpenCorporates, AiHitData, Crunchbase, SEC EDGAR.
+- Fix: turning off the global VPN exit reverts to the real IP immediately — proxy change now drops pooled keep-alive connections (forceReloadProxyConfig + closeAllConnections).
+
 ## v0.1.74
 - Expanded website/domain pivots — grouped into Whois & DNS (Domain Dossier, ViewDNS whois/DNS/IP-history, DNSlytics, crt.sh), Tech & infra (BuiltWith, Shodan, urlscan, VirusTotal, Wayback) and Relationships (SpyOnWeb, BacklinkWatch, VisualPing). IP pivots add VirusTotal, DNSlytics reverse-IP, SpyOnWeb.
 

@@ -7,6 +7,16 @@ export interface ChangelogEntry {
 /** In-app patch notes. Newest first. Keep in sync with CHANGELOG.md. */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.1.75',
+    date: '2026-06-26',
+    notes: [
+      'Shodan, properly — on the Domain & IP page, “Load verbose data” pulls live Shodan host intel (org/ISP/ASN/OS, open ports & service banners, CVEs, tags, subdomains) and lets you pivot (search the org/ASN/product on Shodan, open the host). Needs your Shodan key.',
+      'More website tools in the domain pivot — DNSdumpster and Web Check, alongside urlscan/BuiltWith/Domain Dossier/ViewDNS/DNSlytics/etc.',
+      'Business pivots — OpenCorporates, AiHitData, Crunchbase and SEC EDGAR for an organization.',
+      'Fixed: turning the global VPN exit off now reverts to your real IP immediately (pooled tunnel connections are dropped on switch).'
+    ]
+  },
+  {
     version: '0.1.74',
     date: '2026-06-26',
     notes: [

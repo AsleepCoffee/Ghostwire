@@ -202,12 +202,14 @@ export function generatePivots(subject: PivotSubject, raw: string): PivotQuery[]
       out.push({ group: 'Whois & DNS', label: 'ViewDNS — DNS records', url: `https://viewdns.info/dnsrecord/?domain=${enc(d)}` })
       out.push({ group: 'Whois & DNS', label: 'ViewDNS — IP history', url: `https://viewdns.info/iphistory/?domain=${enc(d)}` })
       out.push({ group: 'Whois & DNS', label: 'DNSlytics', url: `https://dnslytics.com/domain/${enc(d)}` })
+      out.push({ group: 'Whois & DNS', label: 'DNSdumpster', url: 'https://dnsdumpster.com/' })
       out.push({ group: 'Whois & DNS', label: 'crt.sh (subdomains)', url: `https://crt.sh/?q=${enc(d)}` })
       // Tech stack & infrastructure
       out.push({ group: 'Tech & infra', label: 'BuiltWith', url: `https://builtwith.com/${enc(d)}` })
       out.push({ group: 'Tech & infra', label: 'Shodan', url: `https://www.shodan.io/search?query=${enc(d)}` })
       out.push({ group: 'Tech & infra', label: 'urlscan.io', url: `https://urlscan.io/domain/${enc(d)}` })
       out.push({ group: 'Tech & infra', label: 'VirusTotal', url: `https://www.virustotal.com/gui/domain/${enc(d)}` })
+      out.push({ group: 'Tech & infra', label: 'Web Check', url: `https://web-check.as93.net/check/${enc(d)}` })
       out.push({ group: 'Tech & infra', label: 'Wayback Machine', url: `https://web.archive.org/web/*/${enc(d)}` })
       // Relationships / reputation / monitoring
       out.push({ group: 'Relationships', label: 'SpyOnWeb (shared analytics)', url: `https://spyonweb.com/${enc(d)}` })
@@ -234,7 +236,10 @@ export function generatePivots(subject: PivotSubject, raw: string): PivotQuery[]
       out.push({ group: 'Search', label: 'LinkedIn company', url: g(`${exact} site:linkedin.com/company`) })
       out.push({ group: 'Search', label: 'Employees', url: g(`${exact} (site:linkedin.com/in)`) })
       out.push({ group: 'Search', label: 'Docs', url: g(`${exact} (filetype:pdf OR filetype:xlsx)`) })
-      out.push({ group: 'Recon', label: 'OpenCorporates', url: `https://opencorporates.com/companies?q=${enc(v)}` })
+      out.push({ group: 'Business records', label: 'OpenCorporates', url: `https://opencorporates.com/companies?q=${enc(v)}` })
+      out.push({ group: 'Business records', label: 'AiHitData', url: `https://www.aihitdata.com/search?q=${enc(v)}` })
+      out.push({ group: 'Business records', label: 'Crunchbase', url: g(`${exact} site:crunchbase.com`) })
+      out.push({ group: 'Business records', label: 'SEC EDGAR', url: `https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&company=${enc(v)}&type=&dateb=&owner=include&count=40` })
       break
     }
     case 'location': {

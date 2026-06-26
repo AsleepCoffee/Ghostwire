@@ -283,14 +283,26 @@ function bindWebRtc(ses: Session): void {
   }
 }
 
+// After changing a session's proxy, drop pooled keep-alive connections so the
+// change takes effect immediately. Without this, switching the global exit OFF
+// keeps routing through the (still-open) SOCKS tunnel and the IP doesn't revert.
+function applyAndReset(ses: Session): void {
+  try {
+    ses.forceReloadProxyConfig().catch(() => {})
+    ses.closeAllConnections().catch(() => {})
+  } catch {
+    /* older Electron — best effort */
+  }
+}
+
 function pin(ses: Session, cfg: VpnConfig | undefined): void {
   if (cfg) {
-    ses.setProxy({ proxyRules: `socks5://127.0.0.1:${cfg.socksPort}` }).catch(() => {})
+    ses.setProxy({ proxyRules: `socks5://127.0.0.1:${cfg.socksPort}` }).then(() => applyAndReset(ses)).catch(() => {})
     proxiedSessions.add(ses)
     bindWebRtc(ses)
   } else {
     proxiedSessions.delete(ses)
-    ses.setProxy({ mode: 'direct' }).catch(() => {})
+    ses.setProxy({ mode: 'direct' }).then(() => applyAndReset(ses)).catch(() => {})
   }
 }
 
