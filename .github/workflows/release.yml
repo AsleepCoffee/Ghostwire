@@ -36,8 +36,8 @@ jobs:
 
       - name: Set release notes from CHANGELOG
         shell: bash
-        # Cosmetic — never let a notes hiccup fail the job (which would skip the
-        # Linux build via `needs: release-win`).
+        # Purely cosmetic. This must NEVER fail (a non-zero exit fails release-win
+        # and skips release-linux via `needs:`). Always exits 0.
         continue-on-error: true
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -49,21 +49,29 @@ jobs:
             flag {print}
           ' CHANGELOG.md)
           if [ -z "$NOTES" ]; then NOTES="See the commit history for changes in ${TAG}."; fi
-          # Patch ONLY the body of the release electron-builder already published
-          # for this tag (gh release edit can 422 on tag_name; gh api PATCH by id
-          # avoids that). Retry briefly for API eventual-consistency.
+          printf '%s' "$NOTES" > release-notes.md
+          # Find the release (including a draft electron-builder may still be
+          # finalising) via the list endpoint, then PATCH only its body.
           RID=""
-          for i in 1 2 3 4 5 6; do
-            RID=$(gh api "repos/${GITHUB_REPOSITORY}/releases/tags/${TAG}" --jq .id 2>/dev/null || true)
+          for i in 1 2 3 4 5 6 7 8; do
+            RID=$(gh api "repos/${GITHUB_REPOSITORY}/releases" --paginate \
+              --jq ".[] | select(.tag_name==\"${TAG}\") | .id" 2>/dev/null | head -n1)
             [ -n "$RID" ] && break
-            sleep 5
+            sleep 8
           done
-          if [ -n "$RID" ]; then
-            gh api -X PATCH "repos/${GITHUB_REPOSITORY}/releases/${RID}" -f body="$NOTES" >/dev/null
-            echo "Updated release notes for ${TAG} (release ${RID})."
-          else
-            echo "No published release found for ${TAG}; leaving notes as-is."
+          if [ -z "$RID" ]; then
+            echo "::warning::Release for ${TAG} not found; skipping notes."
+            exit 0
           fi
+          # Send the body from a file to avoid any shell/flag quoting issues.
+          if gh api -X PATCH "repos/${GITHUB_REPOSITORY}/releases/${RID}" \
+              -F "body=@release-notes.md" 1>/dev/null 2>api-err.txt; then
+            echo "Release notes set for ${TAG} (release ${RID})."
+          else
+            echo "::warning::Could not set notes (non-fatal). API said:"
+            cat api-err.txt || true
+          fi
+          exit 0
 
   release-linux:
     runs-on: ubuntu-latest

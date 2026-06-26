@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.1.57
+- Remove a pin from the Map — a pinned evidence location's popup now has a "Remove pin" action that clears its location and takes it off the map.
+- Release-notes step on GitHub releases is now fully resilient (finds the release incl. drafts, patches the body from a file, always exits 0), so release bodies populate again.
+
 ## v0.1.56
 - Fixed the in-app browser reloading pages on its own — the webview's `src` was bound to the live, navigation-updated URL, so every redirect rewrote `src` and forced another load (looping on challenge/redirect pages). `src` is now a stable initial URL; navigation only drives the address bar.
 - Restored the Linux build — the release-notes step (`gh release edit`) was 422-ing under electron-builder 26, failing the Windows job and skipping the dependent Linux job. The step now patches the release body by ID and is `continue-on-error`, so both platforms always build.

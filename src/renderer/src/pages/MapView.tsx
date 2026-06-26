@@ -11,6 +11,8 @@ interface Pt {
   lng: number
   label: string
   kind: string
+  /** Set for a manually-pinned evidence location — lets it be removed from the map. */
+  evidenceId?: string
 }
 
 const COLORS: Record<string, string> = {
@@ -46,6 +48,7 @@ export function MapView(): JSX.Element {
   const openInBrowser = useOpenInBrowser()
   const openRef = useRef(openInBrowser)
   openRef.current = openInBrowser
+  const removeRef = useRef<(id: string) => void>(() => {})
   const [projects, setProjects] = useState<Project[]>([])
   const [projectId, setProjectId] = useState<string | null>(settings.activeProjectId ?? null)
   const [pts, setPts] = useState<Pt[]>([])
@@ -98,7 +101,7 @@ export function MapView(): JSX.Element {
       for (const item of ev) {
         // A pinned location (from EXIF, an AI guess, or set by hand) wins; else fall back to raw EXIF GPS.
         if (item.geoLat != null && item.geoLng != null) {
-          out.push({ lat: item.geoLat, lng: item.geoLng, label: item.geoLabel || item.title || 'Evidence', kind: 'evidence' })
+          out.push({ lat: item.geoLat, lng: item.geoLng, label: item.geoLabel || item.title || 'Evidence', kind: 'evidence', evidenceId: item.id })
           continue
         }
         const ex = await api.files.exif(item.path)
@@ -108,6 +111,11 @@ export function MapView(): JSX.Element {
       setPts(out)
       setLoading(false)
     }
+  }
+
+  // Clear a manually-pinned evidence location, then refresh the map.
+  removeRef.current = (id: string): void => {
+    api.evidence.setGeo(id, null, null, '').then(() => collect())
   }
 
   useEffect(() => {
@@ -134,7 +142,10 @@ export function MapView(): JSX.Element {
         .addTo(layer)
         .bindPopup(
           `<b>${esc(p.label)}</b><br><span style="opacity:.6">${esc(p.kind)}</span><br>` +
-            `<a href="#" data-sv="${p.lat},${p.lng}" style="color:#2563eb">📍 Street View</a>`
+            `<a href="#" data-sv="${p.lat},${p.lng}" style="color:#2563eb">📍 Street View</a>` +
+            (p.evidenceId
+              ? `<br><a href="#" data-rm="${esc(p.evidenceId)}" style="color:#dc2626">✕ Remove pin</a>`
+              : '')
         )
       bounds.push([p.lat, p.lng])
     }
@@ -146,12 +157,22 @@ export function MapView(): JSX.Element {
     const map = mapRef.current
     if (!map) return
     const onOpen = (e: L.PopupEvent): void => {
-      const el = e.popup.getElement()?.querySelector('[data-sv]') as HTMLAnchorElement | null
-      if (!el) return
-      el.onclick = (ev): void => {
-        ev.preventDefault()
-        const [lat, lng] = (el.dataset.sv ?? '').split(',')
-        openRef.current([`https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${lat},${lng}`])
+      const root = e.popup.getElement()
+      const sv = root?.querySelector('[data-sv]') as HTMLAnchorElement | null
+      if (sv) {
+        sv.onclick = (ev): void => {
+          ev.preventDefault()
+          const [lat, lng] = (sv.dataset.sv ?? '').split(',')
+          openRef.current([`https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${lat},${lng}`])
+        }
+      }
+      const rm = root?.querySelector('[data-rm]') as HTMLAnchorElement | null
+      if (rm) {
+        rm.onclick = (ev): void => {
+          ev.preventDefault()
+          e.popup.remove()
+          removeRef.current(rm.dataset.rm ?? '')
+        }
       }
     }
     map.on('popupopen', onOpen)
