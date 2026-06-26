@@ -1,13 +1,31 @@
 import type { Activity, Board, EntityEdge, EntityNode, Evidence, Note, Persona, Project } from '../shared/types'
 
+/** EXIF/metadata summary attached to each image exhibit for the report. */
+export interface ReportExif {
+  gps?: { lat: number; lng: number }
+  make?: string
+  model?: string
+  software?: string
+  dateTime?: string
+  fileSize?: number
+  all?: Record<string, string>
+}
+
 /** Everything needed to render a self-contained case report. */
 export interface ReportData {
   project: Project
-  evidence: (Evidence & { dataUri: string | null })[]
+  evidence: (Evidence & { dataUri: string | null; exif?: ReportExif })[]
   notes: Note[]
   activity: Activity[]
   personas: Persona[]
   graphs: { board: Board; entities: EntityNode[]; edges: EntityEdge[] }[]
+}
+
+/** Best location for an exhibit: a pinned location wins, else raw EXIF GPS. */
+function evidenceGeo(e: ReportData['evidence'][number]): { lat: number; lng: number; label: string } | null {
+  if (e.geoLat != null && e.geoLng != null) return { lat: e.geoLat, lng: e.geoLng, label: e.geoLabel || e.title || 'Exhibit' }
+  if (e.exif?.gps) return { lat: e.exif.gps.lat, lng: e.exif.gps.lng, label: e.title || 'Exhibit' }
+  return null
 }
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
@@ -33,6 +51,27 @@ function fmtFull(ts: number | string | Date): string {
 
 function esc(s: unknown): string {
   return String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!)
+}
+
+/** Camera / capture metadata line for an exhibit (from EXIF). */
+function evidenceCamera(e: ReportData['evidence'][number]): string {
+  const x = e.exif
+  if (!x) return ''
+  const bits: string[] = []
+  const cam = [x.make, x.model].filter(Boolean).join(' ').trim()
+  if (cam) bits.push(`📷 ${esc(cam)}`)
+  if (x.dateTime) bits.push(`🕑 ${esc(x.dateTime)}`)
+  if (x.software) bits.push(`🛠 ${esc(x.software)}`)
+  if (x.fileSize) bits.push(`${(x.fileSize / 1024).toFixed(0)} KB`)
+  return bits.length ? `<div class="exif">${bits.join(' · ')}</div>` : ''
+}
+
+/** Location line + map link for an exhibit (pinned location or EXIF GPS). */
+function evidenceLocation(e: ReportData['evidence'][number]): string {
+  const g = evidenceGeo(e)
+  if (!g) return ''
+  const pinned = e.geoLat != null && e.geoLng != null
+  return `<div class="evgeo">📍 ${esc(g.label)} <span class="muted">(${g.lat.toFixed(5)}, ${g.lng.toFixed(5)}${pinned ? ', pinned' : ', EXIF'})</span></div>`
 }
 
 const kindLabel: Record<string, string> = {
@@ -118,6 +157,8 @@ function tocSections(d: ReportData): Section[] {
   if (p.known) out.push({ id: 'background', title: 'Background' })
   if (p.dataPoints?.length) out.push({ id: 'known', title: 'Known information', count: p.dataPoints.length })
   if (d.graphs.length) out.push({ id: 'links', title: 'Link analysis', count: d.graphs.length })
+  const geoCount = d.evidence.filter((e) => evidenceGeo(e)).length
+  if (geoCount) out.push({ id: 'map', title: 'Location map', count: geoCount })
   out.push({ id: 'evidence', title: 'Evidence', count: d.evidence.length })
   if (d.notes.length) out.push({ id: 'notes', title: 'Notes', count: d.notes.length })
   if (d.personas.length) out.push({ id: 'personas', title: 'Personas', count: d.personas.length })
@@ -172,8 +213,17 @@ export function buildHtmlReport(d: ReportData): string {
               <div class="evtitle">${esc(e.title || e.sourceUrl || `Exhibit ${i + 1}`)}</div>
               <div class="muted">${esc(fmt(e.capturedAt))}</div>
               ${e.sourceUrl ? `<a class="evsrc" href="${esc(e.sourceUrl)}" target="_blank" rel="noreferrer">${esc(e.sourceUrl)}</a>` : ''}
+              ${evidenceCamera(e)}
+              ${evidenceLocation(e)}
               ${e.note ? `<div class="evnote">${esc(e.note)}</div>` : ''}
               ${e.ocr ? `<details class="ocr"><summary>Extracted text (OCR)</summary><pre>${esc(e.ocr)}</pre></details>` : ''}
+              ${
+                e.exif?.all && Object.keys(e.exif.all).length
+                  ? `<details class="ocr"><summary>All metadata (${Object.keys(e.exif.all).length})</summary><table class="metatbl">${Object.entries(e.exif.all)
+                      .map(([k, v]) => `<tr><td>${esc(k)}</td><td>${esc(v)}</td></tr>`)
+                      .join('')}</table></details>`
+                  : ''
+              }
               ${
                 e.sha256
                   ? `<div class="hashrow"><span class="hbadge" title="Integrity hash recorded at capture">✓ SHA-256</span><code class="mono" data-hash="${esc(e.sha256)}">${esc(e.sha256.slice(0, 16))}…</code><button class="cphash" data-hash="${esc(e.sha256)}">copy</button></div>`
@@ -221,6 +271,14 @@ export function buildHtmlReport(d: ReportData): string {
     .map((s) => `<a href="#${s.id}" data-target="${s.id}">${esc(s.title)}${s.count != null ? `<span class="navc">${s.count}</span>` : ''}</a>`)
     .join('')
 
+  // Geolocated exhibits → map markers.
+  const geoPoints = d.evidence
+    .map((e, i) => {
+      const g = evidenceGeo(e)
+      return g ? { lat: g.lat, lng: g.lng, label: `Exhibit ${i + 1} — ${g.label}` } : null
+    })
+    .filter((g): g is { lat: number; lng: number; label: string } => g !== null)
+
   const section = (id: string, title: string, count: number | undefined, body: string): string =>
     `<section id="${id}"><h2>${esc(title)}${count != null ? ` <span class="muted">(${count})</span>` : ''}</h2>${body}</section>`
 
@@ -237,6 +295,14 @@ export function buildHtmlReport(d: ReportData): string {
     p.known ? section('background', 'Background', undefined, `<pre class="prose">${esc(p.known)}</pre>`) : '',
     p.dataPoints?.length ? section('known', 'Known information', p.dataPoints.length, dataPointsTable(d)) : '',
     d.graphs.length ? section('links', 'Link analysis', d.graphs.length, graphsHtml) : '',
+    geoPoints.length
+      ? section(
+          'map',
+          'Location map',
+          geoPoints.length,
+          '<div id="reportmap" class="repmap"></div><p class="muted">Pins mark each exhibit\'s pinned or EXIF location. Needs an internet connection to load map tiles.</p>'
+        )
+      : '',
     section('evidence', 'Evidence', d.evidence.length, evidenceHtml),
     d.notes.length ? section('notes', 'Notes', d.notes.length, notesHtml) : '',
     d.personas.length ? section('personas', 'Personas', d.personas.length, personasHtml) : '',
@@ -246,9 +312,10 @@ export function buildHtmlReport(d: ReportData): string {
       ${custodyTable(d)}`)
   ].join('\n')
 
-  return `<!doctype html><html lang="en"><head><meta charset="utf-8"/>
+  return `<!doctype html><html lang="en" data-theme="dark"><head><meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
 <title>${esc(p.name)} — Investigation report</title>
+${geoPoints.length ? '<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>' : ''}
 <style>
   :root{
     --bg:#f4f6fb; --panel:#ffffff; --ink:#0f172a; --muted:#64748b; --line:#e2e8f0;
@@ -291,6 +358,10 @@ export function buildHtmlReport(d: ReportData): string {
   th{ background:var(--bg); font-weight:600; }
   td.mono,.mono{ font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:11.5px; }
   td.break,.break{ word-break:break-all; }
+  .repmap{ height:420px; border:1px solid var(--line); border-radius:10px; overflow:hidden; }
+  .exif{ font-size:11px; color:var(--muted); margin-top:4px; }
+  .evgeo{ font-size:11.5px; color:var(--ok); margin-top:4px; }
+  .metatbl{ font-size:11px; margin-top:6px; } .metatbl td{ padding:3px 6px; } .metatbl td:first-child{ color:var(--muted); width:40%; }
   .statbar{ display:flex; gap:12px; flex-wrap:wrap; margin-bottom:16px; }
   .stat{ background:var(--bg); border:1px solid var(--line); border-radius:10px; padding:10px 16px; min-width:90px; }
   .stat b{ display:block; font-size:22px; line-height:1; }
@@ -356,7 +427,7 @@ export function buildHtmlReport(d: ReportData): string {
         <p class="sub">Investigation report · generated ${esc(fmt(new Date()))}</p>
       </header>
       ${body}
-      <footer>Generated by GhostWire — OSINT Workbench. Evidence hashes are SHA-256 of the stored file at capture time; this document is self-contained and works offline.</footer>
+      <footer>Generated by GhostWire — OSINT Workbench. Evidence hashes are SHA-256 of the stored file at capture time. Images and data are embedded in this file; the location map needs an internet connection to load tiles.</footer>
     </main>
   </div>
   <div class="lb" id="lb"><span class="x" id="lbx">&times;</span><img id="lbimg" alt=""/><div class="cap" id="lbcap"></div></div>
@@ -388,6 +459,26 @@ export function buildHtmlReport(d: ReportData): string {
   document.getElementById('printBtn').addEventListener('click', function(){ window.print(); });
 })();
 </script>
+${
+  geoPoints.length
+    ? `<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+(function(){
+  var PTS = ${JSON.stringify(geoPoints)};
+  var el = document.getElementById('reportmap');
+  if (!el || !window.L || !PTS.length) { if(el){ el.innerHTML = '<p class="muted" style="padding:12px">Map tiles need an internet connection.</p>'; } return; }
+  try {
+    var m = L.map(el, { scrollWheelZoom:false }).setView([PTS[0].lat, PTS[0].lng], 4);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom:19, attribution:'© OpenStreetMap' }).addTo(m);
+    var b = [];
+    PTS.forEach(function(p){ L.marker([p.lat,p.lng]).addTo(m).bindPopup(p.label); b.push([p.lat,p.lng]); });
+    if (b.length > 1) m.fitBounds(b, { padding:[40,40], maxZoom:12 }); else m.setView(b[0], 13);
+    setTimeout(function(){ m.invalidateSize(); }, 100);
+  } catch(e){}
+})();
+</script>`
+    : ''
+}
 </body></html>`
 }
 
@@ -417,8 +508,11 @@ export function buildPrintReport(d: ReportData): string {
               <div class="evtitle">Exhibit ${i + 1} — ${esc(e.title || e.sourceUrl || 'Evidence')}</div>
               <div class="muted">Captured ${esc(fmtFull(e.capturedAt))}</div>
               ${e.sourceUrl ? `<div class="muted">Source: ${esc(e.sourceUrl)}</div>` : ''}
+              ${evidenceCamera(e)}
+              ${evidenceLocation(e)}
               ${e.sha256 ? `<div class="hash">SHA-256: ${esc(e.sha256)}</div>` : ''}
               ${e.note ? `<div class="evnote">${esc(e.note)}</div>` : ''}
+              ${e.ocr ? `<div class="evnote"><b>OCR:</b> ${esc(e.ocr)}</div>` : ''}
             </div>
           </div>`
         )
@@ -548,8 +642,14 @@ export function buildDocxHtml(d: ReportData): string {
       if (e.dataUri) H.push(`<img src="${e.dataUri}" width="420"/>`)
       H.push(`<p><i>Captured ${esc(fmtFull(e.capturedAt))}</i></p>`)
       if (e.sourceUrl) H.push(`<p>Source: ${esc(e.sourceUrl)}</p>`)
+      const cam = [e.exif?.make, e.exif?.model].filter(Boolean).join(' ').trim()
+      if (cam) H.push(`<p>Camera: ${esc(cam)}</p>`)
+      if (e.exif?.dateTime) H.push(`<p>Taken: ${esc(e.exif.dateTime)}</p>`)
+      const g = evidenceGeo(e)
+      if (g) H.push(`<p>Location: ${esc(g.label)} (${g.lat.toFixed(5)}, ${g.lng.toFixed(5)})</p>`)
       if (e.sha256) H.push(`<p style="font-size:9pt">SHA-256: ${esc(e.sha256)}</p>`)
       if (e.note) H.push(`<p>${esc(e.note).replace(/\n/g, '<br/>')}</p>`)
+      if (e.ocr) H.push(`<p><b>OCR:</b> ${esc(e.ocr).replace(/\n/g, '<br/>')}</p>`)
     })
   } else H.push('<p>No evidence captured.</p>')
 

@@ -7,7 +7,7 @@ import { registerMediaScheme, registerMediaProtocol } from './media'
 import { initUpdater } from './updater'
 import { initVpn, shutdownVpn } from './vpn'
 import { registerBackupHandlers, maybeAutoBackup } from './backup'
-import { hardenWebContents } from './fingerprint'
+import { hardenWebContents, BASE_CHROME_UA } from './fingerprint'
 import { attachContextMenu } from './contextmenu'
 
 // Must run before app is ready.
@@ -62,6 +62,17 @@ app.whenReady().then(async () => {
   initUpdater()
   initVpn()
   maybeAutoBackup()
+
+  // Give the shared browsing sessions a clean desktop-Chrome UA up front (before
+  // any page loads) so anti-bot checks (Google, Cloudflare) don't reject the
+  // stock Electron UA and trap the page in a reload/challenge loop.
+  for (const part of ['persist:default-browser', 'persist:gw-mailbox']) {
+    try {
+      session.fromPartition(part).setUserAgent(BASE_CHROME_UA)
+    } catch {
+      /* ignore */
+    }
+  }
 
   app.on('web-contents-created', (_e, contents) => {
     if (contents.getType() !== 'webview') return

@@ -439,6 +439,8 @@ export interface OsintApi {
   }
   clipboard: {
     writeText(text: string): Promise<void>
+    /** Copy an image (data: URL) to the OS clipboard. Returns false if it couldn't decode. */
+    writeImage(dataUrl: string): Promise<boolean>
   }
   net: {
     fetchJson(url: string, headers?: Record<string, string>): Promise<unknown>

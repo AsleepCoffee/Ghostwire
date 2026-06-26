@@ -291,20 +291,77 @@ export async function addEvidenceFromUrl(url: string, projectId: string | null):
   return mapEvidence(get('SELECT * FROM evidence WHERE id = ?', [id])!)
 }
 
+export interface ExifSummary {
+  gps?: { lat: number; lng: number }
+  make?: string
+  model?: string
+  software?: string
+  dateTime?: string
+  fileSize?: number
+  all?: Record<string, string>
+}
+
+/** Parse the full tag set (EXIF + GPS + IPTC + XMP) from an image buffer. */
+export async function readExif(buf: Buffer): Promise<ExifSummary> {
+  const fmt = (v: unknown): string => {
+    if (v == null) return ''
+    if (v instanceof Date) return v.toISOString()
+    if (Array.isArray(v)) return v.join(', ')
+    if (typeof v === 'object') return JSON.stringify(v)
+    return String(v)
+  }
+  try {
+    const data = (await exifr.parse(buf, {
+      tiff: true,
+      exif: true,
+      gps: true,
+      iptc: true,
+      xmp: true,
+      translateKeys: true,
+      translateValues: true,
+      reviveValues: true
+    })) as Record<string, unknown> | undefined
+    const all: Record<string, string> = {}
+    if (data) {
+      for (const [k, v] of Object.entries(data)) {
+        if (k === 'latitude' || k === 'longitude') continue
+        const s = fmt(v)
+        if (s) all[k] = s.length > 300 ? s.slice(0, 300) + '…' : s
+      }
+    }
+    const lat = data?.latitude as number | undefined
+    const lng = data?.longitude as number | undefined
+    return {
+      gps: typeof lat === 'number' && typeof lng === 'number' ? { lat, lng } : undefined,
+      make: data?.Make as string | undefined,
+      model: data?.Model as string | undefined,
+      software: data?.Software as string | undefined,
+      dateTime: data?.DateTimeOriginal ? String(data.DateTimeOriginal) : undefined,
+      fileSize: buf.length,
+      all
+    }
+  } catch {
+    return { fileSize: buf.length, all: {} }
+  }
+}
+
 /** Gather everything for a full case report, with evidence images embedded. */
-function gatherReport(id: string): ReportData | null {
+async function gatherReport(id: string): Promise<ReportData | null> {
   const pr = get('SELECT * FROM projects WHERE id = ?', [id])
   if (!pr) return null
   const project = mapProject(pr)
-  const evidence = all('SELECT * FROM evidence WHERE projectId = ? ORDER BY capturedAt DESC', [id])
-    .map(mapEvidence)
-    .map((e) => {
-      const buf = e.kind !== 'file' ? readMedia(e.path) : null
-      const ext = (e.path.split('.').pop() ?? '').toLowerCase().replace(/[^a-z0-9]/g, '')
-      const mime =
-        ext === 'png' ? 'image/png' : ext === 'webp' ? 'image/webp' : ext === 'gif' ? 'image/gif' : 'image/jpeg'
-      return { ...e, dataUri: buf ? `data:${mime};base64,${buf.toString('base64')}` : null }
-    })
+  const evidence = await Promise.all(
+    all('SELECT * FROM evidence WHERE projectId = ? ORDER BY capturedAt DESC', [id])
+      .map(mapEvidence)
+      .map(async (e) => {
+        const buf = e.kind !== 'file' ? readMedia(e.path) : null
+        const ext = (e.path.split('.').pop() ?? '').toLowerCase().replace(/[^a-z0-9]/g, '')
+        const mime =
+          ext === 'png' ? 'image/png' : ext === 'webp' ? 'image/webp' : ext === 'gif' ? 'image/gif' : 'image/jpeg'
+        const exif = buf ? await readExif(buf) : undefined
+        return { ...e, dataUri: buf ? `data:${mime};base64,${buf.toString('base64')}` : null, exif }
+      })
+  )
   const notes = all('SELECT * FROM notes WHERE projectId = ? ORDER BY updatedAt DESC', [id]).map(mapNote)
   const activity = all('SELECT * FROM activity WHERE projectId = ? ORDER BY at ASC', [id]).map((a) => ({
     id: String((a as Record<string, unknown>).id),
@@ -429,7 +486,7 @@ export function registerHandlers(): void {
   })
 
   ipcMain.handle('projects:exportReportHtml', async (_e, id: string) => {
-    const data = gatherReport(id)
+    const data = await gatherReport(id)
     if (!data) return null
     const safe = data.project.name.replace(/[\\/:*?"<>|]/g, '-').slice(0, 100) || 'investigation'
     const win = BrowserWindow.getFocusedWindow()
@@ -445,7 +502,7 @@ export function registerHandlers(): void {
   })
 
   ipcMain.handle('projects:exportReportPdf', async (_e, id: string) => {
-    const data = gatherReport(id)
+    const data = await gatherReport(id)
     if (!data) return null
     const safe = data.project.name.replace(/[\\/:*?"<>|]/g, '-').slice(0, 100) || 'investigation'
     const win = BrowserWindow.getFocusedWindow()
@@ -475,7 +532,7 @@ export function registerHandlers(): void {
   })
 
   ipcMain.handle('projects:exportReportDocx', async (_e, id: string) => {
-    const data = gatherReport(id)
+    const data = await gatherReport(id)
     if (!data) return null
     const safe = data.project.name.replace(/[\\/:*?"<>|]/g, '-').slice(0, 100) || 'investigation'
     const win = BrowserWindow.getFocusedWindow()
@@ -838,48 +895,7 @@ export function registerHandlers(): void {
   ipcMain.handle('files:exif', async (_e, mediaUrl: string) => {
     const buf = readMedia(mediaUrl)
     if (!buf) return {}
-    const fmt = (v: unknown): string => {
-      if (v == null) return ''
-      if (v instanceof Date) return v.toISOString()
-      if (Array.isArray(v)) return v.join(', ')
-      if (typeof v === 'object') return JSON.stringify(v)
-      return String(v)
-    }
-    try {
-      // Parse the full tag set (EXIF + GPS + IPTC + XMP + IFD0).
-      const data = (await exifr.parse(buf, {
-        tiff: true,
-        exif: true,
-        gps: true,
-        iptc: true,
-        xmp: true,
-        translateKeys: true,
-        translateValues: true,
-        reviveValues: true
-      })) as Record<string, unknown> | undefined
-
-      const all: Record<string, string> = {}
-      if (data) {
-        for (const [k, v] of Object.entries(data)) {
-          if (k === 'latitude' || k === 'longitude') continue
-          const s = fmt(v)
-          if (s) all[k] = s.length > 300 ? s.slice(0, 300) + '…' : s
-        }
-      }
-      const lat = data?.latitude as number | undefined
-      const lng = data?.longitude as number | undefined
-      return {
-        gps: typeof lat === 'number' && typeof lng === 'number' ? { lat, lng } : undefined,
-        make: data?.Make as string | undefined,
-        model: data?.Model as string | undefined,
-        software: data?.Software as string | undefined,
-        dateTime: data?.DateTimeOriginal ? String(data.DateTimeOriginal) : undefined,
-        fileSize: buf.length,
-        all
-      }
-    } catch {
-      return { fileSize: buf.length, all: {} }
-    }
+    return readExif(buf)
   })
 
   // ===== Activity log =====
@@ -907,6 +923,17 @@ export function registerHandlers(): void {
 
   // ===== Clipboard (the web Clipboard API is unavailable under file://) =====
   ipcMain.handle('clipboard:write', (_e, text: string) => clipboard.writeText(String(text ?? '')))
+  // Copy an image (data: URL) to the OS clipboard — used to paste into reverse-image engines.
+  ipcMain.handle('clipboard:writeImage', (_e, dataUrl: string) => {
+    try {
+      const img = nativeImage.createFromDataURL(String(dataUrl ?? ''))
+      if (img.isEmpty()) return false
+      clipboard.writeImage(img)
+      return true
+    } catch {
+      return false
+    }
+  })
 
   // ===== App =====
   ipcMain.handle('app:encryptionStatus', () => encryptionAvailable())

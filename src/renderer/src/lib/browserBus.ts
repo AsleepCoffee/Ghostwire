@@ -79,6 +79,28 @@ export function subscribeOpen(cb: (r: OpenRequest) => void): () => void {
   }
 }
 
+// An image staged for manual paste (Ctrl+V) into a reverse-image-search engine.
+// Shown as a side panel in the browser so it can be re-copied at any time.
+export interface PasteImage {
+  dataUrl: string
+  label: string
+}
+let pasteImg: PasteImage | null = null
+const pasteSubs = new Set<(p: PasteImage | null) => void>()
+export function setPasteImage(p: PasteImage | null): void {
+  pasteImg = p
+  pasteSubs.forEach((s) => s(pasteImg))
+}
+export function getPasteImage(): PasteImage | null {
+  return pasteImg
+}
+export function subscribePasteImage(cb: (p: PasteImage | null) => void): () => void {
+  pasteSubs.add(cb)
+  return () => {
+    pasteSubs.delete(cb)
+  }
+}
+
 // A navigator registered once by <App>, so non-React code (the api wrapper, IPC
 // listeners) can route URLs into the in-app browser without a hook.
 let navigateTo: ((path: string) => void) | null = null

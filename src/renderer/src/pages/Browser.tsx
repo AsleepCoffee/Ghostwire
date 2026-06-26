@@ -15,11 +15,13 @@ import {
   AlertTriangle,
   KeyRound,
   Camera,
-  Shield
+  Shield,
+  Copy,
+  Check
 } from 'lucide-react'
 import { api, type Persona, type VpnConfigStatus } from '../lib/api'
 import { personaColor } from '../lib/constants'
-import { consumePending, subscribeOpen, type OpenRequest, type Autofill } from '../lib/browserBus'
+import { consumePending, subscribeOpen, getPasteImage, subscribePasteImage, setPasteImage, type OpenRequest, type Autofill, type PasteImage } from '../lib/browserBus'
 import { useSettings } from '../lib/settings'
 
 const HOME = 'https://duckduckgo.com/'
@@ -219,8 +221,18 @@ export function Browser(): JSX.Element {
   const [activeId, setActiveId] = useState<string>('')
   const [address, setAddress] = useState('')
   const [toast, setToast] = useState('')
+  const [pasteImg, setPasteImg] = useState<PasteImage | null>(getPasteImage())
+  const [copied, setCopied] = useState(false)
   const refs = useRef<Map<string, WebviewEl>>(new Map())
   const { settings } = useSettings()
+
+  useEffect(() => subscribePasteImage(setPasteImg), [])
+  const copyPaste = async (): Promise<void> => {
+    if (!pasteImg) return
+    await api.clipboard.writeImage(pasteImg.dataUrl)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 1300)
+  }
 
   const active = tabs.find((t) => t.id === activeId) ?? null
   const [regionMode, setRegionMode] = useState(false)
@@ -597,6 +609,25 @@ export function Browser(): JSX.Element {
       {toast && (
         <div className="absolute bottom-5 right-5 z-50 card px-4 py-2.5 text-sm text-slate-200 border-accent/40 shadow-xl">
           {toast}
+        </div>
+      )}
+
+      {/* Reverse-image paste helper — the staged image, ready to drop into the engine. */}
+      {pasteImg && (
+        <div className="absolute top-4 right-4 z-50 w-44 card p-2.5 shadow-2xl border-accent/30">
+          <div className="flex items-center justify-between mb-1.5">
+            <span className="text-[11px] font-semibold text-slate-200">Image to paste</span>
+            <button className="btn-ghost !p-1" onClick={() => setPasteImage(null)} title="Dismiss">
+              <X size={13} />
+            </button>
+          </div>
+          <img src={pasteImg.dataUrl} alt="" className="w-full h-24 object-cover rounded-md border border-ink-700 mb-2" />
+          <button className="btn-primary w-full justify-center text-xs !py-1.5" onClick={copyPaste}>
+            {copied ? <Check size={13} /> : <Copy size={13} />} {copied ? 'Copied!' : 'Copy image'}
+          </button>
+          <p className="text-[10px] text-slate-500 mt-1.5 leading-snug">
+            Click the engine's upload box, then press <b>Ctrl+V</b>.
+          </p>
         </div>
       )}
     </div>

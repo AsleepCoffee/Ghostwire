@@ -28,7 +28,7 @@ import {
 import { api, type Evidence, type Project, type ExifResult, type EvidenceVerify, type GeoResult } from '../lib/api'
 import { useSettings } from '../lib/settings'
 import { useConfirm } from '../lib/confirm'
-import { useOpenInBrowser, useOpenTabs } from '../lib/browserBus'
+import { useOpenInBrowser, useOpenTabs, setPasteImage } from '../lib/browserBus'
 import { fmtDateTime } from '../lib/format'
 import { EmptyState } from '../components/ui'
 
@@ -418,16 +418,17 @@ function EvidenceDetail({
     }
   }
 
-  // Reverse image search: open the engine and auto-upload the saved image; also
-  // copy it to the clipboard so it can be pasted if a site blocks auto-upload.
-  const reverseSearch = async (uploadUrl: string): Promise<void> => {
-    try {
-      const dataUrl = await api.files.dataUrl(ev.path)
-      api.evidence.copyImage(ev.id).catch(() => {})
-      openTabs([{ url: uploadUrl, upload: dataUrl || undefined }])
-    } catch {
-      openTabs([{ url: uploadUrl }])
+  // Reverse image search: copy the image to the clipboard, stage it in the
+  // browser's paste panel (so it can be re-copied), then open the engine. The
+  // user pastes (Ctrl+V) into the engine — reliable across all of them, unlike
+  // per-site auto-upload.
+  const reverseSearch = async (engineUrl: string): Promise<void> => {
+    const dataUrl = await api.files.dataUrl(ev.path)
+    if (dataUrl) {
+      await api.clipboard.writeImage(dataUrl)
+      setPasteImage({ dataUrl, label: ev.title || ev.sourceUrl || 'Evidence image' })
     }
+    openTabs([{ url: engineUrl }])
   }
 
   const doVerify = async (): Promise<void> => {
@@ -482,14 +483,14 @@ function EvidenceDetail({
                   key={eng.label}
                   className="btn-ghost border border-ink-600 text-xs"
                   onClick={() => reverseSearch(eng.upload)}
-                  title={`Open ${eng.label} in-app and auto-upload this image`}
+                  title={`Copy image + open ${eng.label} — then press Ctrl+V`}
                 >
                   {eng.label}
                 </button>
               ))}
             </div>
             <p className="text-[11px] text-slate-600 mt-1.5">
-              Opens in the in-app browser and drops the image into the upload box. It's also copied to your clipboard — press <b>Ctrl+V</b> if a site blocks auto-upload.
+              The image is copied to your clipboard and the engine opens in the in-app browser — click its upload box and press <b>Ctrl+V</b>. It stays pinned on the right so you can re-copy anytime.
             </p>
           </div>
         )}
@@ -529,19 +530,21 @@ function EvidenceDetail({
               </button>
             )}
 
-            {/* Open external geo tools (in-app browser) */}
+            {/* Geo tools (in-app browser). Street View / Earth need coordinates. */}
             <div className="flex flex-wrap gap-1.5">
               <button
-                className="btn-ghost border border-ink-600 text-[11px]"
-                onClick={() => openInBrowser([`https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${geo.lat ?? 0},${geo.lng ?? 0}`])}
-                title="Google Street View"
+                className="btn-ghost border border-ink-600 text-[11px] disabled:opacity-40"
+                disabled={geo.lat == null || geo.lng == null}
+                onClick={() => openInBrowser([`https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${geo.lat},${geo.lng}`])}
+                title={geo.lat == null ? 'Pin a location first' : 'Google Street View at the pinned location'}
               >
                 <Globe size={12} /> Street View
               </button>
               <button
-                className="btn-ghost border border-ink-600 text-[11px]"
-                onClick={() => openInBrowser([geo.lat != null ? `https://earth.google.com/web/@${geo.lat},${geo.lng},100a,1000d` : 'https://earth.google.com/web/'])}
-                title="Google Earth"
+                className="btn-ghost border border-ink-600 text-[11px] disabled:opacity-40"
+                disabled={geo.lat == null || geo.lng == null}
+                onClick={() => openInBrowser([`https://earth.google.com/web/@${geo.lat},${geo.lng},100a,1000d`])}
+                title={geo.lat == null ? 'Pin a location first' : 'Google Earth at the pinned location'}
               >
                 <Globe size={12} /> Earth
               </button>

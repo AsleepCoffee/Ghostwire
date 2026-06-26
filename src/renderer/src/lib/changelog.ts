@@ -7,6 +7,16 @@ export interface ChangelogEntry {
 /** In-app patch notes. Newest first. Keep in sync with CHANGELOG.md. */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.1.53',
+    date: '2026-06-26',
+    notes: [
+      'Reverse image search reworked — clicking an engine now copies the image to your clipboard and opens the engine in-app, with the image pinned in a side panel so you can re-copy and paste (Ctrl+V) into any of them. Reliable across Lens, Yandex, Bing, TinEye and PimEyes.',
+      'Fixed pages getting stuck reloading / the URL endlessly changing — Google (Maps, Street View, Earth, Lens) and Cloudflare-protected sites were rejecting the embedded browser\'s identity. The in-app browser now uses a normal desktop-Chrome identity, so those sites load.',
+      'Reports now include everything found on a photo — camera/EXIF, capture time, GPS, OCR text and all metadata — plus a Location Map with a pin per geolocated exhibit. The HTML report opens in dark mode by default.',
+      'Street View / Google Earth buttons activate once a location is pinned.'
+    ]
+  },
+  {
     version: '0.1.52',
     date: '2026-06-25',
     notes: [

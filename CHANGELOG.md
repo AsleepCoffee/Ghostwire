@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.1.53
+- Reverse image search reworked — copies the image to the clipboard, opens the engine in-app, and pins the image in a side panel to re-copy/paste (Ctrl+V). Reliable across Lens/Yandex/Bing/TinEye/PimEyes.
+- Fixed pages stuck reloading / the URL endlessly changing — Google (Maps/Street View/Earth/Lens) and Cloudflare-protected sites rejected the Electron User-Agent and looped. The in-app browser now presents a normal desktop-Chrome UA.
+- Reports include full photo info — camera/EXIF, capture time, GPS, OCR text and all metadata — plus a Location Map with a pin per geolocated exhibit. HTML report is dark mode by default.
+- Street View / Google Earth buttons enable once a location is pinned.
+
 ## v0.1.52
 - Reverse image search now uploads your image — Lens/Yandex/Bing/TinEye/PimEyes open in-app and the saved image is dropped into the engine's upload box (also copied to clipboard as a Ctrl+V fallback). No public URL needed.
 - New Geolocate panel on every image exhibit — pin a location on the case Map from EXIF GPS, an AI guess, or by hand; quick links to Street View, Google Earth, SunCalc. Pinned locations plot on the Map.

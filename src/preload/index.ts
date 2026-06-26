@@ -87,7 +87,8 @@ const api: OsintApi = {
     }
   },
   clipboard: {
-    writeText: (text) => ipcRenderer.invoke('clipboard:write', text)
+    writeText: (text) => ipcRenderer.invoke('clipboard:write', text),
+    writeImage: (dataUrl) => ipcRenderer.invoke('clipboard:writeImage', dataUrl)
   },
   net: {
     fetchJson: (url, headers) => ipcRenderer.invoke('net:fetchJson', url, headers),
