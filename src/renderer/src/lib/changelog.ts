@@ -7,6 +7,13 @@ export interface ChangelogEntry {
 /** In-app patch notes. Newest first. Keep in sync with CHANGELOG.md. */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.1.74',
+    date: '2026-06-26',
+    notes: [
+      'Beefed-up website/domain pivots — pivoting a domain now groups the lookups into Whois & DNS (Domain Dossier, ViewDNS whois/DNS/IP-history, DNSlytics, crt.sh), Tech & infra (BuiltWith, Shodan, urlscan, VirusTotal, Wayback) and Relationships (SpyOnWeb, BacklinkWatch, VisualPing). IP pivots add VirusTotal, DNSlytics reverse-IP and SpyOnWeb.'
+    ]
+  },
+  {
     version: '0.1.73',
     date: '2026-06-26',
     notes: [

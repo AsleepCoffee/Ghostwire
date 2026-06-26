@@ -1,5 +1,8 @@
 # Changelog
 
+## v0.1.74
+- Expanded website/domain pivots — grouped into Whois & DNS (Domain Dossier, ViewDNS whois/DNS/IP-history, DNSlytics, crt.sh), Tech & infra (BuiltWith, Shodan, urlscan, VirusTotal, Wayback) and Relationships (SpyOnWeb, BacklinkWatch, VisualPing). IP pivots add VirusTotal, DNSlytics reverse-IP, SpyOnWeb.
+
 ## v0.1.73
 - Sock puppets get a LinkedIn account in their starter set (open-and-autofill for sign-up/login already wired).
 

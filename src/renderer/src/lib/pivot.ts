@@ -195,21 +195,37 @@ export function generatePivots(subject: PivotSubject, raw: string): PivotQuery[]
       break
     }
     case 'domain': {
-      out.push({ group: 'Recon', label: 'crt.sh (subdomains)', url: `https://crt.sh/?q=${enc(v)}` })
-      out.push({ group: 'Recon', label: 'Shodan', url: `https://www.shodan.io/search?query=${enc(v)}` })
-      out.push({ group: 'Recon', label: 'Wayback Machine', url: `https://web.archive.org/web/*/${enc(v)}` })
-      out.push({ group: 'Recon', label: 'BuiltWith', url: `https://builtwith.com/${enc(v)}` })
-      out.push({ group: 'Recon', label: 'ViewDNS', url: `https://viewdns.info/whois/?domain=${enc(v)}` })
-      out.push({ group: 'Recon', label: 'urlscan.io', url: `https://urlscan.io/domain/${enc(v)}` })
-      out.push({ group: 'Search', label: `Google site:${v}`, url: g(`site:${v}`) })
-      out.push({ group: 'Search', label: 'Google — exposed', url: g(`site:${v} (intitle:index.of OR ext:env OR ext:sql OR ext:log)`) })
+      const d = v.replace(/^https?:\/\//i, '').replace(/\/.*$/, '')
+      // Whois / DNS
+      out.push({ group: 'Whois & DNS', label: 'Domain Dossier', url: `https://centralops.net/co/DomainDossier.aspx?addr=${enc(d)}&dom_whois=true&dom_dns=true&net_whois=true` })
+      out.push({ group: 'Whois & DNS', label: 'ViewDNS — whois', url: `https://viewdns.info/whois/?domain=${enc(d)}` })
+      out.push({ group: 'Whois & DNS', label: 'ViewDNS — DNS records', url: `https://viewdns.info/dnsrecord/?domain=${enc(d)}` })
+      out.push({ group: 'Whois & DNS', label: 'ViewDNS — IP history', url: `https://viewdns.info/iphistory/?domain=${enc(d)}` })
+      out.push({ group: 'Whois & DNS', label: 'DNSlytics', url: `https://dnslytics.com/domain/${enc(d)}` })
+      out.push({ group: 'Whois & DNS', label: 'crt.sh (subdomains)', url: `https://crt.sh/?q=${enc(d)}` })
+      // Tech stack & infrastructure
+      out.push({ group: 'Tech & infra', label: 'BuiltWith', url: `https://builtwith.com/${enc(d)}` })
+      out.push({ group: 'Tech & infra', label: 'Shodan', url: `https://www.shodan.io/search?query=${enc(d)}` })
+      out.push({ group: 'Tech & infra', label: 'urlscan.io', url: `https://urlscan.io/domain/${enc(d)}` })
+      out.push({ group: 'Tech & infra', label: 'VirusTotal', url: `https://www.virustotal.com/gui/domain/${enc(d)}` })
+      out.push({ group: 'Tech & infra', label: 'Wayback Machine', url: `https://web.archive.org/web/*/${enc(d)}` })
+      // Relationships / reputation / monitoring
+      out.push({ group: 'Relationships', label: 'SpyOnWeb (shared analytics)', url: `https://spyonweb.com/${enc(d)}` })
+      out.push({ group: 'Relationships', label: 'BacklinkWatch', url: 'http://backlinkwatch.com/index.php' })
+      out.push({ group: 'Relationships', label: 'VisualPing (monitor changes)', url: `https://visualping.io/?url=${enc('https://' + d)}` })
+      // Search
+      out.push({ group: 'Search', label: `Google site:${d}`, url: g(`site:${d}`) })
+      out.push({ group: 'Search', label: 'Google — exposed', url: g(`site:${d} (intitle:index.of OR ext:env OR ext:sql OR ext:log)`) })
       break
     }
     case 'ip': {
       out.push({ group: 'Recon', label: 'Shodan', url: `https://www.shodan.io/host/${enc(v)}` })
       out.push({ group: 'Recon', label: 'Censys', url: `https://search.censys.io/hosts/${enc(v)}` })
+      out.push({ group: 'Recon', label: 'VirusTotal', url: `https://www.virustotal.com/gui/ip-address/${enc(v)}` })
       out.push({ group: 'Recon', label: 'AbuseIPDB', url: `https://www.abuseipdb.com/check/${enc(v)}` })
+      out.push({ group: 'Recon', label: 'DNSlytics reverse IP', url: `https://dnslytics.com/reverse-ip/${enc(v)}` })
       out.push({ group: 'Recon', label: 'ViewDNS reverse IP', url: `https://viewdns.info/reverseip/?host=${enc(v)}` })
+      out.push({ group: 'Recon', label: 'SpyOnWeb', url: `https://spyonweb.com/${enc(v)}` })
       out.push({ group: 'Recon', label: 'urlscan.io', url: `https://urlscan.io/search/#ip:${enc(v)}` })
       break
     }
