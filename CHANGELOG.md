@@ -1,5 +1,8 @@
 # Changelog
 
+## v0.1.67
+- Many more people-search options in the name/person pivot set — TruePeopleSearch, FastPeopleSearch, FastBackgroundCheck, WhitePages, 411, Spokeo, That'sThem, WebMii, PeekYou, Radaris, Nuwber, ZabaSearch, AdvancedBackgroundChecks, Pipl — each deep-linked to the name. Pivot a person/name (e.g. a person node on the graph) → "People search".
+
 ## v0.1.66
 - Quick username-aggregator links on the Account Finder (and in the username Pivot set) — WhatsMyName, NameChk, NameCheckup. Each copies the username to your clipboard and opens the site to paste (these SPAs have no reliable deep link).
 

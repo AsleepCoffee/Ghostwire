@@ -7,6 +7,13 @@ export interface ChangelogEntry {
 /** In-app patch notes. Newest first. Keep in sync with CHANGELOG.md. */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.1.67',
+    date: '2026-06-26',
+    notes: [
+      'Lots more people-search options — pivoting on a person/name now offers TruePeopleSearch, FastPeopleSearch, FastBackgroundCheck, WhitePages, 411, Spokeo, That’sThem, WebMii, PeekYou, Radaris, Nuwber, ZabaSearch, AdvancedBackgroundChecks and Pipl, each deep-linked to the name. (Pivot a person node on the graph → People search.)'
+    ]
+  },
+  {
     version: '0.1.66',
     date: '2026-06-26',
     notes: [

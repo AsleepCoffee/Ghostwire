@@ -137,6 +137,32 @@ export function generatePivots(subject: PivotSubject, raw: string): PivotQuery[]
       out.push({ group: 'Search', label: 'Google — profiles', url: g(`${exact} (profile OR bio OR about)`) })
       out.push({ group: 'Search', label: 'Google — docs', url: g(`${exact} (filetype:pdf OR filetype:doc OR filetype:pptx)`) })
       out.push({ group: 'Search', label: 'Google — contact', url: g(`${exact} (email OR contact OR phone)`) })
+      // People-search engines (US-centric). Most take a name in the path/query;
+      // an imperfect match just lands on the site's own search.
+      {
+        const parts = v.split(/\s+/).filter(Boolean)
+        const Hy = parts.join('-') // John-Smith
+        const hy = Hy.toLowerCase() // john-smith
+        const first = (parts[0] ?? '').toLowerCase()
+        const last = (parts.length > 1 ? parts[parts.length - 1] : '').toLowerCase()
+        const P = (label: string, url: string): void => {
+          out.push({ group: 'People search', label, url })
+        }
+        P('TruePeopleSearch', `https://www.truepeoplesearch.com/results?name=${enc(v)}`)
+        P('FastPeopleSearch', `https://www.fastpeoplesearch.com/name/${hy}`)
+        P('FastBackgroundCheck', `https://www.fastbackgroundcheck.com/people/${hy}`)
+        P('WhitePages', `https://www.whitepages.com/name/${Hy}`)
+        P('411', `https://www.411.com/name/${Hy}`)
+        P('Spokeo', `https://www.spokeo.com/${Hy}`)
+        P("That'sThem", `https://thatsthem.com/name/${Hy}`)
+        P('WebMii', `https://webmii.com/people?n=${enc(v)}`)
+        P('PeekYou', last ? `https://www.peekyou.com/${first}_${last}` : 'https://www.peekyou.com/')
+        P('Radaris', last ? `https://radaris.com/p/${parts[0]}/${parts[parts.length - 1]}/` : `https://radaris.com/search?ff=${enc(v)}`)
+        P('Nuwber', `https://nuwber.com/search?name=${enc(v)}`)
+        P('ZabaSearch', `https://www.zabasearch.com/people/${hy}/`)
+        P('AdvancedBackgroundChecks', `https://www.advancedbackgroundchecks.com/${hy}`)
+        P('Pipl', `https://pipl.com/search/?q=${enc(v)}`)
+      }
       break
     }
     case 'phone': {
