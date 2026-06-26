@@ -29,7 +29,8 @@ export function CommandPalette(): JSX.Element | null {
   const inputRef = useRef<HTMLInputElement>(null)
   const listRef = useRef<HTMLDivElement>(null)
 
-  // Toggle on ⌘/Ctrl-K (and close on Escape).
+  // Toggle on ⌘/Ctrl-K (and close on Escape). Also open via a custom event so
+  // the Topbar search hint (or anything else) can launch it.
   useEffect(() => {
     const onKey = (e: KeyboardEvent): void => {
       if ((e.ctrlKey || e.metaKey) && (e.key === 'k' || e.key === 'K')) {
@@ -39,8 +40,13 @@ export function CommandPalette(): JSX.Element | null {
         setOpen(false)
       }
     }
+    const onOpenEvt = (): void => setOpen(true)
     window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
+    window.addEventListener('gw:command', onOpenEvt)
+    return () => {
+      window.removeEventListener('keydown', onKey)
+      window.removeEventListener('gw:command', onOpenEvt)
+    }
   }, [])
 
   // Load context when opened.

@@ -1,5 +1,8 @@
 # Changelog
 
+## v0.1.65
+- Added a visible "Jump to… ⌘K / Ctrl K" button in the top bar so the command palette is discoverable (click or use the shortcut).
+
 ## v0.1.64
 - New Guide (top of the sidebar / Cmd-K) — a full tool-by-tool walkthrough of how GhostWire works, following the investigation loop, with a table of contents and "Open" jump buttons to each feature.
 

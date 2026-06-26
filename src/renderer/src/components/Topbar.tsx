@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react'
 import { useLocation } from 'react-router-dom'
-import { Search, FolderSearch } from 'lucide-react'
+import { Search, FolderSearch, Command } from 'lucide-react'
+
+const IS_MAC = typeof navigator !== 'undefined' && /mac/i.test(navigator.platform)
+const CMD_LABEL = IS_MAC ? '⌘K' : 'Ctrl K'
 import { useOpenInBrowser } from '../lib/browserBus'
 import { useSettings } from '../lib/settings'
 import { api, type Project } from '../lib/api'
@@ -48,6 +51,18 @@ export function Topbar(): JSX.Element {
           Enter
         </kbd>
       </form>
+
+      {/* Command palette launcher — so people discover ⌘K / Ctrl-K */}
+      <button
+        type="button"
+        onClick={() => window.dispatchEvent(new Event('gw:command'))}
+        className="shrink-0 flex items-center gap-2 px-3 py-2 rounded-lg border border-ink-600 bg-ink-850 text-slate-400 hover:text-slate-100 hover:border-accent/50 transition-colors text-sm"
+        title="Command palette — jump to any page, investigation, persona or tool"
+      >
+        <Command size={14} />
+        <span className="hidden md:inline">Jump to…</span>
+        <kbd className="text-[10px] text-slate-400 border border-ink-600 rounded px-1.5 py-0.5">{CMD_LABEL}</kbd>
+      </button>
 
       {/* Active investigation — where captures & evidence are filed */}
       <div className="relative shrink-0" title="Active investigation — new evidence/captures are filed here">

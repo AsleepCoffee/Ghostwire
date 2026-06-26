@@ -7,6 +7,13 @@ export interface ChangelogEntry {
 /** In-app patch notes. Newest first. Keep in sync with CHANGELOG.md. */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.1.65',
+    date: '2026-06-26',
+    notes: [
+      'Added a visible “Jump to… ⌘K / Ctrl K” button in the top bar so the command palette is discoverable — click it (or press the shortcut) to jump to any page, investigation, persona or tool.'
+    ]
+  },
+  {
     version: '0.1.64',
     date: '2026-06-26',
     notes: [
