@@ -23,7 +23,10 @@ import {
   Compass,
   Sparkles,
   MapPinned,
-  Globe
+  Globe,
+  Maximize2,
+  ZoomIn,
+  ZoomOut
 } from 'lucide-react'
 import { api, type Evidence, type Project, type ExifResult, type EvidenceVerify, type GeoResult } from '../lib/api'
 import { useSettings } from '../lib/settings'
@@ -385,6 +388,20 @@ function EvidenceDetail({
   const [aiBusy, setAiBusy] = useState(false)
   const [aiErr, setAiErr] = useState('')
   const [manual, setManual] = useState({ lat: '', lng: '', label: '' })
+  const [lightbox, setLightbox] = useState(false)
+  const [zoom, setZoom] = useState(false)
+
+  useEffect(() => {
+    if (!lightbox) return
+    const onKey = (e: KeyboardEvent): void => {
+      if (e.key === 'Escape') {
+        setLightbox(false)
+        setZoom(false)
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [lightbox])
 
   useEffect(() => {
     setNote(ev.note ?? '')
@@ -476,7 +493,57 @@ function EvidenceDetail({
 
       <div className="p-4 space-y-4">
         {ev.kind !== 'file' && (
-          <img src={ev.path} alt={ev.title || 'evidence'} className="w-full rounded-lg border border-ink-700" />
+          <button
+            type="button"
+            className="block w-full rounded-lg border border-ink-700 overflow-hidden cursor-zoom-in group relative"
+            onClick={() => setLightbox(true)}
+            title="Click to view full size"
+          >
+            <img src={ev.path} alt={ev.title || 'evidence'} className="w-full" />
+            <span className="absolute bottom-1.5 right-1.5 bg-ink-950/80 text-slate-200 rounded-md p-1 opacity-0 group-hover:opacity-100 transition-opacity">
+              <Maximize2 size={14} />
+            </span>
+          </button>
+        )}
+
+        {lightbox && ev.kind !== 'file' && (
+          <div
+            className="fixed inset-0 z-[120] bg-black/95 flex flex-col"
+            onClick={() => {
+              setLightbox(false)
+              setZoom(false)
+            }}
+          >
+            <div className="flex items-center justify-between px-4 py-2.5 shrink-0" onClick={(e) => e.stopPropagation()}>
+              <span className="text-sm text-slate-300 truncate">{ev.title || ev.sourceUrl || 'Evidence'}</span>
+              <div className="flex items-center gap-1.5">
+                <button className="btn-ghost !p-1.5 text-slate-200" onClick={() => setZoom((z) => !z)} title={zoom ? 'Fit to screen' : 'Actual size'}>
+                  {zoom ? <ZoomOut size={18} /> : <ZoomIn size={18} />}
+                </button>
+                <button
+                  className="btn-ghost !p-1.5 text-slate-200"
+                  onClick={() => {
+                    setLightbox(false)
+                    setZoom(false)
+                  }}
+                  title="Close (Esc)"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+            </div>
+            <div className="flex-1 min-h-0 overflow-auto flex items-center justify-center p-4">
+              <img
+                src={ev.path}
+                alt=""
+                onClick={(e) => {
+                  e.stopPropagation()
+                  setZoom((z) => !z)
+                }}
+                className={zoom ? 'max-w-none cursor-zoom-out' : 'max-h-full max-w-full object-contain cursor-zoom-in'}
+              />
+            </div>
+          </div>
         )}
 
         {/* Reverse image search */}

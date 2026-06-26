@@ -88,20 +88,20 @@ const COLORS: Record<string, string> = {
 }
 const colorOf = (t: string): string => COLORS[t] ?? '#cbd5e1'
 
-/** Render a board as a static SVG link chart using stored node positions. */
+/** Render a board as a static SVG link chart using stored node positions.
+ *  Styled to match the in-app graph: dark rounded cards, type-coloured border,
+ *  and the node's thumbnail (when present, already inlined as a data URI). */
 function graphSvg(entities: EntityNode[], edges: EntityEdge[]): string {
   if (entities.length === 0) return '<p class="muted">No entities on this chart.</p>'
-  const NW = 160
-  const NH = 44
-  const pad = 40
+  const NW = 210
+  const NH = 60
+  const pad = 44
   const xs = entities.map((e) => e.x)
   const ys = entities.map((e) => e.y)
   const minX = Math.min(...xs)
   const minY = Math.min(...ys)
-  const maxX = Math.max(...xs) + NW
-  const maxY = Math.max(...ys) + NH
-  const W = maxX - minX + pad * 2
-  const H = maxY - minY + pad * 2
+  const W = Math.max(...xs) + NW - minX + pad * 2
+  const H = Math.max(...ys) + NH - minY + pad * 2
   const pos = new Map(entities.map((e) => [e.id, { x: e.x - minX + pad, y: e.y - minY + pad }]))
 
   const lines = edges
@@ -111,31 +111,39 @@ function graphSvg(entities: EntityNode[], edges: EntityEdge[]): string {
       if (!a || !b) return ''
       const x1 = a.x + NW / 2, y1 = a.y + NH / 2, x2 = b.x + NW / 2, y2 = b.y + NH / 2
       const mx = (x1 + x2) / 2, my = (y1 + y2) / 2
-      return `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#9aa4b2" stroke-width="1.5"/>${
-        ed.label ? `<text x="${mx}" y="${my - 3}" class="edgelbl">${esc(ed.label)}</text>` : ''
+      return `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#3a4661" stroke-width="2"/>${
+        ed.label ? `<rect x="${mx - ed.label.length * 3.2 - 4}" y="${my - 12}" width="${ed.label.length * 6.4 + 8}" height="16" rx="8" fill="#0b1120"/><text x="${mx}" y="${my}" class="edgelbl">${esc(ed.label)}</text>` : ''
       }`
     })
     .join('')
 
+  const clips = entities
+    .map((e, i) => (e.props?.image ? `<clipPath id="gc${i}"><rect x="${pos.get(e.id)!.x + 12}" y="${pos.get(e.id)!.y + 12}" width="36" height="36" rx="9"/></clipPath>` : ''))
+    .join('')
+
   const boxes = entities
-    .map((e) => {
+    .map((e, i) => {
       const pt = pos.get(e.id)!
       const c = colorOf(e.type)
-      const label = e.label.length > 22 ? e.label.slice(0, 21) + '…' : e.label
+      const img = e.props?.image as string | undefined
+      const tx = img ? pt.x + 58 : pt.x + 16
+      const maxChars = img ? 18 : 24
+      const label = e.label.length > maxChars ? e.label.slice(0, maxChars - 1) + '…' : e.label
       return `<g>
-        <rect x="${pt.x}" y="${pt.y}" width="${NW}" height="${NH}" rx="8" fill="#ffffff" stroke="${c}" stroke-width="2"/>
-        <rect x="${pt.x}" y="${pt.y}" width="6" height="${NH}" rx="3" fill="${c}"/>
-        <text x="${pt.x + 14}" y="${pt.y + 18}" class="ntype" fill="${c}">${esc(e.type.toUpperCase())}</text>
-        <text x="${pt.x + 14}" y="${pt.y + 34}" class="nlbl">${esc(label)}</text>
+        <rect x="${pt.x}" y="${pt.y}" width="${NW}" height="${NH}" rx="14" fill="#0e1729" stroke="${c}" stroke-width="2"/>
+        ${img ? `<image href="${img}" x="${pt.x + 12}" y="${pt.y + 12}" width="36" height="36" preserveAspectRatio="xMidYMid slice" clip-path="url(#gc${i})"/>` : ''}
+        <text x="${tx}" y="${pt.y + 25}" class="ntype" fill="${c}">${esc(e.type.toUpperCase())}</text>
+        <text x="${tx}" y="${pt.y + 43}" class="nlbl">${esc(label)}</text>
       </g>`
     })
     .join('')
 
-  return `<svg viewBox="0 0 ${W} ${H}" class="chart" preserveAspectRatio="xMidYMid meet" style="width:100%;max-width:${Math.max(W, 360)}px;display:block;margin:0 auto">
+  return `<svg viewBox="0 0 ${W} ${H}" class="chart" preserveAspectRatio="xMidYMid meet" style="width:100%;max-width:${Math.max(W, 420)}px;display:block;margin:0 auto">
+    <defs>${clips}</defs>
     <style>
-      .edgelbl{ font:10px sans-serif; fill:#6b7280; text-anchor:middle; }
-      .ntype{ font:bold 8px sans-serif; letter-spacing:.5px; }
-      .nlbl{ font:600 12px sans-serif; fill:#111827; }
+      .edgelbl{ font:600 10px ui-sans-serif,system-ui,sans-serif; fill:#cbd5e1; text-anchor:middle; }
+      .ntype{ font:bold 9px ui-sans-serif,system-ui,sans-serif; letter-spacing:.6px; }
+      .nlbl{ font:600 13px ui-sans-serif,system-ui,sans-serif; fill:#e6edf6; }
     </style>
     ${lines}${boxes}
   </svg>`

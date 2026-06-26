@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.1.59
+- Click an evidence image to open it full-screen — toggle actual-size/fit to zoom in for a closer look (Esc or click to close).
+- HTML report link-analysis chart redesigned to match the in-app graph — dark rounded cards with type-coloured borders and embedded entity thumbnails, instead of plain white boxes.
+
 ## v0.1.58
 - Remove a pin from the Map — a pinned evidence location's popup now has a "Remove pin" action that clears its location and takes it off the map.
 - Fixed release publishing — electron-builder's concurrent artifact uploads were racing to create the GitHub release (422 "tag_name already_exists"), which randomly left releases missing the `.exe`/Linux assets. The workflow now pre-creates the release before publishing, so all artifacts upload reliably; the release-notes step is also resilient.

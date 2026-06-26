@@ -374,7 +374,23 @@ async function gatherReport(id: string): Promise<ReportData | null> {
   const boards = all('SELECT * FROM boards WHERE projectId = ?', [id]).map(mapBoard)
   const graphs = boards.map((b) => ({
     board: b,
-    entities: all('SELECT * FROM entities WHERE boardId = ?', [b.id]).map(mapNode),
+    entities: all('SELECT * FROM entities WHERE boardId = ?', [b.id]).map(mapNode).map((e) => {
+      // Inline node thumbnails as data URIs so the report's chart can show them offline.
+      const img = e.props?.image
+      if (typeof img === 'string' && img) {
+        if (img.startsWith('data:')) return e
+        if (img.startsWith('gwmedia://')) {
+          const buf = readMedia(img)
+          if (buf) {
+            const ext = (img.split('.').pop() ?? '').toLowerCase().replace(/[^a-z0-9]/g, '')
+            const mime = ext === 'png' ? 'image/png' : ext === 'webp' ? 'image/webp' : ext === 'gif' ? 'image/gif' : 'image/jpeg'
+            return { ...e, props: { ...e.props, image: `data:${mime};base64,${buf.toString('base64')}` } }
+          }
+        }
+        return { ...e, props: { ...e.props, image: '' } } // http/unresolvable — don't reference it
+      }
+      return e
+    }),
     edges: all('SELECT * FROM edges WHERE boardId = ?', [b.id]).map(mapEdge)
   }))
   return { project, evidence, notes, activity, personas, graphs, logo: reportLogo() }

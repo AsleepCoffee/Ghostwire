@@ -7,6 +7,14 @@ export interface ChangelogEntry {
 /** In-app patch notes. Newest first. Keep in sync with CHANGELOG.md. */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.1.59',
+    date: '2026-06-26',
+    notes: [
+      'Click an evidence image to open it full-screen — zoom to actual size and back to fit for a closer look while investigating (Esc to close).',
+      'Much nicer link-analysis chart in the HTML report — dark cards with type-coloured borders and the entity thumbnails, matching the in-app graph instead of plain white boxes.'
+    ]
+  },
+  {
     version: '0.1.58',
     date: '2026-06-26',
     notes: [
