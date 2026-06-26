@@ -1,5 +1,8 @@
 # Changelog
 
+## v0.1.66
+- Quick username-aggregator links on the Account Finder (and in the username Pivot set) — WhatsMyName, NameChk, NameCheckup. Each copies the username to your clipboard and opens the site to paste (these SPAs have no reliable deep link).
+
 ## v0.1.65
 - Added a visible "Jump to… ⌘K / Ctrl K" button in the top bar so the command palette is discoverable (click or use the shortcut).
 

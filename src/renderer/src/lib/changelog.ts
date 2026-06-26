@@ -7,6 +7,13 @@ export interface ChangelogEntry {
 /** In-app patch notes. Newest first. Keep in sync with CHANGELOG.md. */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.1.66',
+    date: '2026-06-26',
+    notes: [
+      'Quick username-aggregator links on the Account Finder — one-click WhatsMyName, NameChk and NameCheckup (copies the username to your clipboard and opens the site to paste). They’re also in the username Pivot set.'
+    ]
+  },
+  {
     version: '0.1.65',
     date: '2026-06-26',
     notes: [

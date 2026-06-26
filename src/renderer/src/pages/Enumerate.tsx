@@ -15,6 +15,14 @@ import { useOpenInBrowser } from '../lib/browserBus'
 import { useSettings } from '../lib/settings'
 import { PivotModal } from '../components/PivotModal'
 
+/** Username-aggregator sites (SPAs without reliable deep links) — we copy the
+ *  username to the clipboard and open the site so it can be pasted in. */
+const AGGREGATORS = [
+  { label: 'WhatsMyName', url: 'https://whatsmyname.app/' },
+  { label: 'NameChk', url: 'https://namechk.com/' },
+  { label: 'NameCheckup', url: 'https://namecheckup.com/' }
+]
+
 type Status = 'checking' | 'found' | 'missing' | 'unknown'
 interface Row {
   label: string
@@ -39,6 +47,15 @@ export function Enumerate(): JSX.Element {
   const flash = (m: string): void => {
     setToast(m)
     setTimeout(() => setToast(''), 2800)
+  }
+
+  const openAggregator = (url: string, label: string): void => {
+    const u = input.trim().replace(/^@/, '') || handle
+    if (u) {
+      api.clipboard.writeText(u)
+      flash(`“${u}” copied — paste it into ${label}`)
+    }
+    openInBrowser([url])
   }
 
   const run = async (): Promise<void> => {
@@ -125,6 +142,20 @@ export function Enumerate(): JSX.Element {
             <Crosshair size={15} /> Pivot
           </button>
         )}
+      </div>
+
+      <div className="px-6 py-2.5 border-b border-ink-700 flex items-center gap-2 flex-wrap">
+        <span className="text-[11px] uppercase tracking-widest text-slate-500 mr-1">Aggregators</span>
+        {AGGREGATORS.map((a) => (
+          <button
+            key={a.label}
+            className="btn-ghost border border-ink-600 text-xs"
+            onClick={() => openAggregator(a.url, a.label)}
+            title={`Open ${a.label} (copies the username to paste in)`}
+          >
+            <Globe size={13} /> {a.label}
+          </button>
+        ))}
       </div>
 
       {rows.length > 0 && (

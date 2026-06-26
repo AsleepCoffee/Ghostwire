@@ -113,6 +113,8 @@ export function generatePivots(subject: PivotSubject, raw: string): PivotQuery[]
       const u = v.replace(/^@/, '')
       out.push({ group: 'Search', label: `Google "${u}"`, url: g(exact) })
       out.push({ group: 'Search', label: 'WhatsMyName', url: 'https://whatsmyname.app/' })
+      out.push({ group: 'Search', label: 'NameChk', url: 'https://namechk.com/' })
+      out.push({ group: 'Search', label: 'NameCheckup', url: 'https://namecheckup.com/' })
       out.push({ group: 'Search', label: 'Google — accounts', url: g(`${exact} (profile OR account OR "@${u}")`) })
       for (const s of USERNAME_SITES) out.push({ group: 'Profiles', label: s.label, url: s.url(u) })
       break
