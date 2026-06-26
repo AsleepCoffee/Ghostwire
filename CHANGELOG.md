@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.1.83
+- Fixed: opening a new browser tab no longer blacks out the screen. The selector-highlight effect called `webview.executeJavaScript` against the just-mounted (not dom-ready) tab, which throws synchronously and escaped the effect, crashing the Browser component (same class of bug as the v0.1.23 Mailbox black screen). Now wrapped in try/catch; the did-finish-load handler re-runs it once the page is ready.
+- Fixed: turning the app-wide VPN exit OFF now reliably reverts the in-app browser to your real / home IP. Root cause: clearing the exit sent `undefined` over IPC (dropped in transit), so the main process kept the old config; now cleared with `null`, which persists and resolves to a direct connection.
+- Selectors are now per-investigation (keyed by active project) instead of one shared global list.
+- New "Pull known info from case" button in the browser Selectors panel — seeds selectors from the active investigation's data points + subject + every entity label on its link charts.
+
 ## v0.1.82
 - Hunchly-style selectors — define terms of interest; the in-app browser highlights matches on every page and shows a hit-count badge. Manage from the highlighter button in the browser toolbar (with an on/off toggle).
 - Save page to investigation — bookmark button captures the current page (screenshot + URL + title) to the Evidence Board.

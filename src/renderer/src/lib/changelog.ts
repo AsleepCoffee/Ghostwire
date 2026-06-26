@@ -7,6 +7,16 @@ export interface ChangelogEntry {
 /** In-app patch notes. Newest first. Keep in sync with CHANGELOG.md. */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.1.83',
+    date: '2026-06-26',
+    notes: [
+      'Fixed: opening a new browser tab no longer turns the screen black. The selector-highlighting code ran against the freshly-opened (not-yet-ready) tab and threw, crashing the browser view — now wrapped safely.',
+      'Fixed: turning the app-wide VPN exit OFF now reliably reverts the in-app browser to your real / home IP (previously it could keep routing through the last exit node).',
+      'Selectors are now per-investigation — each case keeps its own set of highlighted terms instead of one shared global list.',
+      'New “Pull known info from case” button in the browser’s Selectors panel — instantly seeds your selectors from the active investigation’s data points and every entity on its link charts.'
+    ]
+  },
+  {
     version: '0.1.82',
     date: '2026-06-26',
     notes: [

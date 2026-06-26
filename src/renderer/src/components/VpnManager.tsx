@@ -151,12 +151,14 @@ export function VpnManager({ onChange }: { onChange?: () => void }): JSX.Element
         (() => {
           const on = !!settings.globalVpnConfigId
           const firstRunning = configs.find((c) => c.running) ?? configs[0]
-          const setExit = async (id: string | undefined): Promise<void> => {
+          const setExit = async (id: string | null): Promise<void> => {
             if (id) {
               const c = configs.find((x) => x.id === id)
               if (c && !c.running) await api.vpn.start(id).catch(() => {})
             }
-            await update({ globalVpnConfigId: id })
+            // Use null (not undefined) to clear — undefined is dropped over IPC, so
+            // the main process would keep routing through the old exit.
+            await update({ globalVpnConfigId: id ?? null })
             await api.vpn.apply().catch(() => {})
             refresh()
             onChange?.()
@@ -174,7 +176,7 @@ export function VpnManager({ onChange }: { onChange?: () => void }): JSX.Element
                 <button
                   role="switch"
                   aria-checked={on}
-                  onClick={() => setExit(on ? undefined : firstRunning?.id)}
+                  onClick={() => setExit(on ? null : (firstRunning?.id ?? null))}
                   className={`relative w-12 h-6 rounded-full transition-colors shrink-0 mt-0.5 ${on ? 'bg-accent' : 'bg-ink-600'}`}
                   title={on ? 'Turn off — use your real IP' : 'Turn on — route through an exit'}
                 >
@@ -184,7 +186,7 @@ export function VpnManager({ onChange }: { onChange?: () => void }): JSX.Element
               {on ? (
                 <div className="mt-3">
                   <label className="label">Exit location</label>
-                  <select className="input" value={settings.globalVpnConfigId ?? ''} onChange={(e) => setExit(e.target.value || undefined)}>
+                  <select className="input" value={settings.globalVpnConfigId ?? ''} onChange={(e) => setExit(e.target.value || null)}>
                     {configs.map((c) => (
                       <option key={c.id} value={c.id}>
                         {c.name}

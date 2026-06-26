@@ -237,9 +237,9 @@ export interface AppSettings {
   /** Harden each persona's browser fingerprint (UA + canvas/WebGL/navigator). Default on. */
   hardenFingerprint?: boolean
   /** App-wide VPN exit: route the whole app (and personas without their own exit) through this config. */
-  globalVpnConfigId?: string
-  /** Hunchly-style selectors: terms highlighted in the in-app browser. */
-  selectors?: string[]
+  globalVpnConfigId?: string | null
+  /** Hunchly-style selectors per investigation (keyed by project id; "_global" when none). */
+  selectorsByProject?: Record<string, string[]>
   /** Highlight selectors on pages (default on when selectors exist). */
   highlightSelectors?: boolean
 }

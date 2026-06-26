@@ -217,29 +217,61 @@ export function Browser(): JSX.Element {
   const [copied, setCopied] = useState(false)
   const refs = useRef<Map<string, WebviewEl>>(new Map())
   const { settings, update } = useSettings()
-  const selectors = settings.selectors ?? []
+  const selKey = settings.activeProjectId ?? '_global'
+  const selectors = settings.selectorsByProject?.[selKey] ?? []
   const highlightOn = settings.highlightSelectors !== false
   const [selOpen, setSelOpen] = useState(false)
   const [newSel, setNewSel] = useState('')
+  const [pulling, setPulling] = useState(false)
 
+  const setSelectors = (list: string[]): void => {
+    update({ selectorsByProject: { ...(settings.selectorsByProject ?? {}), [selKey]: list } })
+  }
   const addSelector = (term: string): void => {
     const t = term.trim()
     if (!t || selectors.some((s) => s.toLowerCase() === t.toLowerCase())) return
-    update({ selectors: [...selectors, t] })
+    setSelectors([...selectors, t])
     setNewSel('')
   }
-  const removeSelector = (term: string): void => {
-    update({ selectors: selectors.filter((s) => s !== term) })
+  const removeSelector = (term: string): void => setSelectors(selectors.filter((s) => s !== term))
+
+  // Seed selectors from the active investigation's known information: data points
+  // + every entity label on its link charts.
+  const pullFromCase = async (): Promise<void> => {
+    if (!settings.activeProjectId) return
+    setPulling(true)
+    try {
+      const terms = new Set(selectors)
+      const proj = await api.projects.get(settings.activeProjectId)
+      for (const dp of proj?.dataPoints ?? []) if (dp.value?.trim()) terms.add(dp.value.trim())
+      if (proj?.subject?.trim()) terms.add(proj.subject.trim())
+      const boards = (await api.boards.list()).filter((b) => b.projectId === settings.activeProjectId)
+      for (const b of boards) {
+        const g = await api.boards.graph(b.id)
+        const skip = new Set<string>(['location', 'custom', 'image', 'document'])
+        for (const n of g.nodes) if (n.label?.trim() && !skip.has(n.type)) terms.add(n.label.trim())
+      }
+      setSelectors([...terms])
+    } finally {
+      setPulling(false)
+    }
   }
 
   // Re-highlight the active tab whenever the selector set / toggle changes.
+  // executeJavaScript throws *synchronously* if the webview isn't dom-ready yet
+  // (e.g. a tab that was just opened), so it must be wrapped — an unhandled sync
+  // throw here escapes the effect and crashes the page to a black screen.
   useEffect(() => {
     const wv = refs.current.get(activeId)
     if (!wv) return
-    const r = wv.executeJavaScript(highlightScript(selectors, highlightOn)) as Promise<number> | undefined
-    if (r && typeof r.then === 'function') r.then((c) => updateTab(activeId, { hits: c })).catch(() => {})
+    try {
+      const r = wv.executeJavaScript(highlightScript(selectors, highlightOn)) as Promise<number> | undefined
+      if (r && typeof r.then === 'function') r.then((c) => updateTab(activeId, { hits: c })).catch(() => {})
+    } catch {
+      /* webview not dom-ready yet — the did-finish-load handler will re-run it */
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [settings.selectors, highlightOn, activeId])
+  }, [settings.selectorsByProject, settings.activeProjectId, highlightOn, activeId])
 
   const savePage = async (): Promise<void> => {
     if (!active) return
@@ -550,12 +582,24 @@ export function Browser(): JSX.Element {
             <>
               <div className="fixed inset-0 z-30" onClick={() => setSelOpen(false)} />
               <div className="absolute right-0 mt-1 z-40 w-72 card p-3 shadow-2xl">
-                <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center justify-between mb-1">
                   <span className="text-sm font-semibold text-slate-200">Selectors</span>
                   <label className="flex items-center gap-1.5 text-xs text-slate-400 cursor-pointer">
                     <input type="checkbox" className="accent-accent" checked={highlightOn} onChange={(e) => update({ highlightSelectors: e.target.checked })} /> Highlight
                   </label>
                 </div>
+                <p className="text-[11px] text-slate-500 mb-2">
+                  {settings.activeProjectId ? 'Scoped to this investigation.' : 'No active investigation — these apply globally.'}
+                </p>
+                {settings.activeProjectId && (
+                  <button
+                    className="btn-ghost border border-ink-600 text-xs w-full mb-2 disabled:opacity-50"
+                    onClick={pullFromCase}
+                    disabled={pulling}
+                  >
+                    {pulling ? 'Pulling…' : 'Pull known info from case'}
+                  </button>
+                )}
                 <div className="flex gap-1.5 mb-2">
                   <input
                     className="input !py-1 text-xs"
