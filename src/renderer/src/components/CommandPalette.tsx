@@ -82,6 +82,7 @@ export function CommandPalette(): JSX.Element | null {
       ['/intel', 'Email & Phone Intelligence', 'UserSearch'],
       ['/infra', 'Domain & Infrastructure', 'Server'],
       ['/cross-ref', 'Cross-Reference Images', 'Layers'],
+      ['/co-locate', 'Proximity Search', 'Crosshair'],
       ['/dork', 'Dork & Pivot', 'Binoculars'],
       ['/tools', 'Tools & Resources', 'Wrench'],
       ['/exam-prep', 'PORP Exam Prep', 'GraduationCap'],

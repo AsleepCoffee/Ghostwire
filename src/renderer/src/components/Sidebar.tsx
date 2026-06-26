@@ -42,6 +42,7 @@ const GROUPS: { heading?: string; items: NavItem[]; toggle?: 'courseNotes' }[] =
       { to: '/intel', label: 'Email & Phone', icon: 'UserSearch' },
       { to: '/infra', label: 'Domain & IP', icon: 'Server' },
       { to: '/cross-ref', label: 'Cross-Reference', icon: 'Layers' },
+      { to: '/co-locate', label: 'Proximity', icon: 'Crosshair' },
       { to: '/dork', label: 'Dork & Pivot', icon: 'Binoculars' },
       { to: '/tools', label: 'Tools & Resources', icon: 'Wrench' }
     ]

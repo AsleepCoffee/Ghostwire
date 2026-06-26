@@ -1,5 +1,8 @@
 # Changelog
 
+## v0.1.60
+- New Proximity Search (Research) — find every place where two things sit within a chosen distance of each other (e.g. a Westin within 150 m of a Wendy's) across a country/state/city, via OpenStreetMap (Nominatim + Overpass). Results show distances, plot on a map, and offer Street View / Map / copy-coords per hit. Useful for narrowing a location from landmarks visible in a photo.
+
 ## v0.1.59
 - Click an evidence image to open it full-screen — toggle actual-size/fit to zoom in for a closer look (Esc or click to close).
 - HTML report link-analysis chart redesigned to match the in-app graph — dark rounded cards with type-coloured borders and embedded entity thumbnails, instead of plain white boxes.

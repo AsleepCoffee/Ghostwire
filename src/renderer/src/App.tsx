@@ -21,6 +21,7 @@ import { Dork } from './pages/Dork'
 import { Mailbox } from './pages/Mailbox'
 import { EvidencePage } from './pages/Evidence'
 import { CrossRef } from './pages/CrossRef'
+import { CoLocate } from './pages/CoLocate'
 import { Enumerate } from './pages/Enumerate'
 import { Timeline } from './pages/Timeline'
 import { ExamPrep } from './pages/ExamPrep'
@@ -75,6 +76,7 @@ export default function App(): JSX.Element {
               <Route path="/mailbox" element={<Mailbox />} />
               <Route path="/evidence" element={<EvidencePage />} />
               <Route path="/cross-ref" element={<CrossRef />} />
+              <Route path="/co-locate" element={<CoLocate />} />
               <Route path="/enumerate" element={<Enumerate />} />
               <Route path="/timeline" element={<Timeline />} />
               <Route path="/exam-prep" element={<ExamPrep />} />

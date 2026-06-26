@@ -7,6 +7,13 @@ export interface ChangelogEntry {
 /** In-app patch notes. Newest first. Keep in sync with CHANGELOG.md. */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.1.60',
+    date: '2026-06-26',
+    notes: [
+      'New Proximity Search (Research) — find every place where two things sit close together (e.g. a Westin within 150 m of a Wendy\'s) across a country, state or city. Powered by OpenStreetMap; results list with distances and plot on a map, each with Street View / Map / copy-coords actions. Great for narrowing a location from landmarks in a photo.'
+    ]
+  },
+  {
     version: '0.1.59',
     date: '2026-06-26',
     notes: [
