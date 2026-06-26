@@ -7,6 +7,13 @@ export interface ChangelogEntry {
 /** In-app patch notes. Newest first. Keep in sync with CHANGELOG.md. */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.1.62',
+    date: '2026-06-26',
+    notes: [
+      'Email verification (Email Hippo) — analysing an email now checks whether the mailbox actually exists (deliverable / doesn’t exist / risky) with a trust score and disposable / role / free / catch-all flags. On a Company lookup you can verify any discovered address with one click. Add an Email Hippo API key in Settings → API keys.'
+    ]
+  },
+  {
     version: '0.1.61',
     date: '2026-06-26',
     notes: [

@@ -70,6 +70,15 @@ export const API_SERVICES: ApiService[] = [
     tool: { url: 'https://ipinfo.io/{QUERY}', query: true, category: 'Infrastructure' }
   },
   {
+    id: 'emailhippo',
+    name: 'Email Hippo',
+    description: 'Verify whether an email address actually exists (mailbox check).',
+    free: 'Free API key with a monthly verification allowance.',
+    tier: 'free',
+    signup: 'https://www.emailhippo.com/en-us/email-verification-api',
+    unlocks: 'Email deliverability checks in Email & Phone Intelligence.'
+  },
+  {
     id: 'hunter',
     name: 'Hunter.io',
     description: 'Find & verify professional email addresses.',

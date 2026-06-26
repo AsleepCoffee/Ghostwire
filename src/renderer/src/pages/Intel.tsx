@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { parsePhoneNumberFromString } from 'libphonenumber-js'
 import { Mail, Phone, Loader2, ShieldAlert, Check, X, Crosshair, Workflow, ExternalLink, UserSearch, Building2, Copy } from 'lucide-react'
-import { api, type GravatarResult, type HibpBreach, type HunterResult } from '../lib/api'
+import { api, type GravatarResult, type HibpBreach, type HunterResult, type EmailVerify } from '../lib/api'
 import { useSettings } from '../lib/settings'
 import { useOpenInBrowser } from '../lib/browserBus'
 import { PivotModal } from '../components/PivotModal'
@@ -15,6 +15,20 @@ interface EmailReport {
   mx: string[]
   gravatar: GravatarResult | null
   hibp: { ok: boolean; error?: string; breaches?: HibpBreach[] } | null
+  verify: EmailVerify | null
+}
+
+const VERIFY_STYLE: Record<string, string> = {
+  deliverable: 'bg-ok/15 text-ok',
+  undeliverable: 'bg-danger/15 text-danger',
+  risky: 'bg-warn/15 text-warn',
+  unknown: 'bg-ink-700 text-slate-400'
+}
+const VERIFY_LABEL: Record<string, string> = {
+  deliverable: 'Deliverable',
+  undeliverable: "Doesn't exist",
+  risky: 'Risky',
+  unknown: 'Unknown'
 }
 
 interface PhoneReport {
@@ -36,6 +50,7 @@ export function Intel(): JSX.Element {
   const [email, setEmail] = useState<EmailReport | null>(null)
   const [phone, setPhone] = useState<PhoneReport | null>(null)
   const [company, setCompany] = useState<HunterResult | null>(null)
+  const [verifyMap, setVerifyMap] = useState<Record<string, EmailVerify | 'loading'>>({})
   const [pivot, setPivot] = useState<{ value: string; subject: 'email' | 'phone' } | null>(null)
   const [toast, setToast] = useState('')
 
@@ -54,15 +69,16 @@ export function Intel(): JSX.Element {
     setEmail(null)
     const domain = e.split('@')[1]
     try {
-      const [mxData, gravatar, hibp] = await Promise.all([
+      const [mxData, gravatar, hibp, verify] = await Promise.all([
         api.net
           .fetchJson(`https://dns.google/resolve?name=${enc(domain)}&type=MX`)
           .catch(() => ({}) as unknown) as Promise<{ Answer?: { data?: string }[] }>,
         api.intel.gravatar(e),
-        settings.apiKeys?.hibp ? api.intel.hibp(e, settings.apiKeys.hibp) : Promise.resolve(null)
+        settings.apiKeys?.hibp ? api.intel.hibp(e, settings.apiKeys.hibp) : Promise.resolve(null),
+        settings.apiKeys?.emailhippo ? api.intel.verifyEmail(e, settings.apiKeys.emailhippo) : Promise.resolve(null)
       ])
       const mx = (mxData.Answer ?? []).map((a) => String(a.data ?? '').replace(/\s+\d+\s*$/, '').trim()).filter(Boolean)
-      setEmail({ email: e, domain, mx, gravatar, hibp })
+      setEmail({ email: e, domain, mx, gravatar, hibp, verify })
     } finally {
       setLoading(false)
     }
@@ -94,6 +110,7 @@ export function Intel(): JSX.Element {
     }
     setLoading(true)
     setCompany(null)
+    setVerifyMap({})
     try {
       const r = await api.intel.hunterDomain(q, settings.apiKeys.hunter)
       setCompany(r)
@@ -101,6 +118,16 @@ export function Intel(): JSX.Element {
     } finally {
       setLoading(false)
     }
+  }
+
+  const verifyOne = async (addr: string): Promise<void> => {
+    if (!settings.apiKeys?.emailhippo) {
+      flash('Add an Email Hippo API key in Settings → API keys to verify.')
+      return
+    }
+    setVerifyMap((m) => ({ ...m, [addr]: 'loading' }))
+    const r = await api.intel.verifyEmail(addr, settings.apiKeys.emailhippo)
+    setVerifyMap((m) => ({ ...m, [addr]: r }))
   }
 
   const run = (): void => {
@@ -276,6 +303,36 @@ export function Intel(): JSX.Element {
               )}
             </div>
 
+            {/* Deliverability */}
+            <div className="card p-4">
+              <div className="text-[10px] uppercase tracking-widest text-slate-500 mb-2 flex items-center gap-1.5">
+                <Mail size={12} /> Deliverability (Email Hippo)
+              </div>
+              {!settings.apiKeys?.emailhippo ? (
+                <div className="text-sm text-slate-500">Add an Email Hippo API key in Settings → API keys to verify the mailbox exists.</div>
+              ) : !email.verify ? (
+                <div className="text-sm text-slate-500">No verification result.</div>
+              ) : !email.verify.ok ? (
+                <div className="text-sm text-warn">{email.verify.error || 'Verification failed.'}</div>
+              ) : (
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <span className={`text-xs font-semibold px-2 py-0.5 rounded-md ${VERIFY_STYLE[email.verify.status ?? 'unknown']}`}>
+                      {VERIFY_LABEL[email.verify.status ?? 'unknown']}
+                    </span>
+                    {email.verify.score != null && <span className="text-xs text-slate-500">trust {email.verify.score}/100</span>}
+                  </div>
+                  {email.verify.reason && <div className="text-xs text-slate-400">{email.verify.reason}</div>}
+                  <div className="flex flex-wrap gap-1.5">
+                    {email.verify.disposable && <span className="chip text-[10px] text-warn">disposable</span>}
+                    {email.verify.role && <span className="chip text-[10px]">role account</span>}
+                    {email.verify.free && <span className="chip text-[10px]">free provider</span>}
+                    {email.verify.catchAll && <span className="chip text-[10px] text-warn">catch-all domain</span>}
+                  </div>
+                </div>
+              )}
+            </div>
+
             <div className="flex flex-wrap gap-2">
               <button className="btn-ghost border border-ink-600 text-xs" onClick={() => openInBrowser([`https://epieos.com/?q=${enc(email.email)}`])}>
                 <ExternalLink size={13} /> Epieos
@@ -376,6 +433,22 @@ export function Intel(): JSX.Element {
                         </div>
                         <div className="flex items-center gap-1.5 shrink-0">
                           {p.confidence != null && <span className={`text-[11px] ${confCls}`}>{conf}%</span>}
+                          {(() => {
+                            const v = verifyMap[p.email]
+                            if (v === 'loading') return <Loader2 size={13} className="animate-spin text-slate-500" />
+                            if (v && v.ok && v.status)
+                              return (
+                                <span className={`text-[10px] px-1.5 py-0.5 rounded ${VERIFY_STYLE[v.status]}`} title={v.reason || ''}>
+                                  {VERIFY_LABEL[v.status]}
+                                </span>
+                              )
+                            if (v && !v.ok) return <span className="text-[10px] text-warn" title={v.error}>verify failed</span>
+                            return (
+                              <button className="btn-ghost !p-1.5" title="Verify mailbox (Email Hippo)" onClick={() => verifyOne(p.email)}>
+                                <Check size={13} />
+                              </button>
+                            )
+                          })()}
                           {p.linkedin && (
                             <button className="btn-ghost !p-1.5" title="LinkedIn" onClick={() => openInBrowser([p.linkedin!])}><ExternalLink size={13} /></button>
                           )}

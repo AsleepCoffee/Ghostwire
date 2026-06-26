@@ -1110,6 +1110,40 @@ export function registerHandlers(): void {
     }
   })
 
+  // Email Hippo — verify whether a mailbox actually exists (deliverability).
+  ipcMain.handle('intel:verifyEmail', async (_e, emailAddr: string, key: string) => {
+    if (!key) return { ok: false, error: 'Add an Email Hippo API key in Settings → API keys.' }
+    const addr = String(emailAddr ?? '').trim()
+    if (!addr) return { ok: false, error: 'No email address.' }
+    try {
+      const res = await net.fetch(
+        `https://api.hippoapi.com/v3/more/json/${encodeURIComponent(key)}/${encodeURIComponent(addr)}`,
+        { headers: { Accept: 'application/json' } }
+      )
+      const j = (await res.json()) as Record<string, unknown>
+      if (!res.ok) return { ok: false, error: (j?.message as string) ?? `Email Hippo HTTP ${res.status}` }
+      const ev = (j.emailVerification as Record<string, unknown>) ?? {}
+      const mb = (ev.mailboxVerification as Record<string, unknown>) ?? {}
+      const trust = (j.hippoTrust as Record<string, unknown>) ?? {}
+      const result = String(mb.result ?? '').toLowerCase()
+      const status = result === 'ok' ? 'deliverable' : result === 'bad' ? 'undeliverable' : result ? 'risky' : 'unknown'
+      const flag = (...keys: string[]): boolean => keys.some((k) => mb[k] === true || ev[k] === true)
+      return {
+        ok: true,
+        status,
+        reason: (mb.reason as string) ?? '',
+        score: typeof trust.score === 'number' ? trust.score : undefined,
+        level: (trust.level as string) ?? '',
+        disposable: flag('isDisposable', 'isDisposableEmailAddress'),
+        role: flag('isRoleAccount', 'isRole'),
+        free: flag('isFreeMail', 'isFreeEmailAddress', 'isWellKnownEmailServiceProvider'),
+        catchAll: flag('isCatchAll', 'isCatchAllDomain')
+      }
+    } catch (e) {
+      return { ok: false, error: String((e as Error)?.message ?? e) }
+    }
+  })
+
   // AI geolocation — ask an OpenAI vision model where an evidence image was taken.
   ipcMain.handle('intel:geolocate', async (_e, evidenceId: string): Promise<GeoResult> => {
     const key = getSettings().apiKeys?.openai

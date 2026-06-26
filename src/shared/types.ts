@@ -273,6 +273,20 @@ export interface HibpBreach {
   classes: string
 }
 
+export interface EmailVerify {
+  ok: boolean
+  error?: string
+  status?: 'deliverable' | 'undeliverable' | 'risky' | 'unknown'
+  reason?: string
+  /** 0–100 trust score. */
+  score?: number
+  level?: string
+  disposable?: boolean
+  role?: boolean
+  free?: boolean
+  catchAll?: boolean
+}
+
 export interface HunterEmail {
   email: string
   firstName?: string
@@ -490,6 +504,8 @@ export interface OsintApi {
     geolocate(evidenceId: string): Promise<GeoResult>
     /** Hunter.io domain search — people/emails for a company name or domain. */
     hunterDomain(query: string, key: string): Promise<HunterResult>
+    /** Email Hippo mailbox verification — does this address actually exist? */
+    verifyEmail(email: string, key: string): Promise<EmailVerify>
   }
   app: {
     version(): Promise<string>

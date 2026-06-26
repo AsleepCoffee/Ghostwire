@@ -1,5 +1,8 @@
 # Changelog
 
+## v0.1.62
+- Email verification via Email Hippo — the email analysis now checks whether the mailbox exists (deliverable / doesn't exist / risky) with a trust score and disposable/role/free/catch-all flags, and each address found in a Company (Hunter) lookup has a one-click Verify. Add an Email Hippo API key in Settings → API keys.
+
 ## v0.1.61
 - Company lookup via Hunter.io (Email & Phone Intelligence → Company) — enter a company name or domain to get its people/emails (name, role, department, seniority, confidence, LinkedIn) and the org's email pattern. Copy/pivot any address or add the whole company to the link chart. Uses the Hunter.io API key from Settings.
 
