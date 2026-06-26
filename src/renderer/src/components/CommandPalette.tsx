@@ -81,6 +81,7 @@ export function CommandPalette(): JSX.Element | null {
       ['/enumerate', 'Account Finder', 'ScanSearch'],
       ['/intel', 'Email & Phone Intelligence', 'UserSearch'],
       ['/infra', 'Domain & Infrastructure', 'Server'],
+      ['/cross-ref', 'Cross-Reference Images', 'Layers'],
       ['/dork', 'Dork & Pivot', 'Binoculars'],
       ['/tools', 'Tools & Resources', 'Wrench'],
       ['/exam-prep', 'PORP Exam Prep', 'GraduationCap'],

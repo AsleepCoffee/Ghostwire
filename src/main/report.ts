@@ -19,6 +19,8 @@ export interface ReportData {
   activity: Activity[]
   personas: Persona[]
   graphs: { board: Board; entities: EntityNode[]; edges: EntityEdge[] }[]
+  /** GhostWire logo as a data URI for the report header. */
+  logo?: string
 }
 
 /** Best location for an exhibit: a pinned location wins, else raw EXIF GPS. */
@@ -129,7 +131,7 @@ function graphSvg(entities: EntityNode[], edges: EntityEdge[]): string {
     })
     .join('')
 
-  return `<svg viewBox="0 0 ${W} ${H}" class="chart" preserveAspectRatio="xMidYMid meet">
+  return `<svg viewBox="0 0 ${W} ${H}" class="chart" preserveAspectRatio="xMidYMid meet" style="width:100%;max-width:${Math.max(W, 360)}px;display:block;margin:0 auto">
     <style>
       .edgelbl{ font:10px sans-serif; fill:#6b7280; text-anchor:middle; }
       .ntype{ font:bold 8px sans-serif; letter-spacing:.5px; }
@@ -171,7 +173,7 @@ function dataPointsTable(d: ReportData): string {
   const dp = d.project.dataPoints ?? []
   if (!dp.length) return '<p class="muted">No structured data points recorded.</p>'
   return `<table><thead><tr><th>Type</th><th>Value</th><th>Note</th></tr></thead><tbody>${dp
-    .map((x) => `<tr><td>${esc(x.type)}</td><td>${esc(x.value)}</td><td>${esc(x.note ?? '')}</td></tr>`)
+    .map((x) => `<tr class="searchable"><td>${esc(x.type)}</td><td>${esc(x.value)}</td><td>${esc(x.note ?? '')}</td></tr>`)
     .join('')}</tbody></table>`
 }
 
@@ -180,7 +182,7 @@ function custodyTable(d: ReportData): string {
   if (!d.evidence.length) return '<p class="muted">No evidence captured.</p>'
   return `<table class="custody"><thead><tr><th>#</th><th>Exhibit</th><th>Type</th><th>Captured</th><th>Source</th><th>SHA-256</th></tr></thead><tbody>${d.evidence
     .map(
-      (e, i) => `<tr>
+      (e, i) => `<tr class="searchable">
         <td>${i + 1}</td>
         <td>${esc(e.title || 'Untitled')}</td>
         <td>${esc(kindLabel[e.kind] ?? e.kind)}</td>
@@ -203,7 +205,7 @@ export function buildHtmlReport(d: ReportData): string {
   const evidenceHtml = d.evidence.length
     ? `<div class="evgrid">${d.evidence
         .map(
-          (e, i) => `<figure class="evcard">
+          (e, i) => `<figure class="evcard searchable">
             ${
               e.dataUri
                 ? `<button class="evthumb" data-full="${e.dataUri}" data-cap="${esc(`Exhibit ${i + 1} — ${e.title || e.sourceUrl || ''}`)}" aria-label="Enlarge"><img src="${e.dataUri}" alt=""/></button>`
@@ -245,18 +247,18 @@ export function buildHtmlReport(d: ReportData): string {
     : '<p class="muted">No link charts in this investigation.</p>'
 
   const notesHtml = d.notes.length
-    ? d.notes.map((n) => `<div class="note"><h3>${esc(n.title)}</h3><pre>${esc(n.body)}</pre></div>`).join('')
+    ? d.notes.map((n) => `<div class="note searchable"><h3>${esc(n.title)}</h3><pre>${esc(n.body)}</pre></div>`).join('')
     : '<p class="muted">No notes linked to this investigation.</p>'
 
   const timelineHtml = d.activity.length
     ? `<ul class="timeline">${d.activity
-        .map((a) => `<li><span class="when">${esc(fmt(a.at))}</span><span class="tag">${esc(a.type)}</span>${esc(a.message)}</li>`)
+        .map((a) => `<li class="searchable"><span class="when">${esc(fmt(a.at))}</span><span class="tag">${esc(a.type)}</span>${esc(a.message)}</li>`)
         .join('')}</ul>`
     : '<p class="muted">No recorded activity.</p>'
 
   const personasHtml = d.personas.length
     ? `<ul class="plist">${d.personas
-        .map((pa) => `<li><b>${esc(pa.name)}</b> <span class="muted">@${esc(pa.handle)} · ${esc(pa.status)}</span></li>`)
+        .map((pa) => `<li class="searchable"><b>${esc(pa.name)}</b> <span class="muted">@${esc(pa.handle)} · ${esc(pa.status)}</span></li>`)
         .join('')}</ul>`
     : '<p class="muted">No personas linked.</p>'
 
@@ -331,8 +333,16 @@ ${geoPoints.length ? '<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9
   .layout{ display:grid; grid-template-columns:240px 1fr; gap:0; max-width:1180px; margin:0 auto; }
   /* Sidebar / TOC */
   aside{ position:sticky; top:0; align-self:start; height:100vh; padding:26px 16px; border-right:1px solid var(--line); overflow:auto; }
-  aside .brand{ font-weight:700; font-size:13px; letter-spacing:.4px; color:var(--accent); margin-bottom:2px; }
-  aside .casen{ font-size:12px; color:var(--muted); margin-bottom:18px; word-break:break-word; }
+  aside .brandrow{ display:flex; align-items:center; gap:8px; margin-bottom:4px; }
+  aside .logo{ width:22px; height:22px; border-radius:5px; }
+  aside .brand{ font-weight:700; font-size:13px; letter-spacing:.4px; color:var(--accent); }
+  aside .casen{ font-size:12px; color:var(--muted); margin-bottom:14px; word-break:break-word; }
+  .searchbox{ margin-bottom:14px; }
+  .searchbox input{ width:100%; background:var(--bg); border:1px solid var(--line); color:var(--ink); border-radius:8px; padding:7px 10px; font-size:13px; outline:none; }
+  .searchbox input:focus{ border-color:var(--accent); }
+  #searchcount{ margin-top:4px; min-height:14px; }
+  .coverrow{ display:flex; align-items:center; gap:14px; }
+  .coverlogo{ width:46px; height:46px; border-radius:10px; box-shadow:var(--shadow); }
   nav a{ display:flex; align-items:center; justify-content:space-between; gap:8px; text-decoration:none; color:var(--muted);
     padding:7px 10px; border-radius:8px; font-size:13px; font-weight:500; margin-bottom:2px; transition:.15s; }
   nav a:hover{ background:var(--line); color:var(--ink); }
@@ -413,8 +423,15 @@ ${geoPoints.length ? '<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9
 <body>
   <div class="layout">
     <aside>
-      <div class="brand">GHOSTWIRE</div>
+      <div class="brandrow">
+        ${d.logo ? `<img class="logo" src="${d.logo}" alt="GhostWire"/>` : ''}
+        <div class="brand">GHOSTWIRE</div>
+      </div>
       <div class="casen">${esc(p.name)}</div>
+      <div class="searchbox">
+        <input id="search" type="search" placeholder="Search report…" autocomplete="off"/>
+        <div id="searchcount" class="muted"></div>
+      </div>
       <nav>${nav}</nav>
       <div class="toolbtns">
         <button id="themeBtn" title="Toggle dark mode">◐ Theme</button>
@@ -423,8 +440,13 @@ ${geoPoints.length ? '<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9
     </aside>
     <main>
       <header class="hd">
-        <h1>${esc(p.name)}</h1>
-        <p class="sub">Investigation report · generated ${esc(fmt(new Date()))}</p>
+        <div class="coverrow">
+          ${d.logo ? `<img class="coverlogo" src="${d.logo}" alt=""/>` : ''}
+          <div>
+            <h1>${esc(p.name)}</h1>
+            <p class="sub">Investigation report · ${esc(p.type)} · generated ${esc(fmt(new Date()))}</p>
+          </div>
+        </div>
       </header>
       ${body}
       <footer>Generated by GhostWire — OSINT Workbench. Evidence hashes are SHA-256 of the stored file at capture time. Images and data are embedded in this file; the location map needs an internet connection to load tiles.</footer>
@@ -453,6 +475,24 @@ ${geoPoints.length ? '<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9
   document.addEventListener('keydown', function(e){ if(e.key==='Escape') close(); });
   // Copy hash
   document.querySelectorAll('.cphash').forEach(function(b){ b.addEventListener('click', function(){ navigator.clipboard && navigator.clipboard.writeText(b.dataset.hash); var t=b.textContent; b.textContent='copied'; setTimeout(function(){ b.textContent=t; }, 1200); }); });
+  // Live search — filter every .searchable item by text content.
+  var sb = document.getElementById('search'), sc = document.getElementById('searchcount');
+  if (sb) sb.addEventListener('input', function(){
+    var q = sb.value.trim().toLowerCase(), items = document.querySelectorAll('.searchable'), shown = 0;
+    items.forEach(function(el){
+      var ok = !q || (el.textContent||'').toLowerCase().indexOf(q) >= 0;
+      el.style.display = ok ? '' : 'none';
+      if (ok) shown++;
+    });
+    if (sc) sc.textContent = q ? (shown + ' match' + (shown===1?'':'es')) : '';
+    // Hide a section whose searchable children are all filtered out.
+    document.querySelectorAll('section[id]').forEach(function(s){
+      var sa = s.querySelectorAll('.searchable');
+      if (!q || sa.length === 0) { s.style.display=''; return; }
+      var any = false; sa.forEach(function(el){ if (el.style.display !== 'none') any = true; });
+      s.style.display = any ? '' : 'none';
+    });
+  });
   // Theme toggle
   document.getElementById('themeBtn').addEventListener('click', function(){ var h=document.documentElement; h.dataset.theme = h.dataset.theme==='dark'?'':'dark'; });
   // Print
@@ -469,7 +509,9 @@ ${
   if (!el || !window.L || !PTS.length) { if(el){ el.innerHTML = '<p class="muted" style="padding:12px">Map tiles need an internet connection.</p>'; } return; }
   try {
     var m = L.map(el, { scrollWheelZoom:false }).setView([PTS[0].lat, PTS[0].lng], 4);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom:19, attribution:'© OpenStreetMap' }).addTo(m);
+    // Carto basemap tiles — unlike OSM's servers they don't require a Referer, so
+    // they load when the report is opened from a file:// path. Dark to match the report.
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png', { subdomains:'abcd', maxZoom:19, attribution:'© OpenStreetMap, © CARTO' }).addTo(m);
     var b = [];
     PTS.forEach(function(p){ L.marker([p.lat,p.lng]).addTo(m).bindPopup(p.label); b.push([p.lat,p.lng]); });
     if (b.length > 1) m.fitBounds(b, { padding:[40,40], maxZoom:12 }); else m.setView(b[0], 13);

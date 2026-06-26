@@ -20,8 +20,6 @@ export interface TabRequest {
   url: string
   personaId?: string
   autofill?: Autofill
-  /** A data: URL of an image to auto-upload into the page's file input (reverse image search). */
-  upload?: string
 }
 
 export interface OpenRequest {
@@ -99,6 +97,25 @@ export function subscribePasteImage(cb: (p: PasteImage | null) => void): () => v
   return () => {
     pasteSubs.delete(cb)
   }
+}
+
+// The active browser tab's link reader, registered by <Browser>. Lets the
+// cross-reference tool scrape the result links from a reverse-image-search page
+// the user has open, without leaving the app.
+export interface TabSnapshot {
+  url: string
+  title: string
+  links: string[]
+}
+let tabReader: (() => Promise<TabSnapshot | null>) | null = null
+export function registerTabReader(fn: (() => Promise<TabSnapshot | null>) | null): () => void {
+  tabReader = fn
+  return () => {
+    if (tabReader === fn) tabReader = null
+  }
+}
+export async function readActiveTab(): Promise<TabSnapshot | null> {
+  return tabReader ? tabReader() : null
 }
 
 // A navigator registered once by <App>, so non-React code (the api wrapper, IPC

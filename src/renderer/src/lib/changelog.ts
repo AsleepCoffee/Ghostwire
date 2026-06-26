@@ -7,6 +7,17 @@ export interface ChangelogEntry {
 /** In-app patch notes. Newest first. Keep in sync with CHANGELOG.md. */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.1.54',
+    date: '2026-06-26',
+    notes: [
+      'New Cross-Reference Images tool (Research) — reverse-search several images, grab the result links from the open tab, and any board/profile/site that appears across multiple images rises to the top (great for finding the one Pinterest board or profile that hosts them all).',
+      'Removed the automatic image-upload that was destabilising the browser — reverse image search is now copy-to-clipboard + the pinned paste panel.',
+      'Set an evidence location by hand (latitude/longitude + label), alongside EXIF and AI guesses.',
+      'HTML report overhaul — GhostWire logo, a live search box that filters the whole report, dark mode by default, a Location Map (now with tiles that load from disk), full per-photo metadata, and a fixed link-analysis chart that no longer balloons.',
+      'Confirmation prompts added for the remaining destructive actions (deleting a VPN config, restoring a backup from a folder).'
+    ]
+  },
+  {
     version: '0.1.53',
     date: '2026-06-26',
     notes: [

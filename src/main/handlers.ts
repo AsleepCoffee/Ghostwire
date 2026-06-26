@@ -1,6 +1,6 @@
 import { ipcMain, dialog, BrowserWindow, clipboard, nativeImage, app, net } from 'electron'
 import { randomUUID, createHash } from 'crypto'
-import { existsSync, mkdirSync, writeFileSync, copyFileSync, unlinkSync } from 'fs'
+import { existsSync, mkdirSync, writeFileSync, copyFileSync, unlinkSync, readFileSync } from 'fs'
 import { join, dirname, basename } from 'path'
 import { all, get, run, encryptionAvailable } from './db'
 import { exportAllNotes, writeNote } from './export'
@@ -377,7 +377,25 @@ async function gatherReport(id: string): Promise<ReportData | null> {
     entities: all('SELECT * FROM entities WHERE boardId = ?', [b.id]).map(mapNode),
     edges: all('SELECT * FROM edges WHERE boardId = ?', [b.id]).map(mapEdge)
   }))
-  return { project, evidence, notes, activity, personas, graphs }
+  return { project, evidence, notes, activity, personas, graphs, logo: reportLogo() }
+}
+
+/** The GhostWire app icon as a data URI, for the report header (best-effort). */
+let _logoCache: string | undefined
+function reportLogo(): string | undefined {
+  if (_logoCache !== undefined) return _logoCache || undefined
+  for (const p of [join(app.getAppPath(), 'icon.png'), join(process.resourcesPath, 'icon.png'), join(__dirname, '../../icon.png')]) {
+    try {
+      if (existsSync(p)) {
+        _logoCache = `data:image/png;base64,${readFileSync(p).toString('base64')}`
+        return _logoCache
+      }
+    } catch {
+      /* try next */
+    }
+  }
+  _logoCache = ''
+  return undefined
 }
 
 export function registerHandlers(): void {

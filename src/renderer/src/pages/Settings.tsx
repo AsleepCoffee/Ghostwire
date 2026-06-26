@@ -474,6 +474,17 @@ function BackupSection({ flash }: { flash: (m: string) => void }): JSX.Element {
     await api.backup.restore(path) // app relaunches on success
   }
 
+  const restoreFromFolder = async (): Promise<void> => {
+    const ok = await confirm({
+      title: 'Restore from a folder?',
+      message: 'This replaces ALL current data with the chosen backup and restarts GhostWire. Anything since that backup will be lost.',
+      confirmText: 'Choose & restore',
+      danger: true
+    })
+    if (!ok) return
+    await api.backup.restore()
+  }
+
   return (
     <section className="card p-5">
       <h2 className="font-semibold text-slate-100 mb-1 flex items-center gap-2">
@@ -509,7 +520,7 @@ function BackupSection({ flash }: { flash: (m: string) => void }): JSX.Element {
         <button className="btn-ghost border border-ink-600" onClick={() => api.backup.reveal()} disabled={!settings.backupDir}>
           <ExternalLink size={15} /> Open folder
         </button>
-        <button className="btn-ghost border border-ink-600 ml-auto" onClick={() => api.backup.restore()}>
+        <button className="btn-ghost border border-ink-600 ml-auto" onClick={restoreFromFolder}>
           <RotateCcw size={15} /> Restore from folder…
         </button>
       </div>

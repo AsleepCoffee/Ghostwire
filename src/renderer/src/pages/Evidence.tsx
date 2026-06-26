@@ -384,6 +384,7 @@ function EvidenceDetail({
   const [aiGeo, setAiGeo] = useState<GeoResult | null>(null)
   const [aiBusy, setAiBusy] = useState(false)
   const [aiErr, setAiErr] = useState('')
+  const [manual, setManual] = useState({ lat: '', lng: '', label: '' })
 
   useEffect(() => {
     setNote(ev.note ?? '')
@@ -391,9 +392,17 @@ function EvidenceDetail({
     setAiGeo(null)
     setAiErr('')
     setGeo({ lat: ev.geoLat ?? null, lng: ev.geoLng ?? null, label: ev.geoLabel ?? '' })
+    setManual({ lat: '', lng: '', label: '' })
     if (ev.kind !== 'file') api.files.exif(ev.path).then(setExif)
     else setExif(null)
   }, [ev.id, ev.path, ev.kind, ev.note, ev.geoLat, ev.geoLng, ev.geoLabel])
+
+  const pinManual = async (): Promise<void> => {
+    const lat = parseFloat(manual.lat)
+    const lng = parseFloat(manual.lng)
+    if (!isFinite(lat) || !isFinite(lng) || lat < -90 || lat > 90 || lng < -180 || lng > 180) return
+    await pinOnMap(lat, lng, manual.label.trim() || 'Manual location', false)
+  }
 
   // Drop a found location onto the case map (persisted on the exhibit).
   const pinOnMap = async (lat: number, lng: number, label: string, goToMap = true): Promise<void> => {
@@ -529,6 +538,38 @@ function EvidenceDetail({
                 <MapPin size={13} /> Pin EXIF GPS ({exif.gps.lat.toFixed(4)}, {exif.gps.lng.toFixed(4)})
               </button>
             )}
+
+            {/* Manual entry */}
+            <div className="space-y-1.5">
+              <div className="text-[11px] text-slate-500">Set a location by hand</div>
+              <div className="flex gap-1.5">
+                <input
+                  className="input !py-1 text-xs"
+                  placeholder="Latitude"
+                  value={manual.lat}
+                  onChange={(e) => setManual((m) => ({ ...m, lat: e.target.value }))}
+                />
+                <input
+                  className="input !py-1 text-xs"
+                  placeholder="Longitude"
+                  value={manual.lng}
+                  onChange={(e) => setManual((m) => ({ ...m, lng: e.target.value }))}
+                />
+              </div>
+              <input
+                className="input !py-1 text-xs"
+                placeholder="Label (e.g. café on the corner)"
+                value={manual.label}
+                onChange={(e) => setManual((m) => ({ ...m, label: e.target.value }))}
+              />
+              <button
+                className="btn-ghost border border-ink-600 text-xs w-full justify-center disabled:opacity-40"
+                onClick={pinManual}
+                disabled={!manual.lat.trim() || !manual.lng.trim()}
+              >
+                <MapPinned size={13} /> Pin this location
+              </button>
+            </div>
 
             {/* Geo tools (in-app browser). Street View / Earth need coordinates. */}
             <div className="flex flex-wrap gap-1.5">

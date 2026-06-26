@@ -14,6 +14,7 @@ import {
 } from 'lucide-react'
 import { api, type VpnState, type VpnConfigStatus } from '../lib/api'
 import { useSettings } from '../lib/settings'
+import { useConfirm } from '../lib/confirm'
 
 const WIREPROXY_RELEASES = 'https://github.com/pufferffish/wireproxy/releases'
 
@@ -21,6 +22,7 @@ const WIREPROXY_RELEASES = 'https://github.com/pufferffish/wireproxy/releases'
  *  rename, remove. Shared by the Settings → VPN section and the VPN page. */
 export function VpnManager({ onChange }: { onChange?: () => void }): JSX.Element {
   const { settings, update } = useSettings()
+  const confirm = useConfirm()
   const [state, setState] = useState<VpnState | null>(null)
   const [busy, setBusy] = useState(false)
   const [installing, setInstalling] = useState(false)
@@ -127,6 +129,15 @@ export function VpnManager({ onChange }: { onChange?: () => void }): JSX.Element
                 refresh()
               }}
               onRemove={async () => {
+                if (
+                  !(await confirm({
+                    title: `Remove VPN “${c.name}”?`,
+                    message: 'The tunnel config is deleted. Personas using it will fall back to the app/direct exit.',
+                    confirmText: 'Remove',
+                    danger: true
+                  }))
+                )
+                  return
                 await api.vpn.remove(c.id)
                 onChange?.()
                 refresh()

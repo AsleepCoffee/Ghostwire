@@ -1,5 +1,12 @@
 # Changelog
 
+## v0.1.54
+- New Cross-Reference Images tool (Research) — reverse-search several images, grab the result links from the open tab, and pages/boards/profiles appearing across multiple images are ranked, surfacing a likely shared source.
+- Removed the automatic image-upload injection (it destabilised the browser); reverse image search is copy-to-clipboard + the pinned paste panel.
+- Manually set an evidence location (lat/lng + label).
+- HTML report overhaul — GhostWire logo, live full-report search, dark by default, Location Map with tiles that load from disk (Carto), full per-photo metadata, and a fixed link-analysis chart.
+- Added confirmation prompts for deleting a VPN config and restoring a backup from a folder.
+
 ## v0.1.53
 - Reverse image search reworked — copies the image to the clipboard, opens the engine in-app, and pins the image in a side panel to re-copy/paste (Ctrl+V). Reliable across Lens/Yandex/Bing/TinEye/PimEyes.
 - Fixed pages stuck reloading / the URL endlessly changing — Google (Maps/Street View/Earth/Lens) and Cloudflare-protected sites rejected the Electron User-Agent and looped. The in-app browser now presents a normal desktop-Chrome UA.
