@@ -33,7 +33,7 @@
 
     ${NSD_CreateCheckbox} 0 40u 100% 14u "Create a desktop shortcut"
     Pop $GwDesktopCheckbox
-    ${NSD_Check} $GwDesktopCheckbox
+    ; Left unchecked by default — the user opts in.
 
     nsDialogs::Show
   FunctionEnd

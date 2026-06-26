@@ -7,6 +7,14 @@ export interface ChangelogEntry {
 /** In-app patch notes. Newest first. Keep in sync with CHANGELOG.md. */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.1.76',
+    date: '2026-06-26',
+    notes: [
+      'Themed Windows installer & uninstaller — a dark GhostWire sidebar matching the app.',
+      'The “Create a desktop shortcut” option is now unchecked by default (opt-in).'
+    ]
+  },
+  {
     version: '0.1.75',
     date: '2026-06-26',
     notes: [

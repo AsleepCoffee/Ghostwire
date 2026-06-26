@@ -1,6 +1,6 @@
 {
   "name": "ghostwire",
-  "version": "0.1.75",
+  "version": "0.1.76",
   "description": "GhostWire — OSINT workbench: sock puppet manager, notes, tool launcher, and entity graph for OSINT investigations.",
   "main": "./out/main/index.js",
   "author": "Michael Morin",
@@ -40,6 +40,8 @@
       "createStartMenuShortcut": true,
       "runAfterFinish": true,
       "shortcutName": "GhostWire",
+      "installerSidebar": "build/installerSidebar.bmp",
+      "uninstallerSidebar": "build/installerSidebar.bmp",
       "include": "build/installer.nsh"
     },
     "mac": {

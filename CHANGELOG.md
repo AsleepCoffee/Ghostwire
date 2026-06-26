@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.1.76
+- Themed Windows installer & uninstaller with a dark GhostWire sidebar.
+- "Create a desktop shortcut" is now unchecked by default.
+
 ## v0.1.75
 - Shodan API integration on the Domain & IP page — "Load verbose data" returns host org/ISP/ASN/OS, open ports + service banners, CVEs, tags and subdomains, with Shodan-facet pivots (org/ASN/product search, open host). Uses your Shodan key.
 - Domain pivot adds DNSdumpster and Web Check (web-check.as93.net).
