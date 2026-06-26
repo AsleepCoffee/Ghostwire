@@ -30,6 +30,7 @@ import { Intel } from './pages/Intel'
 import { InfraIntel } from './pages/InfraIntel'
 import { Vpn } from './pages/Vpn'
 import { WhatsNew } from './pages/WhatsNew'
+import { Guide } from './pages/Guide'
 import { Settings } from './pages/Settings'
 
 /** Registers the in-app browser as the sink for every link-open request, so
@@ -86,6 +87,7 @@ export default function App(): JSX.Element {
               <Route path="/graph" element={<Graph />} />
               <Route path="/vpn" element={<Vpn />} />
               <Route path="/whats-new" element={<WhatsNew />} />
+              <Route path="/guide" element={<Guide />} />
               <Route path="/settings" element={<Settings />} />
             </Routes>
           </div>

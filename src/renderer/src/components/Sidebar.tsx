@@ -13,7 +13,10 @@ interface NavItem {
 
 const GROUPS: { heading?: string; items: NavItem[]; toggle?: 'courseNotes' }[] = [
   {
-    items: [{ to: '/', label: 'Dashboard', icon: 'LayoutDashboard' }]
+    items: [
+      { to: '/', label: 'Dashboard', icon: 'LayoutDashboard' },
+      { to: '/guide', label: 'Guide', icon: 'BookOpen' }
+    ]
   },
   {
     heading: 'Investigation',

@@ -68,6 +68,7 @@ export function CommandPalette(): JSX.Element | null {
   const commands = useMemo<Command[]>(() => {
     const navItems: [string, string, string][] = [
       ['/', 'Dashboard', 'LayoutDashboard'],
+      ['/guide', 'Guide — how it works', 'BookOpen'],
       ['/projects', 'Investigations', 'FolderSearch'],
       ['/graph', 'Graph Workspace', 'Workflow'],
       ['/evidence', 'Evidence Board', 'Images'],

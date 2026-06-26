@@ -1,5 +1,8 @@
 # Changelog
 
+## v0.1.64
+- New Guide (top of the sidebar / Cmd-K) — a full tool-by-tool walkthrough of how GhostWire works, following the investigation loop, with a table of contents and "Open" jump buttons to each feature.
+
 ## v0.1.63
 - Free breach lookups (no key) on every email analysis — LeakCheck (which breaches an address is in: sources, dates, leaked field types) and Hudson Rock (info-stealer infection exposure). Like a free DeHashed-style breach view.
 
