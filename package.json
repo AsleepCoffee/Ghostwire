@@ -1,6 +1,6 @@
 {
   "name": "ghostwire",
-  "version": "0.1.47",
+  "version": "0.1.48",
   "description": "GhostWire — OSINT workbench: sock puppet manager, notes, tool launcher, and entity graph for OSINT investigations.",
   "main": "./out/main/index.js",
   "author": "Michael Morin",
@@ -18,7 +18,15 @@
       "package.json"
     ],
     "asarUnpack": [
-      "**/node_modules/sql.js/dist/*.wasm"
+      "**/node_modules/sql.js/dist/*.wasm",
+      "**/node_modules/tesseract.js/**",
+      "**/node_modules/tesseract.js-core/**"
+    ],
+    "extraResources": [
+      {
+        "from": "resources/tessdata",
+        "to": "tessdata"
+      }
     ],
     "win": {
       "icon": "icon.png",

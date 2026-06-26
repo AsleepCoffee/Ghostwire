@@ -40,6 +40,7 @@ const GROUPS: { heading?: string; items: NavItem[]; toggle?: 'courseNotes' }[] =
     items: [
       { to: '/enumerate', label: 'Account Finder', icon: 'ScanSearch' },
       { to: '/intel', label: 'Email & Phone', icon: 'UserSearch' },
+      { to: '/infra', label: 'Domain & IP', icon: 'Server' },
       { to: '/dork', label: 'Dork & Pivot', icon: 'Binoculars' },
       { to: '/tools', label: 'Tools & Resources', icon: 'Wrench' }
     ]

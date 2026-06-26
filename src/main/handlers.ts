@@ -10,6 +10,7 @@ import { testAllTools } from './toolcheck'
 import { testApiKey } from './apitest'
 import { createMailbox, listMessages, getMessage } from './mail'
 import { buildHtmlReport, type ReportData } from './report'
+import { ocrImage } from './ocr'
 import { applyPersonaProxies } from './vpn'
 import type {
   AppSettings,
@@ -501,6 +502,14 @@ export function registerHandlers(): void {
   })
   ipcMain.handle('evidence:setOcr', (_e, id: string, ocr: string) => {
     run('UPDATE evidence SET ocr = ? WHERE id = ?', [String(ocr ?? ''), id])
+  })
+  // Run offline OCR on a stored evidence image; returns the extracted text.
+  ipcMain.handle('evidence:ocr', async (_e, id: string) => {
+    const r = get('SELECT path FROM evidence WHERE id = ?', [id])
+    if (!r) return ''
+    const buf = readMedia(String((r as Record<string, unknown>).path))
+    if (!buf) return ''
+    return ocrImage(buf)
   })
   // Download an image from a URL straight into the evidence locker (with SHA-256).
   ipcMain.handle('evidence:fromUrl', (_e, url: string, projectId: string | null) => addEvidenceFromUrl(url, projectId))

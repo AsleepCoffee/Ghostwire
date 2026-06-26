@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import Tesseract from 'tesseract.js'
 import {
   Images,
   Upload,
@@ -366,7 +365,6 @@ function EvidenceDetail({
   const [exif, setExif] = useState<ExifResult | null>(null)
   const [note, setNote] = useState(ev.note ?? '')
   const [ocrBusy, setOcrBusy] = useState(false)
-  const [ocrPct, setOcrPct] = useState(0)
   const [ocrErr, setOcrErr] = useState('')
 
   useEffect(() => {
@@ -378,20 +376,12 @@ function EvidenceDetail({
   const runOcr = async (): Promise<void> => {
     setOcrBusy(true)
     setOcrErr('')
-    setOcrPct(0)
     try {
-      const dataUrl = await api.files.dataUrl(ev.path)
-      if (!dataUrl) throw new Error('Could not read the image')
-      const res = await Tesseract.recognize(dataUrl, 'eng', {
-        logger: (m) => {
-          if (m.status === 'recognizing text') setOcrPct(Math.round(m.progress * 100))
-        }
-      })
-      const text = (res.data.text ?? '').trim()
+      const text = await api.evidence.ocr(ev.id)
       onOcr(text)
       if (!text) setOcrErr('No readable text found in this image.')
     } catch (e) {
-      setOcrErr(`OCR failed: ${String((e as Error)?.message ?? e)} (needs internet on first run)`)
+      setOcrErr(`OCR failed: ${String((e as Error)?.message ?? e)}`)
     } finally {
       setOcrBusy(false)
     }
@@ -521,7 +511,7 @@ function EvidenceDetail({
                 )}
                 <button className="btn-ghost border border-ink-600 !px-2 !py-1 text-xs" onClick={runOcr} disabled={ocrBusy}>
                   {ocrBusy ? <Loader2 size={12} className="animate-spin" /> : <ScanText size={12} />}
-                  {ocrBusy ? `${ocrPct}%` : ev.ocr ? 'Re-run' : 'Run OCR'}
+                  {ocrBusy ? 'Reading…' : ev.ocr ? 'Re-run' : 'Run OCR'}
                 </button>
               </div>
             </div>

@@ -7,6 +7,14 @@ export interface ChangelogEntry {
 /** In-app patch notes. Newest first. Keep in sync with CHANGELOG.md. */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.1.48',
+    date: '2026-06-25',
+    notes: [
+      'New Domain & Infrastructure Intelligence (Research) — for a domain: WHOIS, full DNS (A/MX/NS/TXT/CNAME), crt.sh subdomains and hosting org/geo; for an IP: organization, ASN, location, network and reverse DNS. One-click add-to-chart and pivots. No API key required.',
+      'OCR now works fully offline — the English text model ships with the app, so “Run OCR” on evidence no longer needs an internet connection.'
+    ]
+  },
+  {
     version: '0.1.47',
     date: '2026-06-25',
     notes: [

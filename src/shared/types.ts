@@ -335,6 +335,8 @@ export interface OsintApi {
     remove(id: string): Promise<void>
     setNote(id: string, note: string): Promise<void>
     setOcr(id: string, ocr: string): Promise<void>
+    /** Run offline OCR on a stored image; returns the extracted text. */
+    ocr(id: string): Promise<string>
     fromUrl(url: string, projectId: string | null): Promise<Evidence>
   }
   personas: {

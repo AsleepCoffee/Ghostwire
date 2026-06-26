@@ -80,6 +80,7 @@ export function CommandPalette(): JSX.Element | null {
       ['/vpn', 'VPN', 'Shield'],
       ['/enumerate', 'Account Finder', 'ScanSearch'],
       ['/intel', 'Email & Phone Intelligence', 'UserSearch'],
+      ['/infra', 'Domain & Infrastructure', 'Server'],
       ['/dork', 'Dork & Pivot', 'Binoculars'],
       ['/tools', 'Tools & Resources', 'Wrench'],
       ['/exam-prep', 'PORP Exam Prep', 'GraduationCap'],

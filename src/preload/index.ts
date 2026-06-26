@@ -19,6 +19,7 @@ const api: OsintApi = {
     remove: (id) => ipcRenderer.invoke('evidence:remove', id),
     setNote: (id, note) => ipcRenderer.invoke('evidence:setNote', id, note),
     setOcr: (id, ocr) => ipcRenderer.invoke('evidence:setOcr', id, ocr),
+    ocr: (id) => ipcRenderer.invoke('evidence:ocr', id),
     fromUrl: (url, projectId) => ipcRenderer.invoke('evidence:fromUrl', url, projectId)
   },
   personas: {

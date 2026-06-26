@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.1.48
+- New Domain & Infrastructure Intelligence (Research) — for a domain: WHOIS, full DNS (A/MX/NS/TXT/CNAME), crt.sh subdomains and hosting org/geo; for an IP: organization, ASN, location, network and reverse DNS. One-click add-to-chart and pivots. No API key required.
+- OCR now works fully offline — the English text model ships with the app, so "Run OCR" no longer needs an internet connection.
+
 ## v0.1.47
 - OCR on evidence — "Run OCR" on any image extracts its text (saved, copyable, appendable to the note).
 - Evidence search — filter the board by title, source, notes and OCR text.
