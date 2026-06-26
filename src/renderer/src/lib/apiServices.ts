@@ -158,6 +158,15 @@ export const API_SERVICES: ApiService[] = [
     signup: 'https://www.greynoise.io/plans',
     unlocks: 'IP noise / scanner classification.',
     tool: { url: 'https://viz.greynoise.io/ip/{QUERY}', query: true, category: 'Infrastructure' }
+  },
+  {
+    id: 'hibp',
+    name: 'Have I Been Pwned',
+    description: 'Which breaches an email address appears in.',
+    free: 'Paid API key ($3.95/mo) for breach lookups.',
+    tier: 'paid',
+    signup: 'https://haveibeenpwned.com/API/Key',
+    unlocks: 'Breach lookups in Email & Phone Intelligence.'
   }
 ]
 

@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.1.46
+- New Email & Phone Intelligence (Research) — email: Gravatar profile + linked accounts, MX check, Have I Been Pwned breach lookup (needs a HIBP key); phone: country, line type, formats via libphonenumber. Pivot or add findings to the link chart. Added a HIBP API key in Settings.
+- Map-based time-zone picker — "Map" button on an investigation's Time zone field and the dashboard Add-clock resolves the zone from a clicked location (offline).
+
 ## v0.1.45
 - Linux support — releases now include an AppImage and a .deb (auto-update on AppImage), alongside the Windows installer.
 - Portable export/import — Settings → Backups → Export to file makes a `.gwpack` with all data + media + settings; Import restores it on any platform and restarts.

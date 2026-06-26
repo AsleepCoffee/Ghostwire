@@ -21,6 +21,7 @@ import { Enumerate } from './pages/Enumerate'
 import { Timeline } from './pages/Timeline'
 import { ExamPrep } from './pages/ExamPrep'
 import { MapView } from './pages/MapView'
+import { Intel } from './pages/Intel'
 import { Vpn } from './pages/Vpn'
 import { WhatsNew } from './pages/WhatsNew'
 import { Settings } from './pages/Settings'
@@ -56,6 +57,7 @@ export default function App(): JSX.Element {
               <Route path="/timeline" element={<Timeline />} />
               <Route path="/exam-prep" element={<ExamPrep />} />
               <Route path="/map" element={<MapView />} />
+              <Route path="/intel" element={<Intel />} />
               <Route path="/graph" element={<Graph />} />
               <Route path="/vpn" element={<Vpn />} />
               <Route path="/whats-new" element={<WhatsNew />} />

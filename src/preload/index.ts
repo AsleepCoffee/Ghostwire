@@ -87,6 +87,10 @@ const api: OsintApi = {
   apiKeys: {
     test: (id, key) => ipcRenderer.invoke('apikeys:test', id, key)
   },
+  intel: {
+    gravatar: (email) => ipcRenderer.invoke('intel:gravatar', email),
+    hibp: (email, key) => ipcRenderer.invoke('intel:hibp', email, key)
+  },
   app: {
     version: () => ipcRenderer.invoke('app:version'),
     encryptionStatus: () => ipcRenderer.invoke('app:encryptionStatus')

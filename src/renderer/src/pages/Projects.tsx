@@ -14,6 +14,7 @@ import { PROJECT_TYPES, ENTITY_TYPES } from '../lib/constants'
 import { Icon, Modal, StatusBadge, EmptyState } from '../components/ui'
 import { useSettings } from '../lib/settings'
 import { TIMEZONES } from '../lib/timezones'
+import { TimezonePicker } from '../components/TimezonePicker'
 
 export function Projects(): JSX.Element {
   const [projects, setProjects] = useState<Project[]>([])
@@ -176,6 +177,7 @@ export function ProjectEditor({
   onSaved: (p: Project) => void
 }): JSX.Element {
   const [p, setP] = useState<Partial<Project>>({ ...initial })
+  const [tzPicker, setTzPicker] = useState(false)
   const set = (patch: Partial<Project>): void => setP((prev) => ({ ...prev, ...patch }))
   const save = async (): Promise<void> => {
     const saved = await api.projects.save(p)
@@ -231,13 +233,18 @@ export function ProjectEditor({
           </div>
           <div className="col-span-2">
             <label className="label">Time zone (optional)</label>
-            <input
-              className="input"
-              list="gw-timezones"
-              placeholder="e.g. America/New_York — shown as a clock on the dashboard"
-              value={p.timezone ?? ''}
-              onChange={(e) => set({ timezone: e.target.value })}
-            />
+            <div className="flex gap-2">
+              <input
+                className="input"
+                list="gw-timezones"
+                placeholder="e.g. America/New_York — shown as a clock on the dashboard"
+                value={p.timezone ?? ''}
+                onChange={(e) => set({ timezone: e.target.value })}
+              />
+              <button type="button" className="btn-ghost border border-ink-600 shrink-0" onClick={() => setTzPicker(true)} title="Pick by location on a map">
+                <Icon name="MapPin" size={15} /> Map
+              </button>
+            </div>
             <datalist id="gw-timezones">
               {TIMEZONES.map((tz) => (
                 <option key={tz} value={tz} />
@@ -245,6 +252,8 @@ export function ProjectEditor({
             </datalist>
           </div>
         </div>
+
+        <TimezonePicker open={tzPicker} onClose={() => setTzPicker(false)} onPick={(tz) => set({ timezone: tz })} />
         {/* Structured known data points */}
         <div>
           <div className="flex items-center justify-between mb-2">

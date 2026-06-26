@@ -28,6 +28,7 @@ import { fmtDate } from '../lib/format'
 import { useSettings } from '../lib/settings'
 import { TIMEZONES, timeInZone, dateInZone } from '../lib/timezones'
 import { PivotModal } from '../components/PivotModal'
+import { TimezonePicker } from '../components/TimezonePicker'
 import { SUBJECT_LABELS, type PivotSubject } from '../lib/pivot'
 
 const CATEGORY_ICON: Record<string, string> = {
@@ -299,6 +300,7 @@ function Hero({
   const { settings, update } = useSettings()
   const [now, setNow] = useState(() => new Date())
   const [adding, setAdding] = useState(false)
+  const [tzPicker, setTzPicker] = useState(false)
   const [tzInput, setTzInput] = useState('')
   const [labelInput, setLabelInput] = useState('')
   useEffect(() => {
@@ -426,14 +428,19 @@ function Hero({
 
           {adding ? (
             <div className="mt-3 pt-3 border-t border-ink-700 space-y-2">
-              <input
-                className="input !py-1.5 text-xs"
-                list="gw-hero-tz"
-                placeholder="Time zone (e.g. Asia/Tokyo)"
-                value={tzInput}
-                onChange={(e) => setTzInput(e.target.value)}
-                autoFocus
-              />
+              <div className="flex gap-1.5">
+                <input
+                  className="input !py-1.5 text-xs"
+                  list="gw-hero-tz"
+                  placeholder="Time zone (e.g. Asia/Tokyo)"
+                  value={tzInput}
+                  onChange={(e) => setTzInput(e.target.value)}
+                  autoFocus
+                />
+                <button className="btn-ghost border border-ink-600 !py-1 text-xs shrink-0" onClick={() => setTzPicker(true)} title="Pick on a map">
+                  <Icon name="MapPin" size={13} />
+                </button>
+              </div>
               <datalist id="gw-hero-tz">
                 {TIMEZONES.map((tz) => (
                   <option key={tz} value={tz} />
@@ -465,6 +472,8 @@ function Hero({
           )}
         </div>
       </div>
+
+      <TimezonePicker open={tzPicker} onClose={() => setTzPicker(false)} onPick={(tz) => { setTzInput(tz); setAdding(true) }} />
     </section>
   )
 }

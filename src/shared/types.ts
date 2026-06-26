@@ -255,6 +255,24 @@ export interface Activity {
   at: number
 }
 
+export interface GravatarResult {
+  found: boolean
+  hash: string
+  displayName?: string
+  profileUrl?: string
+  location?: string
+  about?: string
+  accounts?: { label: string; url: string }[]
+  photos?: string[]
+}
+
+export interface HibpBreach {
+  name: string
+  date: string
+  count: number
+  classes: string
+}
+
 export interface ExifResult {
   gps?: { lat: number; lng: number }
   make?: string
@@ -388,6 +406,10 @@ export interface OsintApi {
       id: string,
       key: string
     ): Promise<{ ok: boolean; status: 'valid' | 'invalid' | 'error' | 'untestable'; message: string }>
+  }
+  intel: {
+    gravatar(email: string): Promise<GravatarResult>
+    hibp(email: string, key: string): Promise<{ ok: boolean; error?: string; breaches?: HibpBreach[] }>
   }
   app: {
     version(): Promise<string>

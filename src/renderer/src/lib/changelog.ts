@@ -7,6 +7,15 @@ export interface ChangelogEntry {
 /** In-app patch notes. Newest first. Keep in sync with CHANGELOG.md. */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.1.46',
+    date: '2026-06-25',
+    notes: [
+      'New Email & Phone Intelligence (Research) — profile an email: Gravatar profile + linked accounts, mail-server (MX) check, and breach exposure via Have I Been Pwned (add a HIBP key in Settings). Parse a phone number for country, line type and formats. Pivot or drop findings onto the link chart in one click.',
+      'Added a Have I Been Pwned API key option in Settings.',
+      'Pick a time zone by clicking a map — on an investigation’s Time zone field and the dashboard “Add clock”, hit Map to choose a location and GhostWire resolves the zone for you.'
+    ]
+  },
+  {
     version: '0.1.45',
     date: '2026-06-25',
     notes: [

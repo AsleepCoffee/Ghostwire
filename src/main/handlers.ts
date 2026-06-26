@@ -860,6 +860,61 @@ export function registerHandlers(): void {
     }
   })
 
+  // ===== Email / phone intelligence =====
+  // Gravatar profile by email (md5 of the lowercased address). No key needed.
+  ipcMain.handle('intel:gravatar', async (_e, email: string) => {
+    const hash = createHash('md5').update(email.trim().toLowerCase()).digest('hex')
+    try {
+      const res = await net.fetch(`https://gravatar.com/${hash}.json`, { headers: { 'User-Agent': 'GhostWire-OSINT' } })
+      if (!res.ok) return { found: false, hash }
+      const j = (await res.json()) as { entry?: Record<string, unknown>[] }
+      const e = j.entry?.[0]
+      if (!e) return { found: false, hash }
+      return {
+        found: true,
+        hash,
+        displayName: String(e.displayName ?? e.preferredUsername ?? ''),
+        profileUrl: String(e.profileUrl ?? `https://gravatar.com/${hash}`),
+        location: String(e.currentLocation ?? ''),
+        about: String(e.aboutMe ?? ''),
+        accounts: ((e.accounts as Record<string, unknown>[]) ?? []).map((a) => ({
+          label: String(a.shortname ?? a.name ?? a.domain ?? 'account'),
+          url: String(a.url ?? '')
+        })),
+        photos: ((e.photos as Record<string, unknown>[]) ?? []).map((p) => String(p.value ?? '')).filter(Boolean)
+      }
+    } catch {
+      return { found: false, hash }
+    }
+  })
+
+  // Have I Been Pwned breach lookup for an email (requires a paid HIBP key).
+  ipcMain.handle('intel:hibp', async (_e, email: string, key: string) => {
+    if (!key) return { ok: false, error: 'Add a Have I Been Pwned API key in Settings.' }
+    try {
+      const res = await net.fetch(
+        `https://haveibeenpwned.com/api/v3/breachedaccount/${encodeURIComponent(email)}?truncateResponse=false`,
+        { headers: { 'hibp-api-key': key, 'User-Agent': 'GhostWire-OSINT' } }
+      )
+      if (res.status === 404) return { ok: true, breaches: [] }
+      if (res.status === 401) return { ok: false, error: 'HIBP key rejected (401).' }
+      if (res.status === 429) return { ok: false, error: 'HIBP rate limit — wait a moment.' }
+      if (!res.ok) return { ok: false, error: `HIBP HTTP ${res.status}` }
+      const arr = (await res.json()) as Record<string, unknown>[]
+      return {
+        ok: true,
+        breaches: arr.map((b) => ({
+          name: String(b.Title ?? b.Name ?? ''),
+          date: String(b.BreachDate ?? ''),
+          count: Number(b.PwnCount ?? 0),
+          classes: ((b.DataClasses as string[]) ?? []).join(', ')
+        }))
+      }
+    } catch (e) {
+      return { ok: false, error: String((e as Error)?.message ?? e) }
+    }
+  })
+
   // ===== Mail (mail.tm disposable mailboxes) =====
   ipcMain.handle('mail:create', (_e, localPart?: string) => createMailbox(localPart))
   ipcMain.handle('mail:messages', (_e, token: string, base?: string) => listMessages(token, base))
