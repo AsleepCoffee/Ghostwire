@@ -139,7 +139,9 @@ const api: OsintApi = {
     list: () => ipcRenderer.invoke('backup:list'),
     pickFolder: () => ipcRenderer.invoke('backup:pickFolder'),
     reveal: (path) => ipcRenderer.invoke('backup:reveal', path),
-    restore: (path) => ipcRenderer.invoke('backup:restore', path)
+    restore: (path) => ipcRenderer.invoke('backup:restore', path),
+    exportPack: () => ipcRenderer.invoke('backup:exportPack'),
+    importPack: (path) => ipcRenderer.invoke('backup:importPack', path)
   }
 }
 

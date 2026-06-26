@@ -440,5 +440,9 @@ export interface OsintApi {
     reveal(path?: string): Promise<void>
     /** Restore DB + media from a backup folder, then relaunch. */
     restore(path?: string): Promise<{ ok: boolean; error?: string }>
+    /** Export the whole workspace to one portable .gwpack file. Returns the path. */
+    exportPack(): Promise<string | { error: string } | null>
+    /** Import a .gwpack (replaces all data), then relaunch. */
+    importPack(path?: string): Promise<{ ok: boolean; error?: string }>
   }
 }

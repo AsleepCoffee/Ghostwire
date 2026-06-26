@@ -11,7 +11,7 @@ Sock puppets with isolated browser sessions & per-persona VPN exits · a Maltego
 [![Latest release](https://img.shields.io/github/v/release/AsleepCoffee/Ghostwire?label=download&style=flat-square)](https://github.com/AsleepCoffee/Ghostwire/releases/latest)
 [![Downloads](https://img.shields.io/github/downloads/AsleepCoffee/Ghostwire/total?style=flat-square)](https://github.com/AsleepCoffee/Ghostwire/releases)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue?style=flat-square)](LICENSE)
-![Platform](https://img.shields.io/badge/platform-Windows-0a0c10?style=flat-square)
+![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20Linux-0a0c10?style=flat-square)
 ![Built with Electron](https://img.shields.io/badge/built%20with-Electron%20%2B%20React-22d3ee?style=flat-square)
 
 </div>
@@ -20,7 +20,12 @@ Sock puppets with isolated browser sessions & per-persona VPN exits · a Maltego
 
 ## ⬇️ Download
 
-Grab the latest Windows installer from the **[Releases page](https://github.com/AsleepCoffee/Ghostwire/releases/latest)** (`GhostWire-Setup-x.y.z.exe`), run it, and you're set. The app keeps itself up to date automatically — when a new version is published it offers to **install now** or **skip for now**, and you can check manually under **Settings → Updates**.
+Grab the latest build from the **[Releases page](https://github.com/AsleepCoffee/Ghostwire/releases/latest)**:
+
+- **Windows** — `GhostWire-Setup-x.y.z.exe`
+- **Linux** — `GhostWire-x.y.z.AppImage` (chmod +x and run) or the `.deb`
+
+Run it and you're set. The app keeps itself up to date automatically (Windows + AppImage) — when a new version is published it offers to **install now** or **skip for now**, and you can check manually under **Settings → Updates**. Moving machines? Use **Settings → Backups → Export to file** to get a portable `.gwpack` and **Import** it on the other platform.
 
 > The installer isn't code-signed, so Windows SmartScreen may show a “more info → run anyway” prompt on first launch. That's normal for indie apps without a paid signing certificate.
 

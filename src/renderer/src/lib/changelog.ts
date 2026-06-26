@@ -7,6 +7,14 @@ export interface ChangelogEntry {
 /** In-app patch notes. Newest first. Keep in sync with CHANGELOG.md. */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.1.45',
+    date: '2026-06-25',
+    notes: [
+      'GhostWire now runs on Linux — releases include an AppImage and a .deb alongside the Windows installer (AppImage auto-updates too).',
+      'Move everything between machines/platforms — Settings → Backups → “Export to file” bundles all your data, media and settings into a portable .gwpack; “Import from file” restores it on any OS and restarts.'
+    ]
+  },
+  {
     version: '0.1.44',
     date: '2026-06-25',
     notes: [

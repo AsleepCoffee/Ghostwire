@@ -542,6 +542,44 @@ function BackupSection({ flash }: { flash: (m: string) => void }): JSX.Element {
           </div>
         </div>
       )}
+
+      {/* Portable export / import — move everything to another device or OS */}
+      <div className="mt-5 pt-4 border-t border-ink-700">
+        <div className="text-sm text-slate-200 font-medium">Move to another device</div>
+        <p className="text-xs text-slate-500 mt-1 mb-2">
+          Export everything — investigations, personas, notes, link charts, evidence, VPN configs and settings — to one
+          portable <code className="text-accent">.gwpack</code> file, then import it into GhostWire on any platform
+          (Windows or Linux). Importing replaces the current data and restarts the app.
+        </p>
+        <div className="flex gap-2">
+          <button
+            className="btn-primary"
+            onClick={async () => {
+              const r = await api.backup.exportPack()
+              if (typeof r === 'string') flash(`Exported → ${r}`)
+              else if (r && 'error' in r) flash(`Export failed: ${r.error}`)
+            }}
+          >
+            <Save size={16} /> Export to file…
+          </button>
+          <button
+            className="btn-ghost border border-ink-600"
+            onClick={async () => {
+              const ok = await confirm({
+                title: 'Import a GhostWire pack?',
+                message: 'This replaces ALL current data with the pack contents and restarts the app. Export first if unsure.',
+                confirmText: 'Choose file & import',
+                danger: true
+              })
+              if (!ok) return
+              const r = await api.backup.importPack()
+              if (!r.ok && r.error && r.error !== 'Cancelled') flash(`Import failed: ${r.error}`)
+            }}
+          >
+            <RotateCcw size={15} /> Import from file…
+          </button>
+        </div>
+      </div>
     </section>
   )
 }

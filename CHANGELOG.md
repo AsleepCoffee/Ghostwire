@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.1.45
+- Linux support — releases now include an AppImage and a .deb (auto-update on AppImage), alongside the Windows installer.
+- Portable export/import — Settings → Backups → Export to file makes a `.gwpack` with all data + media + settings; Import restores it on any platform and restarts.
+
 ## v0.1.44
 - Multi-engine search — Dork builder + pivots run across Google, Bing, DuckDuckGo, Yandex, Brave, Startpage, Mojeek, Baidu, Yahoo.
 - Pivots open in the in-app browser by default and run as the active investigation's assigned sock puppet (using its VPN exit); system browser is a secondary option.

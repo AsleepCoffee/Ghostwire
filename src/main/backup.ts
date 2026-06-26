@@ -1,6 +1,7 @@
 import { app, dialog, ipcMain, shell, BrowserWindow } from 'electron'
-import { existsSync, mkdirSync, copyFileSync, readdirSync, statSync, rmSync } from 'fs'
-import { join } from 'path'
+import { existsSync, mkdirSync, copyFileSync, readdirSync, statSync, rmSync, writeFileSync } from 'fs'
+import { join, basename } from 'path'
+import AdmZip from 'adm-zip'
 import { persist, databasePath } from './db'
 import { mediaRoot } from './media'
 import { getSettings, putSetting } from './handlers'
@@ -164,5 +165,66 @@ export function registerBackupHandlers(): void {
       app.exit(0)
     }
     return r
+  })
+
+  // ---- Portable single-file export / import (cross-platform) ----
+  ipcMain.handle('backup:exportPack', async () => {
+    const win = BrowserWindow.getFocusedWindow()
+    const res = await dialog.showSaveDialog(win!, {
+      title: 'Export GhostWire data',
+      defaultPath: `GhostWire-Export-${ts()}.gwpack`,
+      filters: [{ name: 'GhostWire pack', extensions: ['gwpack'] }]
+    })
+    if (res.canceled || !res.filePath) return null
+    try {
+      persist(true)
+      const zip = new AdmZip()
+      zip.addLocalFile(databasePath()) // ghostwire.db
+      if (existsSync(mediaRoot())) zip.addLocalFolder(mediaRoot(), 'media')
+      zip.writeZip(res.filePath)
+      return res.filePath
+    } catch (e) {
+      return { error: String((e as Error)?.message ?? e) }
+    }
+  })
+
+  ipcMain.handle('backup:importPack', async (_e, path?: string) => {
+    let file = path
+    if (!file) {
+      const win = BrowserWindow.getFocusedWindow()
+      const res = await dialog.showOpenDialog(win!, {
+        title: 'Import a GhostWire pack',
+        properties: ['openFile'],
+        filters: [{ name: 'GhostWire pack', extensions: ['gwpack', 'zip'] }]
+      })
+      if (res.canceled || !res.filePaths[0]) return { ok: false, error: 'Cancelled' }
+      file = res.filePaths[0]
+    }
+    try {
+      const zip = new AdmZip(file)
+      const dbEntry = zip.getEntries().find((e) => basename(e.entryName) === 'ghostwire.db' && !e.isDirectory)
+      if (!dbEntry) return { ok: false, error: 'That file is not a GhostWire pack (no database inside).' }
+      writeFileSync(databasePath(), dbEntry.getData())
+      // Replace media with the pack's media folder.
+      try {
+        rmSync(mediaRoot(), { recursive: true, force: true })
+      } catch {
+        /* ignore */
+      }
+      mkdirSync(mediaRoot(), { recursive: true })
+      for (const e of zip.getEntries()) {
+        if (e.isDirectory) continue
+        const norm = e.entryName.replace(/\\/g, '/')
+        if (!norm.startsWith('media/')) continue
+        const dest = join(mediaRoot(), norm.slice('media/'.length))
+        mkdirSync(join(dest, '..'), { recursive: true })
+        writeFileSync(dest, e.getData())
+      }
+      app.relaunch()
+      app.exit(0)
+      return { ok: true }
+    } catch (e) {
+      return { ok: false, error: String((e as Error)?.message ?? e) }
+    }
   })
 }
