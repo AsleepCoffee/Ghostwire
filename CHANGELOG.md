@@ -1,5 +1,8 @@
 # Changelog
 
+## v0.1.80
+- Maltego-style auto-linking — adding an entity from a search auto-connects it to related nodes already on the graph (email↔domain, subdomain↔domain, email↔username). New "Auto-link" button re-links any board on demand. Runs after every Add-to-chart.
+
 ## v0.1.79
 - App-wide exit node is now a clear On/Off toggle (with a location picker when On) — Off = real/home IP, On routes the whole app through the chosen exit and starts that tunnel. Personas with their own exit still override it.
 

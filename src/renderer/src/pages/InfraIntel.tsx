@@ -3,6 +3,7 @@ import { Globe, Server, Loader2, Crosshair, Workflow, ExternalLink, Radar, Shiel
 import { api, type ShodanResult } from '../lib/api'
 import { useSettings } from '../lib/settings'
 import { useOpenInBrowser } from '../lib/browserBus'
+import { autoLink } from '../lib/graphlink'
 import { PivotModal } from '../components/PivotModal'
 
 const enc = encodeURIComponent
@@ -182,6 +183,7 @@ export function InfraIntel(): JSX.Element {
       await api.boards.saveEdge({ boardId: board.id, source: anchor.id, target: node.id })
       i++
     }
+    await autoLink(board.id)
     flash(`Added ${adds.length + 1} nodes to the link chart`)
   }
 
@@ -290,6 +292,7 @@ export function InfraIntel(): JSX.Element {
                     let board = boards.find((b) => b.projectId === projectId) ?? boards.find((b) => !projectId && !b.projectId)
                     if (!board) board = await api.boards.save({ name: `${ip.ip} — link chart`, projectId })
                     await api.boards.saveNode({ boardId: board.id, type: 'ip', label: ip.ip, props: { org: ip.org, location: ip.place }, x: 0, y: 0 })
+                    await autoLink(board.id)
                     flash('Added to link chart')
                   }}
                 >

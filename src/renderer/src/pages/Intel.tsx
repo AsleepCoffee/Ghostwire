@@ -4,6 +4,7 @@ import { Mail, Phone, Loader2, ShieldAlert, Check, X, Crosshair, Workflow, Exter
 import { api, type GravatarResult, type HibpBreach, type HunterResult, type EmailVerify, type LeakCheckResult, type HudsonResult } from '../lib/api'
 import { useSettings } from '../lib/settings'
 import { useOpenInBrowser } from '../lib/browserBus'
+import { autoLink } from '../lib/graphlink'
 import { PivotModal } from '../components/PivotModal'
 
 const enc = encodeURIComponent
@@ -163,6 +164,7 @@ export function Intel(): JSX.Element {
       await api.boards.saveEdge({ boardId: board.id, source: anchor.id, target: node.id, label: p.position || 'email' })
       i++
     }
+    await autoLink(board.id)
     flash('Added company to link chart')
   }
 
@@ -185,6 +187,7 @@ export function Intel(): JSX.Element {
       await api.boards.saveEdge({ boardId: board.id, source: anchor.id, target: node.id, label: 'account' })
       i++
     }
+    await autoLink(board.id)
     flash('Added to link chart')
   }
 

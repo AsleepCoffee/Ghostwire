@@ -7,6 +7,13 @@ export interface ChangelogEntry {
 /** In-app patch notes. Newest first. Keep in sync with CHANGELOG.md. */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.1.80',
+    date: '2026-06-26',
+    notes: [
+      'Maltego-style auto-linking — when you add an entity from a search (e.g. an email), it now auto-connects to related entities already on your graph (email ↔ its domain, sub-domain ↔ parent domain, email ↔ matching username). A new “Auto-link” button on the Graph re-links any board on demand.'
+    ]
+  },
+  {
     version: '0.1.79',
     date: '2026-06-26',
     notes: [

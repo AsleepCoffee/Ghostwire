@@ -22,8 +22,9 @@ import {
 } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 import { toPng } from 'html-to-image'
-import { Plus, Trash2, X, ImagePlus, Crosshair, Sparkles, Loader2, ImageDown, Check, AlertTriangle, KeyRound, Minus, ChevronDown, ChevronUp, Globe, BoxSelect, Hand, Search, LayoutGrid, Combine } from 'lucide-react'
+import { Plus, Trash2, X, ImagePlus, Crosshair, Sparkles, Loader2, ImageDown, Check, AlertTriangle, KeyRound, Minus, ChevronDown, ChevronUp, Globe, BoxSelect, Hand, Search, LayoutGrid, Combine, Link2 } from 'lucide-react'
 import { api, type Board, type EntityNode, type EntityType, type Project, type Evidence } from '../lib/api'
+import { autoLink } from '../lib/graphlink'
 import { ENTITY_TYPES } from '../lib/constants'
 import { Icon, EmptyState, Modal } from '../components/ui'
 import { PivotModal } from '../components/PivotModal'
@@ -332,6 +333,14 @@ function GraphInner(): JSX.Element {
     await loadGraph(boardId)
     setSelected(null)
     flash(`Merged ${remap.size} duplicate${remap.size === 1 ? '' : 's'}`)
+  }
+
+  // Maltego-style: connect related entities already on the board.
+  const runAutoLink = async (): Promise<void> => {
+    if (!boardId) return
+    const n = await autoLink(boardId)
+    await loadGraph(boardId)
+    flash(n > 0 ? `Linked ${n} related entit${n === 1 ? 'y' : 'ies'}` : 'No new links found')
   }
 
   const onNodeClick = useCallback((_: unknown, node: Node): void => {
@@ -695,6 +704,9 @@ function GraphInner(): JSX.Element {
             </button>
             <button className="btn-ghost" onClick={mergeDuplicates} title="Merge entities with the same type & label">
               <Combine size={15} /> Merge dupes
+            </button>
+            <button className="btn-ghost" onClick={runAutoLink} title="Auto-link related entities (email↔domain, subdomain↔domain, email↔username)">
+              <Link2 size={15} /> Auto-link
             </button>
           </>
         )}

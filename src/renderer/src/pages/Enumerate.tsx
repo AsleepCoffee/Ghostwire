@@ -12,6 +12,7 @@ import {
 import { api } from '../lib/api'
 import { useOpenInBrowser } from '../lib/browserBus'
 import { useSettings } from '../lib/settings'
+import { autoLink } from '../lib/graphlink'
 import { PivotModal } from '../components/PivotModal'
 
 /** Username-aggregator sites (SPAs without reliable deep links) — we copy the
@@ -114,6 +115,7 @@ export function Enumerate(): JSX.Element {
       await api.boards.saveEdge({ boardId: board.id, source: anchor.id, target: node.id, label: 'account' })
       i++
     }
+    await autoLink(board.id)
     flash(`Added ${chosen.length} account${chosen.length === 1 ? '' : 's'} to the link chart`)
   }
 
