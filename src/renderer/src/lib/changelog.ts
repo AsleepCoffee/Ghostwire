@@ -7,6 +7,13 @@ export interface ChangelogEntry {
 /** In-app patch notes. Newest first. Keep in sync with CHANGELOG.md. */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.1.73',
+    date: '2026-06-26',
+    notes: [
+      'Sock puppets now include a LinkedIn account in their starter set — with one-click open-and-autofill for LinkedIn sign-up/login, like the other platforms.'
+    ]
+  },
+  {
     version: '0.1.72',
     date: '2026-06-26',
     notes: [

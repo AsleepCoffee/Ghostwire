@@ -1,5 +1,8 @@
 # Changelog
 
+## v0.1.73
+- Sock puppets get a LinkedIn account in their starter set (open-and-autofill for sign-up/login already wired).
+
 ## v0.1.72
 - View Instagram without an account — username pivot adds Imginn (imginn.com profile/stories viewer) and a Google site:instagram.com dork.
 - Profile ID tool (was "Facebook ID") now resolves Instagram too — numeric user ID ↔ username for Facebook or Instagram, via paste/resolve or "Grab from the open tab".

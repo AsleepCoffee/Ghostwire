@@ -233,7 +233,7 @@ export function usernameFor(platform: string, handle: string, email: string): st
 
 /** Build a starter set of accounts (with generated passwords) for a new persona. */
 export function buildStarterAccounts(handle: string, email: string): import('./api').PersonaAccount[] {
-  const platforms = ['Email', 'Facebook', 'Instagram', 'Reddit', 'X / Twitter']
+  const platforms = ['Email', 'Facebook', 'Instagram', 'LinkedIn', 'Reddit', 'X / Twitter']
   return platforms.map((platform) => ({
     platform,
     username: usernameFor(platform, handle, email),
