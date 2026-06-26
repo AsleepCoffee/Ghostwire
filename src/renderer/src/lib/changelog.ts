@@ -7,6 +7,13 @@ export interface ChangelogEntry {
 /** In-app patch notes. Newest first. Keep in sync with CHANGELOG.md. */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.1.50',
+    date: '2026-06-25',
+    notes: [
+      'Fixed OCR in the installed app — "Run OCR" failed with "Only absolute URLs are supported" because the bundled language model was being requested over the network. The model is now loaded directly from disk, so OCR works offline on Windows and Linux.'
+    ]
+  },
+  {
     version: '0.1.49',
     date: '2026-06-25',
     notes: [

@@ -1,5 +1,8 @@
 # Changelog
 
+## v0.1.50
+- Fixed OCR in the installed app — "Run OCR" failed with "Only absolute URLs are supported" because tesseract tried to fetch the bundled language model over the network (its worker reports an `electron` environment). The model is now decompressed straight into the cache and read from disk, so OCR works offline on Windows and Linux.
+
 ## v0.1.49
 - Chain of custody — every exhibit has a "Verify integrity" check that re-hashes the stored file against the SHA-256 recorded at capture (verified / altered / missing), shown in a dedicated custody panel. Legacy exhibits are hashed on first check.
 - Reports, reimagined — export as an interactive HTML deliverable (sidebar nav, click-to-zoom evidence, dark-mode toggle, copy-hash, chain-of-custody appendix), an editable Word (.docx), a print-ready PDF, or Markdown — chosen from the Report menu.
