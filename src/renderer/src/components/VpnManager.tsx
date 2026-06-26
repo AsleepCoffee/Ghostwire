@@ -147,31 +147,60 @@ export function VpnManager({ onChange }: { onChange?: () => void }): JSX.Element
         </div>
       )}
 
-      {configs.length > 0 && (
-        <div className="rounded-xl border border-ink-700 bg-ink-900/50 p-4">
-          <div className="text-sm text-slate-200 font-medium">App-wide exit</div>
-          <p className="text-xs text-slate-500 mt-1 mb-2">
-            Route the <b>whole app</b> — browsing, lookups, transforms and downloads — through one exit. A persona with its
-            own exit still overrides this. Fails closed if the tunnel is down.
-          </p>
-          <select
-            className="input"
-            value={settings.globalVpnConfigId ?? ''}
-            onChange={async (e) => {
-              await update({ globalVpnConfigId: e.target.value || undefined })
-              api.vpn.apply().catch(() => {})
-            }}
-          >
-            <option value="">Off — use your real connection</option>
-            {configs.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-                {c.running ? '' : ' (tunnel down)'}
-              </option>
-            ))}
-          </select>
-        </div>
-      )}
+      {configs.length > 0 &&
+        (() => {
+          const on = !!settings.globalVpnConfigId
+          const firstRunning = configs.find((c) => c.running) ?? configs[0]
+          const setExit = async (id: string | undefined): Promise<void> => {
+            if (id) {
+              const c = configs.find((x) => x.id === id)
+              if (c && !c.running) await api.vpn.start(id).catch(() => {})
+            }
+            await update({ globalVpnConfigId: id })
+            await api.vpn.apply().catch(() => {})
+            refresh()
+            onChange?.()
+          }
+          return (
+            <div className="rounded-xl border border-ink-700 bg-ink-900/50 p-4">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="text-sm text-slate-200 font-medium">App-wide exit node</div>
+                  <p className="text-xs text-slate-500 mt-1">
+                    Route the <b>whole app</b> through a VPN exit. Off = your real / home IP. A persona with its own exit
+                    still overrides this.
+                  </p>
+                </div>
+                <button
+                  role="switch"
+                  aria-checked={on}
+                  onClick={() => setExit(on ? undefined : firstRunning?.id)}
+                  className={`relative w-12 h-6 rounded-full transition-colors shrink-0 mt-0.5 ${on ? 'bg-accent' : 'bg-ink-600'}`}
+                  title={on ? 'Turn off — use your real IP' : 'Turn on — route through an exit'}
+                >
+                  <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white transition-transform ${on ? 'translate-x-6' : ''}`} />
+                </button>
+              </div>
+              {on ? (
+                <div className="mt-3">
+                  <label className="label">Exit location</label>
+                  <select className="input" value={settings.globalVpnConfigId ?? ''} onChange={(e) => setExit(e.target.value || undefined)}>
+                    {configs.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name}
+                        {c.running ? '' : ' (starting…)'}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              ) : (
+                <div className="mt-2 text-xs text-ok flex items-center gap-1.5">
+                  <ShieldCheck size={13} /> Using your real IP for app-wide browsing.
+                </div>
+              )}
+            </div>
+          )
+        })()}
     </div>
   )
 }

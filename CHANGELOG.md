@@ -1,5 +1,8 @@
 # Changelog
 
+## v0.1.79
+- App-wide exit node is now a clear On/Off toggle (with a location picker when On) — Off = real/home IP, On routes the whole app through the chosen exit and starts that tunnel. Personas with their own exit still override it.
+
 ## v0.1.78
 - Account Finder is now powered by the Sherlock engine — the bundled Sherlock site database (~480 sites) + its detection logic (status_code / message / response_url) run natively in the app (no Python). Live per-site results, add hits to the link chart.
 - PhoneInfoga-style footprints in the phone pivot — WhatsApp (wa.me), Sync.me, NumLookup, WhoCalld, 800notes, plus reputation/social/leak Google dorks.

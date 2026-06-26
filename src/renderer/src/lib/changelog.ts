@@ -7,6 +7,13 @@ export interface ChangelogEntry {
 /** In-app patch notes. Newest first. Keep in sync with CHANGELOG.md. */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.1.79',
+    date: '2026-06-26',
+    notes: [
+      'Clear app-wide exit toggle — VPN settings now have a simple On/Off switch: Off uses your real/home IP, On routes the whole app through the exit location you pick (and starts that tunnel for you). No more hunting to turn every exit off.'
+    ]
+  },
+  {
     version: '0.1.78',
     date: '2026-06-26',
     notes: [
