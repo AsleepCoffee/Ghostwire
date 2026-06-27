@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.1.87
+- Google is the default search engine (address-bar queries and the Home button → Google; replaces DuckDuckGo).
+- New tabs open blank (`about:blank`) with the address bar auto-focused and selected, like a normal browser. Blank tabs load nothing so the webview can't steal focus; the address bar shows empty and `toUrl` passes `about:` through.
+
 ## v0.1.86
 - API services can carry an always-visible `hint` shown under their key input in Settings. Added a WiGLE hint: paste the long "Encoded for use" value (not the API Name or API Token alone); "API Name:API Token" with the colon also works.
 

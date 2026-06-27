@@ -26,7 +26,10 @@ import { personaColor } from '../lib/constants'
 import { consumePending, subscribeOpen, getPasteImage, subscribePasteImage, setPasteImage, registerTabReader, registerHtmlReader, type OpenRequest, type Autofill, type PasteImage } from '../lib/browserBus'
 import { useSettings } from '../lib/settings'
 
-const HOME = 'https://duckduckgo.com/'
+const HOME = 'https://www.google.com/'
+/** A fresh tab opens blank (no page load) so the address bar keeps focus — just
+ *  like a regular browser's new-tab page. */
+const NEWTAB = 'about:blank'
 
 interface WebviewEl extends HTMLElement {
   goBack(): void
@@ -58,9 +61,10 @@ interface Tab {
 function toUrl(input: string): string {
   const s = input.trim()
   if (!s) return HOME
+  if (/^about:/i.test(s)) return s
   if (/^https?:\/\//i.test(s)) return s
   if (/^[\w-]+(\.[\w-]+)+(\/.*)?$/.test(s)) return `https://${s}`
-  return `https://duckduckgo.com/?q=${encodeURIComponent(s)}`
+  return `https://www.google.com/search?q=${encodeURIComponent(s)}`
 }
 
 /** A page script that fills login AND sign-up fields with a persona's details.
@@ -212,6 +216,7 @@ export function Browser(): JSX.Element {
   const [tabs, setTabs] = useState<Tab[]>([])
   const [activeId, setActiveId] = useState<string>('')
   const [address, setAddress] = useState('')
+  const addressRef = useRef<HTMLInputElement>(null)
   const [toast, setToast] = useState('')
   const [pasteImg, setPasteImg] = useState<PasteImage | null>(getPasteImage())
   const [copied, setCopied] = useState(false)
@@ -409,16 +414,20 @@ export function Browser(): JSX.Element {
   const openTabs = useCallback(
     (req: OpenRequest): void => {
       setTabs((prev) => {
-        const created: Tab[] = req.tabs.map((t) => ({
-          id: newId(),
-          url: toUrl(t.url),
-          initialUrl: toUrl(t.url),
-          title: 'Loading…',
-          loading: true,
-          failed: false,
-          personaId: t.personaId,
-          autofill: t.autofill
-        }))
+        const created: Tab[] = req.tabs.map((t) => {
+          const url = toUrl(t.url)
+          const blank = url === NEWTAB
+          return {
+            id: newId(),
+            url,
+            initialUrl: url,
+            title: blank ? 'New tab' : 'Loading…',
+            loading: !blank,
+            failed: false,
+            personaId: t.personaId,
+            autofill: t.autofill
+          }
+        })
         if (created.length) setActiveId(created[0].id)
         return [...prev, ...created]
       })
@@ -467,8 +476,18 @@ export function Browser(): JSX.Element {
   }, [tabs, activeId, sessionReady])
 
   useEffect(() => {
-    if (active) setAddress(active.url)
+    if (active) setAddress(active.url === NEWTAB ? '' : active.url)
   }, [activeId, active?.url]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Open a fresh blank tab and drop the cursor in the address bar, like a normal
+  // browser. Blank tabs load nothing, so the webview can't steal focus back.
+  const newTab = (): void => {
+    openTabs({ tabs: [{ url: NEWTAB }] })
+    requestAnimationFrame(() => {
+      addressRef.current?.focus()
+      addressRef.current?.select()
+    })
+  }
 
   const updateTab = useCallback((id: string, patch: Partial<Tab>): void => {
     setTabs((prev) => prev.map((t) => (t.id === id ? { ...t, ...patch } : t)))
@@ -538,7 +557,7 @@ export function Browser(): JSX.Element {
           )
         })}
         <button
-          onClick={() => openTabs({ tabs: [{ url: HOME }] })}
+          onClick={newTab}
           className="ml-1 mb-1 p-1.5 rounded-lg text-slate-400 hover:bg-ink-800 shrink-0"
           title="New tab"
         >
@@ -567,10 +586,12 @@ export function Browser(): JSX.Element {
         <form className="flex-1 relative" onSubmit={(e) => (e.preventDefault(), go(address))}>
           <Lock size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
           <input
+            ref={addressRef}
             className="input pl-8 pr-3 bg-ink-850 font-mono text-xs"
             value={address}
             onChange={(e) => setAddress(e.target.value)}
-            placeholder="Search or enter address"
+            onFocus={(e) => e.target.select()}
+            placeholder="Search Google or enter address"
             spellCheck={false}
             disabled={!active}
           />
@@ -730,7 +751,7 @@ export function Browser(): JSX.Element {
           <div className="absolute inset-0 flex flex-col items-center justify-center bg-ink-950 text-slate-500 gap-3">
             <Globe size={32} className="text-slate-600" />
             <div>No tabs open.</div>
-            <button className="btn-primary" onClick={() => openTabs({ tabs: [{ url: HOME }] })}>
+            <button className="btn-primary" onClick={newTab}>
               <Plus size={16} /> New tab
             </button>
           </div>

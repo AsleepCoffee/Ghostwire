@@ -7,6 +7,14 @@ export interface ChangelogEntry {
 /** In-app patch notes. Newest first. Keep in sync with CHANGELOG.md. */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.1.87',
+    date: '2026-06-27',
+    notes: [
+      'Google is now the default search engine — typing a query in the address bar (or the home button) goes to Google.',
+      'New tabs behave like a regular browser — opening a tab now lands on a blank page with the address bar focused and selected, so you can start typing a search or URL immediately.'
+    ]
+  },
+  {
     version: '0.1.86',
     date: '2026-06-27',
     notes: [
