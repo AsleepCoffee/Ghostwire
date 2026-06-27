@@ -1,5 +1,8 @@
 # Changelog
 
+## v0.1.88
+- Fixed auto-update "Cannot find latest.yml … 404" that happened when checking for updates mid-build. The release workflow now pre-creates the GitHub release as a **draft** (drafts aren't exposed as "latest", so electron-updater can't see a half-built release), builds/uploads Windows + Linux into it, then a final `publish` job flips it to published+latest only after both installers are up. `releaseType` is now `draft` in electron-builder config. The publish job runs if Windows succeeded even if Linux fails, so a flaky Linux build never blocks the Windows update.
+
 ## v0.1.87
 - Google is the default search engine (address-bar queries and the Home button → Google; replaces DuckDuckGo).
 - New tabs open blank (`about:blank`) with the address bar auto-focused and selected, like a normal browser. Blank tabs load nothing so the webview can't steal focus; the address bar shows empty and `toUrl` passes `about:` through.

@@ -7,6 +7,13 @@ export interface ChangelogEntry {
 /** In-app patch notes. Newest first. Keep in sync with CHANGELOG.md. */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.1.88',
+    date: '2026-06-27',
+    notes: [
+      'Fixed “Update check failed … Cannot find latest.yml” — releases are now built as a draft and only published once the installers are fully uploaded, so checking for updates while a new version is still building no longer errors out.'
+    ]
+  },
+  {
     version: '0.1.87',
     date: '2026-06-27',
     notes: [
