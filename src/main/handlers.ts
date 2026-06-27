@@ -25,6 +25,7 @@ import type {
   Note,
   Persona,
   Project,
+  RedditItem,
   ToolLink
 } from '../shared/types'
 
@@ -1488,6 +1489,112 @@ export function registerHandlers(): void {
           corpServices: Number(s.total_corporate_services ?? 0)
         }))
       }
+    } catch (e) {
+      return { ok: false, error: String((e as Error)?.message ?? e) }
+    }
+  })
+
+  // Reddit archive lookup — recover a deleted post/comment author or a user's
+  // activity from PullPush + Arctic Shift. These mirrors keep a copy of the
+  // ORIGINAL author/body captured before deletion, so "[deleted]" content on
+  // live Reddit can still be attributed.
+  ipcMain.handle('intel:reddit', async (_e, input: string, mode: 'thread' | 'user') => {
+    const raw = String(input ?? '').trim()
+    if (!raw) return { ok: false, error: 'Enter a Reddit URL, post id, or username.' }
+
+    // Decide what we're looking at. A URL always wins over the mode hint.
+    let kind: 'thread' | 'user' = mode === 'user' ? 'user' : 'thread'
+    let id = ''
+    let name = ''
+    let mc: RegExpMatchArray | null
+    if ((mc = raw.match(/comments\/([a-z0-9]+)/i))) {
+      kind = 'thread'
+      id = mc[1].toLowerCase()
+    } else if ((mc = raw.match(/(?:^|reddit\.com\/|\/)(?:u|user)\/([A-Za-z0-9_-]+)/i))) {
+      kind = 'user'
+      name = mc[1]
+    } else {
+      const bare = raw.replace(/^\/+|\/+$/g, '').replace(/^u\//i, '')
+      if (mode === 'thread') {
+        kind = 'thread'
+        id = bare.toLowerCase()
+      } else {
+        kind = 'user'
+        name = bare
+      }
+    }
+
+    const mapSub = (x: Record<string, unknown>): RedditItem => ({
+      kind: 'submission',
+      id: String(x.id ?? ''),
+      author: String(x.author ?? '[unknown]'),
+      authorFullname: x.author_fullname ? String(x.author_fullname) : undefined,
+      subreddit: String(x.subreddit ?? ''),
+      title: String(x.title ?? ''),
+      body: String(x.selftext ?? ''),
+      created: Number(x.created_utc ?? 0),
+      score: Number(x.score ?? 0),
+      permalink: x.permalink ? `https://www.reddit.com${x.permalink}` : `https://redd.it/${x.id ?? ''}`
+    })
+    const mapCom = (x: Record<string, unknown>): RedditItem => ({
+      kind: 'comment',
+      id: String(x.id ?? ''),
+      author: String(x.author ?? '[unknown]'),
+      authorFullname: x.author_fullname ? String(x.author_fullname) : undefined,
+      subreddit: String(x.subreddit ?? ''),
+      body: String(x.body ?? ''),
+      created: Number(x.created_utc ?? 0),
+      score: Number(x.score ?? 0),
+      permalink: x.permalink ? `https://www.reddit.com${x.permalink}` : `https://www.reddit.com/comments/${x.link_id ? String(x.link_id).replace(/^t3_/, '') : ''}//${x.id ?? ''}`
+    })
+    const getJson = async (url: string): Promise<Record<string, unknown>[]> => {
+      try {
+        const res = await net.fetch(url, { headers: { Accept: 'application/json' } })
+        if (!res.ok) return []
+        const j = (await res.json()) as { data?: unknown }
+        const d = j?.data ?? j
+        return Array.isArray(d) ? (d as Record<string, unknown>[]) : d ? [d as Record<string, unknown>] : []
+      } catch {
+        return []
+      }
+    }
+
+    try {
+      if (kind === 'thread') {
+        if (!id) return { ok: false, error: 'Could not find a post id in that input.' }
+        // Submission: PullPush first, Arctic Shift as fallback/confirmation.
+        let subs = await getJson(`https://api.pullpush.io/reddit/submission/search?ids=${id}`)
+        let source = subs.length ? 'PullPush' : ''
+        if (!subs.length) {
+          subs = await getJson(`https://arctic-shift.photon-reddit.com/api/posts/ids?ids=${id}`)
+          if (subs.length) source = 'Arctic Shift'
+        }
+        // Thread comments (recovers deleted commenters), best-scored first.
+        const coms = await getJson(`https://api.pullpush.io/reddit/comment/search?link_id=t3_${id}&size=100&sort=desc&sort_type=score`)
+        if (!subs.length && !coms.length) return { ok: false, error: 'No archived copy found for that post.' }
+        return {
+          ok: true,
+          mode: 'thread',
+          submission: subs.length ? mapSub(subs[0]) : undefined,
+          items: coms.map(mapCom).filter((c) => c.id),
+          source: source || 'PullPush'
+        }
+      }
+
+      // User mode — recent submissions + comments from the archive.
+      const cleanName = name.replace(/^\/+/, '').trim()
+      if (!cleanName) return { ok: false, error: 'Enter a username.' }
+      const [subs, coms] = await Promise.all([
+        getJson(`https://api.pullpush.io/reddit/submission/search?author=${encodeURIComponent(cleanName)}&size=25&sort=desc`),
+        getJson(`https://api.pullpush.io/reddit/comment/search?author=${encodeURIComponent(cleanName)}&size=25&sort=desc`)
+      ])
+      const items = [...subs.map(mapSub), ...coms.map(mapCom)]
+        .filter((i) => i.id)
+        .sort((a, b) => b.created - a.created)
+        .slice(0, 50)
+      if (!items.length) return { ok: false, error: `No archived activity found for u/${cleanName}.` }
+      const fullname = items.find((i) => i.authorFullname)?.authorFullname
+      return { ok: true, mode: 'user', username: cleanName, authorFullname: fullname, items, source: 'PullPush' }
     } catch (e) {
       return { ok: false, error: String((e as Error)?.message ?? e) }
     }

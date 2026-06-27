@@ -7,6 +7,13 @@ export interface ChangelogEntry {
 /** In-app patch notes. Newest first. Keep in sync with CHANGELOG.md. */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.1.89',
+    date: '2026-06-27',
+    notes: [
+      'New Reddit archive tool — recover the username behind a deleted post or comment, or pull a user’s history, from the PullPush & Arctic Shift mirrors (no key). Paste a thread URL to get the original author even when Reddit shows [deleted], plus the usernames of deleted comments. Find it in the sidebar under Research, or via ⌘K.'
+    ]
+  },
+  {
     version: '0.1.88',
     date: '2026-06-27',
     notes: [

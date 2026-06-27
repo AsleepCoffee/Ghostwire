@@ -313,6 +313,38 @@ export interface WigleResult {
   results?: WigleNetwork[]
 }
 
+/** A post or comment recovered from a Reddit archive (PullPush / Arctic Shift).
+ *  The archived `author` survives even after the account/content is deleted. */
+export interface RedditItem {
+  kind: 'submission' | 'comment'
+  id: string
+  author: string
+  /** Reddit's internal account id (t2_xxxxx) — stable even if the name changes. */
+  authorFullname?: string
+  subreddit: string
+  title?: string
+  body: string
+  /** Unix seconds. */
+  created: number
+  score?: number
+  permalink: string
+}
+
+export interface RedditResult {
+  ok: boolean
+  error?: string
+  mode?: 'thread' | 'user'
+  /** thread mode — the original post (with its real author, even if deleted). */
+  submission?: RedditItem
+  /** user mode — the resolved username. */
+  username?: string
+  authorFullname?: string
+  /** Recovered items: comments for a thread, or recent activity for a user. */
+  items?: RedditItem[]
+  /** How many of each archive source returned data, for transparency. */
+  source?: string
+}
+
 export interface ShodanService {
   port: number
   transport: string
@@ -607,6 +639,10 @@ export interface OsintApi {
     shodan(target: string, key: string): Promise<ShodanResult>
     /** WiGLE wireless-network search by SSID or BSSID (needs a WiGLE token). */
     wigle(query: string, kind: 'ssid' | 'bssid', key: string): Promise<WigleResult>
+    /** Reddit archive lookup — recover a deleted post/comment author or a user's
+     *  activity from PullPush / Arctic Shift (no key). Input is a URL, post id,
+     *  or username; mode hints how to treat a bare token. */
+    reddit(input: string, mode: 'thread' | 'user'): Promise<RedditResult>
     /** The bundled Sherlock site list (name + url template with {}). */
     sherlockSites(): Promise<{ name: string; url: string }[]>
     /** Check one Sherlock site for a username. */

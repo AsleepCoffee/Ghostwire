@@ -92,6 +92,7 @@ export function CommandPalette(): JSX.Element | null {
       ['/co-locate', 'Proximity Search', 'Crosshair'],
       ['/fb-id', 'Profile ID (Facebook / Instagram)', 'Fingerprint'],
       ['/wireless', 'Wireless (WiGLE)', 'Wifi'],
+      ['/reddit', 'Reddit archive (deleted authors)', 'MessageSquare'],
       ['/dork', 'Dork & Pivot', 'Binoculars'],
       ['/tools', 'Tools & Resources', 'Wrench'],
       ['/exam-prep', 'PORP Exam Prep', 'GraduationCap'],
