@@ -7,6 +7,13 @@ export interface ChangelogEntry {
 /** In-app patch notes. Newest first. Keep in sync with CHANGELOG.md. */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.1.95',
+    date: '2026-06-27',
+    notes: [
+      'Auto-update pipeline fixed (for real). Releases are now staged as a prerelease and flipped live only once complete — this finally gets the installer, Linux packages and update manifest onto a single release reliably. Carries all the pending features: Domain Recon and “Add to investigation” across every tool.'
+    ]
+  },
+  {
     version: '0.1.94',
     date: '2026-06-27',
     notes: [

@@ -1,5 +1,8 @@
 # Changelog
 
+## v0.1.95
+- Release pipeline: stage as a **prerelease** instead of a draft. `gh release upload/view <tag>` 404s on drafts on the ubuntu runners (GitHub's `/releases/tags/{tag}` excludes drafts), which broke v0.1.94's Linux upload + publish steps. A prerelease is published (so it's found by tag on every runner) but is excluded from `/releases/latest` and ignored by electron-updater (`allowPrerelease` is false), so it stays invisible to auto-update until the publish job flips it to a full latest release. Carries all pending features (Domain Recon, add-to-investigation everywhere).
+
 ## v0.1.94
 - Release pipeline rewritten to be deterministic. electron-builder no longer publishes at all (it kept creating duplicate drafts per tag and splitting assets — v0.1.92/93 each shipped a draft missing `latest.yml` and/or the `.exe`). Now `gh` creates one draft, both OS jobs build with `--publish never`, and every artifact is uploaded with `gh release upload` into that single draft; the publish job verifies `latest.yml` then un-drafts. Also set the NSIS `artifactName` to a hyphenated form so the on-disk installer name matches what `latest.yml` references. Includes all v0.1.92–93 features.
 

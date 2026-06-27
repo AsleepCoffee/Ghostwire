@@ -29,21 +29,26 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
 
-      # We do NOT let electron-builder publish. Across the two OS jobs it kept
-      # creating extra draft releases for the same tag and splitting assets across
-      # them (v0.1.88-93 all hit variants of this). Instead: gh owns exactly ONE
-      # draft, electron-builder only BUILDS (--publish never), and every asset is
-      # uploaded explicitly with `gh release upload`. A draft isn't exposed as
-      # "latest", so update checks during the build keep seeing the last good
-      # release. The publish job flips the draft live once latest.yml is verified.
-      - name: Create the draft release (gh owns it)
+      # We do NOT let electron-builder publish — across the two OS jobs it kept
+      # creating duplicate releases for the tag and splitting assets (v0.1.88-93).
+      # Instead gh owns ONE release, electron-builder only BUILDS (--publish never),
+      # and assets are uploaded explicitly with `gh release upload`.
+      #
+      # The release is created as a PRERELEASE, not a draft. A draft can't be
+      # resolved by `gh release upload/view <tag>` on the ubuntu runners (GitHub's
+      # /releases/tags/{tag} endpoint 404s on drafts — that broke v0.1.94's Linux
+      # + publish jobs). A prerelease IS published so it's found by tag on every
+      # runner, yet it's excluded from /releases/latest and ignored by
+      # electron-updater (allowPrerelease=false), so it stays invisible to
+      # auto-update until the publish job flips it to a full latest release.
+      - name: Create the prerelease (gh owns it)
         shell: bash
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           TAG="${GITHUB_REF_NAME}"
           if ! gh release view "$TAG" >/dev/null 2>&1; then
-            gh release create "$TAG" --draft --title "$TAG" --notes "Build in progress…"
+            gh release create "$TAG" --prerelease --title "$TAG" --notes "Build in progress…"
           fi
 
       - name: Build Windows installer (no publish)
@@ -147,11 +152,12 @@ jobs:
         run: |
           TAG="${GITHUB_REF_NAME}"
           ASSETS=$(gh release view "$TAG" --json assets --jq '.assets[].name')
-          echo "Draft assets for $TAG:"; echo "$ASSETS"
+          echo "Prerelease assets for $TAG:"; echo "$ASSETS"
           # Safety net: never expose a release as "latest" without the Windows
           # auto-update manifest, or every Windows client 404s on latest.yml.
           if ! echo "$ASSETS" | grep -qx 'latest.yml'; then
-            echo "::error::latest.yml is missing from the $TAG draft — refusing to publish."
+            echo "::error::latest.yml is missing from the $TAG release — refusing to publish."
             exit 1
           fi
-          gh release edit "$TAG" --draft=false --latest
+          # Flip prerelease -> full release and mark it latest.
+          gh release edit "$TAG" --prerelease=false --latest
