@@ -1,5 +1,8 @@
 # Changelog
 
+## v0.1.93
+- Fixed the release pipeline. v0.1.92 built successfully but the publish job's safety net correctly refused to ship it: electron-builder running in both the Windows and Linux jobs nondeterministically created **two draft releases** for the tag (Windows assets + `latest.yml` on one, Linux on the other), and `gh release view` resolved to the Linux-only draft. Fix: only the Windows job publishes via electron-builder (into one draft, with `latest.yml`); the Linux job now builds with `--publish never` and **uploads its packages into that same draft via `gh release upload`**. One release object, deterministic. Includes all v0.1.92 features.
+
 ## v0.1.92
 - "Add to investigation" everywhere — wired the shared `addToInvestigation` helper into the remaining research tools: Profile ID (username + social profile w/ numeric id), Proximity Search (located co-locations), Cross-Reference Images (shared-source hosts), Wireless/WiGLE (geolocated networks), and Account Finder (now records data points too, via the helper). Each pushes findings onto the active investigation's graph + known information, de-duped and auto-linked.
 

@@ -7,6 +7,13 @@ export interface ChangelogEntry {
 /** In-app patch notes. Newest first. Keep in sync with CHANGELOG.md. */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.1.93',
+    date: '2026-06-27',
+    notes: [
+      'Fixed the release pipeline so updates publish reliably (v0.1.92 built fine but couldn’t go live). This release includes everything from v0.1.92 — “Add to investigation” buttons across Profile ID, Proximity, Cross-Reference, Wireless and Account Finder.'
+    ]
+  },
+  {
     version: '0.1.92',
     date: '2026-06-27',
     notes: [

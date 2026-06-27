@@ -96,12 +96,21 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      # electron-builder finds the existing draft created by release-win (same
-      # version tag) and appends the Linux packages to it — no second release.
-      - name: Build & publish Linux packages into the same draft (AppImage + deb)
+      # Build Linux WITHOUT electron-builder publishing — a second electron-builder
+      # publish would race and create its own draft for the tag (one draft ends up
+      # with the Windows assets + latest.yml, the other with Linux), which is what
+      # broke v0.1.92. Instead, build locally then explicitly upload into the ONE
+      # draft electron-builder created in release-win. Deterministic: one release.
+      - name: Build Linux packages (no publish)
+        run: npm run build:linux
+
+      - name: Upload Linux packages into the Windows draft
+        shell: bash
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: npm run release:linux
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          gh release upload "$TAG" dist/*.AppImage dist/*.deb dist/latest-linux.yml --clobber
 
   # Flip the draft to a published release only after BOTH installers are uploaded,
   # so it becomes "latest" (and visible to auto-update) only when latest.yml and
