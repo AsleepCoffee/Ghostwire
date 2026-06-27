@@ -7,6 +7,13 @@ export interface ChangelogEntry {
 /** In-app patch notes. Newest first. Keep in sync with CHANGELOG.md. */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.1.94',
+    date: '2026-06-27',
+    notes: [
+      'Release pipeline fixed for good — installers are now uploaded explicitly to a single release draft instead of relying on the builder’s publisher (which kept splitting files across duplicate drafts and blocking updates). Includes everything from v0.1.92–93 (“Add to investigation” across all tools).'
+    ]
+  },
+  {
     version: '0.1.93',
     date: '2026-06-27',
     notes: [

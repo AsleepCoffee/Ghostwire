@@ -29,17 +29,37 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
 
-      # electron-builder is the SOLE owner of the release: with releaseType=draft
-      # it creates ONE draft for this version and uploads the Windows installer +
-      # latest.yml into it. (We must NOT pre-create the release with `gh` — that
-      # made a second draft for the same tag, and the publish job could un-draft
-      # the wrong one, shipping a release with no latest.yml. v0.1.88/89 hit that.)
-      # A draft isn't exposed as "latest", so update checks during the build keep
-      # seeing the previous good release instead of 404-ing on a half-built one.
-      - name: Build & publish Windows installer (into a draft)
+      # We do NOT let electron-builder publish. Across the two OS jobs it kept
+      # creating extra draft releases for the same tag and splitting assets across
+      # them (v0.1.88-93 all hit variants of this). Instead: gh owns exactly ONE
+      # draft, electron-builder only BUILDS (--publish never), and every asset is
+      # uploaded explicitly with `gh release upload`. A draft isn't exposed as
+      # "latest", so update checks during the build keep seeing the last good
+      # release. The publish job flips the draft live once latest.yml is verified.
+      - name: Create the draft release (gh owns it)
+        shell: bash
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: npm run release
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          if ! gh release view "$TAG" >/dev/null 2>&1; then
+            gh release create "$TAG" --draft --title "$TAG" --notes "Build in progress…"
+          fi
+
+      - name: Build Windows installer (no publish)
+        run: npm run build:win
+
+      - name: Upload Windows installer + update manifest to the draft
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          V="${TAG#v}"
+          gh release upload "$TAG" \
+            "dist/GhostWire-Setup-${V}.exe" \
+            "dist/GhostWire-Setup-${V}.exe.blockmap" \
+            "dist/latest.yml" --clobber
 
       - name: Set release notes from CHANGELOG
         shell: bash
@@ -96,15 +116,13 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      # Build Linux WITHOUT electron-builder publishing — a second electron-builder
-      # publish would race and create its own draft for the tag (one draft ends up
-      # with the Windows assets + latest.yml, the other with Linux), which is what
-      # broke v0.1.92. Instead, build locally then explicitly upload into the ONE
-      # draft electron-builder created in release-win. Deterministic: one release.
+      # Build only (no publish), then upload into the single gh-owned draft that
+      # release-win created. Same pattern as Windows — gh is the only thing that
+      # touches the release, so assets can't be split across rival drafts.
       - name: Build Linux packages (no publish)
         run: npm run build:linux
 
-      - name: Upload Linux packages into the Windows draft
+      - name: Upload Linux packages into the draft
         shell: bash
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

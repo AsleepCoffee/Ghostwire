@@ -1,5 +1,8 @@
 # Changelog
 
+## v0.1.94
+- Release pipeline rewritten to be deterministic. electron-builder no longer publishes at all (it kept creating duplicate drafts per tag and splitting assets — v0.1.92/93 each shipped a draft missing `latest.yml` and/or the `.exe`). Now `gh` creates one draft, both OS jobs build with `--publish never`, and every artifact is uploaded with `gh release upload` into that single draft; the publish job verifies `latest.yml` then un-drafts. Also set the NSIS `artifactName` to a hyphenated form so the on-disk installer name matches what `latest.yml` references. Includes all v0.1.92–93 features.
+
 ## v0.1.93
 - Fixed the release pipeline. v0.1.92 built successfully but the publish job's safety net correctly refused to ship it: electron-builder running in both the Windows and Linux jobs nondeterministically created **two draft releases** for the tag (Windows assets + `latest.yml` on one, Linux on the other), and `gh release view` resolved to the Linux-only draft. Fix: only the Windows job publishes via electron-builder (into one draft, with `latest.yml`); the Linux job now builds with `--publish never` and **uploads its packages into that same draft via `gh release upload`**. One release object, deterministic. Includes all v0.1.92 features.
 
