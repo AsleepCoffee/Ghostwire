@@ -7,6 +7,13 @@ export interface ChangelogEntry {
 /** In-app patch notes. Newest first. Keep in sync with CHANGELOG.md. */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.1.85',
+    date: '2026-06-27',
+    notes: [
+      'Browser session persists across restarts — your open tabs (and which one was active) are now restored when you reopen GhostWire, just as you left them. Logins/cookies were already kept per persona; now the tabs come back too.'
+    ]
+  },
+  {
     version: '0.1.84',
     date: '2026-06-26',
     notes: [

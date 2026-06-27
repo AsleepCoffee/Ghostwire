@@ -1,5 +1,8 @@
 # Changelog
 
+## v0.1.85
+- Browser session persists across restarts — open tabs (url + persona) and the active tab are saved to settings (`browserTabs`/`browserActiveIndex`) and restored on launch. A `sessionReady` gate prevents the restore render from overwriting the saved snapshot before the tabs commit.
+
 ## v0.1.84
 - Add notes to screenshots — capturing a page/region or saving a page now opens an annotate panel (caption + notes) before filing. The evidence is saved first (returns an id), then `setTitle`/`setNote` enrich it, so dismissing the panel keeps the screenshot.
 

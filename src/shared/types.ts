@@ -242,6 +242,10 @@ export interface AppSettings {
   selectorsByProject?: Record<string, string[]>
   /** Highlight selectors on pages (default on when selectors exist). */
   highlightSelectors?: boolean
+  /** Open in-app browser tabs, restored on next launch so the session persists. */
+  browserTabs?: { url: string; personaId?: string }[]
+  /** Index of the active tab among browserTabs, restored on next launch. */
+  browserActiveIndex?: number
 }
 
 export interface BackupInfo {

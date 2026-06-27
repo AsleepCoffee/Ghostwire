@@ -220,7 +220,9 @@ export function Browser(): JSX.Element {
   const [annotate, setAnnotate] = useState<{ id: string; title: string; note: string; thumb: string } | null>(null)
   const [savingNote, setSavingNote] = useState(false)
   const refs = useRef<Map<string, WebviewEl>>(new Map())
-  const { settings, update } = useSettings()
+  const { settings, update, loaded } = useSettings()
+  const restored = useRef(false)
+  const [sessionReady, setSessionReady] = useState(false)
   const selKey = settings.activeProjectId ?? '_global'
   const selectors = settings.selectorsByProject?.[selKey] ?? []
   const highlightOn = settings.highlightSelectors !== false
@@ -424,13 +426,45 @@ export function Browser(): JSX.Element {
     []
   )
 
-  // Deliver queued open-requests and subscribe for new ones. No default tab.
+  // Restore the previous session's tabs once settings have loaded, then deliver
+  // any queued open-request on top (an explicit pivot/open wins the active tab).
   useEffect(() => {
+    if (!loaded || restored.current) return
+    restored.current = true
+    const saved = settings.browserTabs ?? []
+    if (saved.length) {
+      const created: Tab[] = saved.map((t) => ({
+        id: newId(),
+        url: toUrl(t.url),
+        initialUrl: toUrl(t.url),
+        title: 'Loading…',
+        loading: true,
+        failed: false,
+        personaId: t.personaId
+      }))
+      setTabs(created)
+      const idx = Math.min(Math.max(settings.browserActiveIndex ?? 0, 0), created.length - 1)
+      setActiveId(created[idx].id)
+    }
     const pending = consumePending()
     if (pending) openTabs(pending)
-    const unsub = subscribeOpen(openTabs)
-    return unsub
-  }, [openTabs])
+    // Flips in the same render batch as the setTabs above, so the persist effect
+    // below won't fire (and overwrite the saved session) until tabs reflect it.
+    setSessionReady(true)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loaded])
+
+  // Subscribe for new open-requests from elsewhere in the app.
+  useEffect(() => subscribeOpen(openTabs), [openTabs])
+
+  // Persist the open tabs (url + persona) so the session survives a restart.
+  useEffect(() => {
+    if (!sessionReady) return
+    const snapshot = tabs.map((t) => ({ url: t.url, personaId: t.personaId }))
+    const activeIndex = Math.max(0, tabs.findIndex((t) => t.id === activeId))
+    update({ browserTabs: snapshot, browserActiveIndex: activeIndex })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tabs, activeId, sessionReady])
 
   useEffect(() => {
     if (active) setAddress(active.url)
