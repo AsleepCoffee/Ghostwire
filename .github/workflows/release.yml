@@ -29,23 +29,14 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
 
-      # Pre-create the release as a DRAFT so electron-builder's concurrent artifact
-      # uploads don't race to create it (that race throws 422 "tag_name
-      # already_exists" and fails the publish). Crucially, a draft is NOT exposed
-      # by GitHub as the "latest" release, so users checking for updates during
-      # the build don't see a published-but-empty release and 404 on latest.yml.
-      # The final `publish` job flips it to published once all assets are up.
-      - name: Ensure the GitHub draft release exists
-        shell: bash
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          TAG="${GITHUB_REF_NAME}"
-          if ! gh release view "$TAG" >/dev/null 2>&1; then
-            gh release create "$TAG" --draft --title "$TAG" --notes "Build in progress…" || true
-          fi
-
-      - name: Build & publish Windows installer
+      # electron-builder is the SOLE owner of the release: with releaseType=draft
+      # it creates ONE draft for this version and uploads the Windows installer +
+      # latest.yml into it. (We must NOT pre-create the release with `gh` — that
+      # made a second draft for the same tag, and the publish job could un-draft
+      # the wrong one, shipping a release with no latest.yml. v0.1.88/89 hit that.)
+      # A draft isn't exposed as "latest", so update checks during the build keep
+      # seeing the previous good release instead of 404-ing on a half-built one.
+      - name: Build & publish Windows installer (into a draft)
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: npm run release
@@ -105,19 +96,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      # The draft release already exists (created by release-win), but guard anyway
-      # so Linux's concurrent uploads never race to create it either.
-      - name: Ensure the GitHub draft release exists
-        shell: bash
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          TAG="${GITHUB_REF_NAME}"
-          if ! gh release view "$TAG" >/dev/null 2>&1; then
-            gh release create "$TAG" --draft --title "$TAG" --notes "Build in progress…" || true
-          fi
-
-      - name: Build & publish Linux packages (AppImage + deb)
+      # electron-builder finds the existing draft created by release-win (same
+      # version tag) and appends the Linux packages to it — no second release.
+      - name: Build & publish Linux packages into the same draft (AppImage + deb)
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: npm run release:linux
@@ -138,4 +119,12 @@ jobs:
           GH_REPO: ${{ github.repository }}
         run: |
           TAG="${GITHUB_REF_NAME}"
+          ASSETS=$(gh release view "$TAG" --json assets --jq '.assets[].name')
+          echo "Draft assets for $TAG:"; echo "$ASSETS"
+          # Safety net: never expose a release as "latest" without the Windows
+          # auto-update manifest, or every Windows client 404s on latest.yml.
+          if ! echo "$ASSETS" | grep -qx 'latest.yml'; then
+            echo "::error::latest.yml is missing from the $TAG draft — refusing to publish."
+            exit 1
+          fi
           gh release edit "$TAG" --draft=false --latest

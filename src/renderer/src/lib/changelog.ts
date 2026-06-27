@@ -7,6 +7,13 @@ export interface ChangelogEntry {
 /** In-app patch notes. Newest first. Keep in sync with CHANGELOG.md. */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.1.90',
+    date: '2026-06-27',
+    notes: [
+      'Really fixed auto-update this time — the previous fix accidentally shipped two releases (0.1.88, 0.1.89) without the Windows update manifest, so update checks 404’d. Releases now build into a single draft and only go live once the manifest is verified present.'
+    ]
+  },
+  {
     version: '0.1.89',
     date: '2026-06-27',
     notes: [

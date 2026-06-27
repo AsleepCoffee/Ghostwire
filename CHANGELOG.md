@@ -1,5 +1,8 @@
 # Changelog
 
+## v0.1.90
+- Fixed auto-update properly. The v0.1.88 draft-flow change caused two draft releases per tag (one from `gh release create`, one from electron-builder); the publish job un-drafted the Linux-only one, so v0.1.88 and v0.1.89 shipped with **no `latest.yml`** → Windows update checks 404'd. Now electron-builder is the sole owner of a single draft (Windows job creates it, Linux job appends to it), the conflicting `gh` pre-create is removed, and the publish job **refuses to un-draft unless `latest.yml` is present** (safety net). Note: v0.1.88/0.1.89 GitHub releases remain missing their Windows assets; v0.1.90 onward are complete.
+
 ## v0.1.89
 - New **Reddit archive** tool (Research → Reddit archive, or ⌘K). Recovers the original author of a deleted post/comment and a user's recent activity from PullPush + Arctic Shift (no API key). Thread mode resolves the OP even when Reddit shows `[deleted]` and lists recovered comment authors; Username mode pulls recent submissions/comments. Quick links to profile, Reveddit, and Camas. Backed by a new `intel:reddit(input, mode)` handler.
 
