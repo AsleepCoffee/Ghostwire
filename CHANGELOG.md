@@ -1,5 +1,8 @@
 # Changelog
 
+## v0.1.92
+- "Add to investigation" everywhere — wired the shared `addToInvestigation` helper into the remaining research tools: Profile ID (username + social profile w/ numeric id), Proximity Search (located co-locations), Cross-Reference Images (shared-source hosts), Wireless/WiGLE (geolocated networks), and Account Finder (now records data points too, via the helper). Each pushes findings onto the active investigation's graph + known information, de-duped and auto-linked.
+
 ## v0.1.91
 - New **Domain Recon** tool (`intel:reconDomain`, Research → Domain Recon). Automated passive recon equivalent to subfinder + assetfinder + amass (passive) + httprobe run together: aggregates subdomains from crt.sh, HackerTarget, AlienVault OTX, certSpotter and Anubis; adds DNS (A/MX/NS/TXT) + RDAP WHOIS; then probes every host (concurrency pool, https→http) for liveness, status, IP and page `<title>`. Results are pickable checkboxes that push selected hosts/IPs/emails/org onto the investigation graph + data points, anchored to the domain and auto-linked. No keys, no external binaries.
 - New shared `lib/investigation.ts` helper (`addToInvestigation` / `addDataPoints`) — find-or-create the active investigation's board, de-dupe nodes, link to an anchor, auto-link, and record data points. 

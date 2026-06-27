@@ -7,6 +7,13 @@ export interface ChangelogEntry {
 /** In-app patch notes. Newest first. Keep in sync with CHANGELOG.md. */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.1.92',
+    date: '2026-06-27',
+    notes: [
+      'Add to investigation from every research tool — Profile ID, Proximity Search, Cross-Reference Images, Wireless (WiGLE) and Account Finder now have one-click buttons that push their findings (usernames, profiles, locations, networks, shared-source sites, accounts) straight onto the link chart and into the case’s known information, auto-linked.'
+    ]
+  },
+  {
     version: '0.1.91',
     date: '2026-06-27',
     notes: [

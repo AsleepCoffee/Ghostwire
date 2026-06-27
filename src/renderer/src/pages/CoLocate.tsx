@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
-import { Crosshair, Loader2, Search, MapPin, Globe, Copy, Check } from 'lucide-react'
+import { Crosshair, Loader2, Search, MapPin, Globe, Copy, Check, Workflow } from 'lucide-react'
 import { api } from '../lib/api'
 import { useOpenInBrowser } from '../lib/browserBus'
+import { useSettings } from '../lib/settings'
+import { addToInvestigation } from '../lib/investigation'
 
 const enc = encodeURIComponent
 const esc = (s: string): string => s.replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[c]!)
@@ -60,6 +62,8 @@ function addr(tags: Record<string, string> = {}): string {
 
 export function CoLocate(): JSX.Element {
   const openInBrowser = useOpenInBrowser()
+  const { settings } = useSettings()
+  const [toast, setToast] = useState('')
   const [a, setA] = useState('')
   const [b, setB] = useState('')
   const [range, setRange] = useState('150')
@@ -180,6 +184,26 @@ export function CoLocate(): JSX.Element {
     setTimeout(() => setCopied(''), 1200)
   }
 
+  const flash = (m: string): void => {
+    setToast(m)
+    setTimeout(() => setToast(''), 3000)
+  }
+
+  // Add a co-location to the investigation as a location entity (with coords).
+  const addHit = async (h: Hit): Promise<void> => {
+    await addToInvestigation({
+      projectId: settings.activeProjectId ?? null,
+      entities: [
+        {
+          type: 'location',
+          label: `${h.bName} (near ${h.aName})`,
+          props: { lat: String(h.bLat), lng: String(h.bLng), address: h.bAddr, near: h.aName, distance_m: String(Math.round(h.dist)) }
+        }
+      ]
+    })
+    flash(settings.activeProjectId ? 'Location added to the investigation' : 'Added to a chart — set an active investigation to file it')
+  }
+
   return (
     <div className="h-full flex flex-col">
       <div className="px-6 py-4 border-b border-ink-700">
@@ -244,6 +268,9 @@ export function CoLocate(): JSX.Element {
                       <button className="btn-ghost border border-ink-600 text-[11px]" onClick={() => copy(h)}>
                         {copied === `${h.bLat},${h.bLng}` ? <Check size={12} className="text-ok" /> : <Copy size={12} />} Coords
                       </button>
+                      <button className="btn-ghost border border-ink-600 text-[11px]" onClick={() => addHit(h)} title="Add this location to the investigation">
+                        <Workflow size={12} /> Case
+                      </button>
                     </div>
                   </div>
                 ))}
@@ -264,6 +291,7 @@ export function CoLocate(): JSX.Element {
           )}
         </div>
       </div>
+      {toast && <div className="fixed bottom-5 right-5 z-[600] card px-4 py-2.5 text-sm text-slate-200 border-accent/40 shadow-xl">{toast}</div>}
     </div>
   )
 }

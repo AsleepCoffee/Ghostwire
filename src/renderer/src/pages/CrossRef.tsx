@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Layers, Loader2, Download, Trash2, ExternalLink, Plus, Crosshair, Star } from 'lucide-react'
+import { Layers, Loader2, Download, Trash2, ExternalLink, Plus, Crosshair, Star, Workflow } from 'lucide-react'
 import { api, type Evidence } from '../lib/api'
 import { useSettings } from '../lib/settings'
 import { useOpenTabs, setPasteImage, readActiveTab } from '../lib/browserBus'
+import { addToInvestigation } from '../lib/investigation'
 import { EmptyState } from '../components/ui'
 
 /** Reverse-image engines that render their results in-page (so we can scrape the
@@ -60,6 +61,15 @@ export function CrossRef(): JSX.Element {
   const [links, setLinks] = useState<Record<string, string[]>>({})
   const [busy, setBusy] = useState<string>('')
   const [note, setNote] = useState('')
+
+  // Add a shared source page to the investigation as a domain (host) entity.
+  const addSource = async (host: string, url: string): Promise<void> => {
+    await addToInvestigation({
+      projectId: settings.activeProjectId ?? null,
+      entities: [{ type: 'domain', label: host, props: { url } }]
+    })
+    setNote(settings.activeProjectId ? `Added ${host} to the investigation` : `Added ${host} to a chart — set an active investigation to file it`)
+  }
 
   useEffect(() => {
     api.evidence.list(settings.activeProjectId ?? null).then((list) => setEvidence(list.filter((e) => e.kind !== 'file')))
@@ -266,6 +276,13 @@ export function CrossRef(): JSX.Element {
                         title="Open the matching pages"
                       >
                         <ExternalLink size={12} /> Open ({Math.min(c.urls.size, 6)})
+                      </button>
+                      <button
+                        className="btn-ghost border border-ink-600 text-[11px]"
+                        onClick={() => addSource(c.cand.host, [...c.urls][0] ?? c.cand.url)}
+                        title="Add this shared source to the investigation"
+                      >
+                        <Workflow size={12} /> Case
                       </button>
                     </div>
                   )

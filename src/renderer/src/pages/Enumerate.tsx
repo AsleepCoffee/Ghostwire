@@ -12,7 +12,7 @@ import {
 import { api } from '../lib/api'
 import { useOpenInBrowser } from '../lib/browserBus'
 import { useSettings } from '../lib/settings'
-import { autoLink } from '../lib/graphlink'
+import { addToInvestigation } from '../lib/investigation'
 import { PivotModal } from '../components/PivotModal'
 
 /** Username-aggregator sites (SPAs without reliable deep links) — we copy the
@@ -96,27 +96,18 @@ export function Enumerate(): JSX.Element {
   const addToChart = async (): Promise<void> => {
     const chosen = rows.filter((r) => picked.has(r.label))
     if (chosen.length === 0) return
-    const projectId = settings.activeProjectId ?? null
-    const boards = await api.boards.list()
-    let board = boards.find((b) => b.projectId === projectId) ?? boards.find((b) => !projectId && !b.projectId)
-    if (!board) board = await api.boards.save({ name: `${handle} — accounts`, projectId })
-    // Anchor username node, then a social node per found site, linked to it.
-    const anchor = await api.boards.saveNode({ boardId: board.id, type: 'username', label: handle, props: {}, x: 0, y: 0 })
-    let i = 0
-    for (const r of chosen) {
-      const node = await api.boards.saveNode({
-        boardId: board.id,
-        type: 'social',
-        label: `${r.label}: ${handle}`,
-        props: { url: r.url, status: 'found' },
-        x: 280,
-        y: (i - (chosen.length - 1) / 2) * 80
-      })
-      await api.boards.saveEdge({ boardId: board.id, source: anchor.id, target: node.id, label: 'account' })
-      i++
-    }
-    await autoLink(board.id)
-    flash(`Added ${chosen.length} account${chosen.length === 1 ? '' : 's'} to the link chart`)
+    // Anchor on the username, a social account node per found site — and record
+    // it all as the investigation's known information.
+    const r = await addToInvestigation({
+      projectId: settings.activeProjectId ?? null,
+      anchor: { type: 'username', label: handle },
+      entities: chosen.map((row) => ({ type: 'social', label: `${row.label}: ${handle}`, props: { url: row.url, status: 'found' } }))
+    })
+    flash(
+      settings.activeProjectId
+        ? `Added ${r.nodes} node${r.nodes === 1 ? '' : 's'} to the investigation`
+        : `Added ${chosen.length} to a chart — set an active investigation to file them`
+    )
   }
 
   return (

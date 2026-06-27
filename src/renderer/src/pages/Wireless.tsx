@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
-import { Wifi, Loader2, Search, MapPin, Copy, Check, ExternalLink } from 'lucide-react'
+import { Wifi, Loader2, Search, MapPin, Copy, Check, ExternalLink, Workflow } from 'lucide-react'
 import { api, type WigleNetwork } from '../lib/api'
 import { useSettings } from '../lib/settings'
 import { useOpenInBrowser } from '../lib/browserBus'
+import { addToInvestigation } from '../lib/investigation'
 
 const esc = (s: string): string => s.replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[c]!)
 type Kind = 'ssid' | 'bssid'
@@ -89,6 +90,23 @@ export function Wireless(): JSX.Element {
     setTimeout(() => setCopied(''), 1200)
   }
 
+  // Add a located network to the investigation as a location entity.
+  const addNet = async (n: WigleNetwork): Promise<void> => {
+    await addToInvestigation({
+      projectId: settings.activeProjectId ?? null,
+      entities: [
+        {
+          type: 'location',
+          label: n.ssid || n.bssid,
+          props: { bssid: n.bssid, ssid: n.ssid, encryption: n.encryption, location: n.place, lat: String(n.lat), lng: String(n.lng) }
+        }
+      ]
+    })
+    setError('')
+    setCopied(`added:${n.bssid}`)
+    setTimeout(() => setCopied(''), 1400)
+  }
+
   const placeholder = useMemo(() => (kind === 'ssid' ? 'Network name (SSID), e.g. CoffeeShop-WiFi' : 'BSSID / AP MAC, e.g. 00:11:22:33:44:55'), [kind])
 
   return (
@@ -134,6 +152,9 @@ export function Wireless(): JSX.Element {
                 </button>
                 <button className="btn-ghost border border-ink-600 text-[11px]" onClick={() => copy(n.bssid)}>
                   {copied === n.bssid ? <Check size={12} className="text-ok" /> : <Copy size={12} />} BSSID
+                </button>
+                <button className="btn-ghost border border-ink-600 text-[11px]" onClick={() => addNet(n)} title="Add this network's location to the investigation">
+                  {copied === `added:${n.bssid}` ? <Check size={12} className="text-ok" /> : <Workflow size={12} />} Case
                 </button>
               </div>
             </div>

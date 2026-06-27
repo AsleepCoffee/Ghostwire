@@ -1,7 +1,9 @@
 import { useState } from 'react'
-import { Fingerprint, Loader2, Search, DownloadCloud, Copy, Check, ExternalLink } from 'lucide-react'
+import { Fingerprint, Loader2, Search, DownloadCloud, Copy, Check, ExternalLink, Workflow } from 'lucide-react'
 import { api, type FacebookId } from '../lib/api'
 import { useOpenInBrowser, readActiveTabHtml } from '../lib/browserBus'
+import { useSettings } from '../lib/settings'
+import { addToInvestigation, type AddEntity } from '../lib/investigation'
 
 const enc = encodeURIComponent
 type Platform = 'facebook' | 'instagram'
@@ -52,6 +54,7 @@ const PLATFORMS: Record<Platform, { name: string; byId: (id: string) => string; 
 
 export function FbId(): JSX.Element {
   const openInBrowser = useOpenInBrowser()
+  const { settings } = useSettings()
   const [platform, setPlatform] = useState<Platform>('facebook')
   const [input, setInput] = useState('')
   const [busy, setBusy] = useState('')
@@ -59,6 +62,30 @@ export function FbId(): JSX.Element {
   const [id, setId] = useState('')
   const [vanity, setVanity] = useState('')
   const [copied, setCopied] = useState('')
+  const [toast, setToast] = useState('')
+
+  const flash = (m: string): void => {
+    setToast(m)
+    setTimeout(() => setToast(''), 3000)
+  }
+
+  // Push the resolved profile into the investigation: the vanity as a username
+  // and the profile itself (with its numeric id + URL) as a social account.
+  const addProfile = async (): Promise<void> => {
+    const P = PLATFORMS[platform]
+    const entities: AddEntity[] = []
+    if (vanity) entities.push({ type: 'username', label: vanity })
+    const profileLabel = vanity || id
+    if (profileLabel)
+      entities.push({
+        type: 'social',
+        label: `${P.name}: ${profileLabel}`,
+        props: { platform: P.name, id, vanity, url: id ? P.byId(id) : P.byName(vanity) }
+      })
+    if (!entities.length) return
+    const r = await addToInvestigation({ projectId: settings.activeProjectId ?? null, entities })
+    flash(settings.activeProjectId ? `Added ${r.nodes} node${r.nodes === 1 ? '' : 's'} to the investigation` : 'Added to a chart — set an active investigation to file it')
+  }
 
   const reset = (): void => {
     setErr('')
@@ -199,6 +226,9 @@ export function FbId(): JSX.Element {
             {id && <Row label={`${P.name} numeric ID`} value={id} openUrl={P.byId(id)} />}
             {vanity && <Row label="Username / vanity" value={vanity} openUrl={P.byName(vanity)} />}
             {id && !vanity && <p className="text-[11px] text-slate-500">No username found — this profile is reachable by its numeric ID.</p>}
+            <button className="btn-primary w-full justify-center" onClick={addProfile}>
+              <Workflow size={15} /> Add to investigation
+            </button>
           </div>
         )}
 
@@ -231,6 +261,7 @@ export function FbId(): JSX.Element {
           </div>
         </div>
       </div>
+      {toast && <div className="fixed bottom-5 right-5 z-40 card px-4 py-2.5 text-sm text-slate-200 border-accent/40 shadow-xl">{toast}</div>}
     </div>
   )
 }
