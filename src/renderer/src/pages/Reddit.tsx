@@ -1,7 +1,9 @@
 import { useMemo, useState } from 'react'
-import { MessageSquare, Loader2, Search, Copy, Check, ExternalLink, User, FileText } from 'lucide-react'
+import { MessageSquare, Loader2, Search, Copy, Check, ExternalLink, User, FileText, Workflow, UserPlus } from 'lucide-react'
 import { api, type RedditResult, type RedditItem } from '../lib/api'
 import { useOpenInBrowser } from '../lib/browserBus'
+import { useSettings } from '../lib/settings'
+import { addToInvestigation } from '../lib/investigation'
 
 type Mode = 'thread' | 'user'
 
@@ -12,12 +14,35 @@ function when(sec: number): string {
 
 export function Reddit(): JSX.Element {
   const openInBrowser = useOpenInBrowser()
+  const { settings } = useSettings()
   const [mode, setMode] = useState<Mode>('thread')
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [res, setRes] = useState<RedditResult | null>(null)
   const [copied, setCopied] = useState('')
+  const [toast, setToast] = useState('')
+
+  const flash = (m: string): void => {
+    setToast(m)
+    setTimeout(() => setToast(''), 3000)
+  }
+
+  // Push recovered Reddit usernames into the active investigation (graph + data
+  // points), so deleted-account findings become part of the case.
+  const addUsers = async (names: string[]): Promise<void> => {
+    const uniq = [...new Set(names.map((n) => n?.trim()).filter((n) => n && n !== '[deleted]' && n !== '[unknown]'))] as string[]
+    if (!uniq.length) return
+    const r = await addToInvestigation({
+      projectId: settings.activeProjectId ?? null,
+      entities: uniq.map((n) => ({ type: 'username', label: n }))
+    })
+    flash(
+      settings.activeProjectId
+        ? `Added ${r.nodes} username${r.nodes === 1 ? '' : 's'} to the investigation`
+        : `Added ${uniq.length} to a chart — set an active investigation to file them`
+    )
+  }
 
   const run = async (): Promise<void> => {
     if (!input.trim()) return
@@ -86,9 +111,14 @@ export function Reddit(): JSX.Element {
           <ExternalLink size={12} /> Open
         </button>
         {a.author !== '[deleted]' && a.author !== '[unknown]' && (
-          <button className="btn-ghost border border-ink-600 text-[11px]" onClick={() => copy(a.author)}>
-            {copied === a.author ? <Check size={12} className="text-ok" /> : <Copy size={12} />} author
-          </button>
+          <>
+            <button className="btn-ghost border border-ink-600 text-[11px]" onClick={() => copy(a.author)}>
+              {copied === a.author ? <Check size={12} className="text-ok" /> : <Copy size={12} />} author
+            </button>
+            <button className="btn-ghost border border-ink-600 text-[11px]" onClick={() => addUsers([a.author])} title="Add this username to the investigation">
+              <UserPlus size={12} /> case
+            </button>
+          </>
         )}
       </div>
     </div>
@@ -154,6 +184,9 @@ export function Reddit(): JSX.Element {
                   <button className="btn-ghost border border-ink-600 text-[11px]" onClick={() => openInBrowser([`https://camas.unddit.com/#%7B%22author%22:%22${encodeURIComponent(headlineAuthor!)}%22,%22subreddit%22:%22%22,%22searchFor%22:1%7D`])}>
                     <ExternalLink size={12} /> Camas search
                   </button>
+                  <button className="btn-primary text-[11px]" onClick={() => addUsers([headlineAuthor!])}>
+                    <Workflow size={12} /> Add to investigation
+                  </button>
                 </div>
               </div>
             )}
@@ -164,9 +197,18 @@ export function Reddit(): JSX.Element {
             {/* Items list (comments for a thread, activity for a user) */}
             {res.items && res.items.length > 0 && (
               <>
-                <div className="text-[11px] uppercase tracking-widest text-slate-500">
-                  {res.mode === 'thread' ? `${res.items.length} recovered comments` : `${res.items.length} recent items`}
-                  {res.source ? ` · via ${res.source}` : ''}
+                <div className="flex items-center justify-between gap-3">
+                  <div className="text-[11px] uppercase tracking-widest text-slate-500">
+                    {res.mode === 'thread' ? `${res.items.length} recovered comments` : `${res.items.length} recent items`}
+                    {res.source ? ` · via ${res.source}` : ''}
+                  </div>
+                  <button
+                    className="btn-ghost border border-ink-600 text-[11px]"
+                    onClick={() => addUsers([...(res.submission ? [res.submission.author] : []), ...res.items!.map((i) => i.author)])}
+                    title="Add every recovered username in these results to the investigation"
+                  >
+                    <UserPlus size={12} /> Add all authors
+                  </button>
                 </div>
                 {res.items.map((a) => (
                   <ItemCard key={`${a.kind}_${a.id}`} a={a} />
@@ -186,6 +228,8 @@ export function Reddit(): JSX.Element {
           </div>
         )}
       </div>
+
+      {toast && <div className="absolute bottom-5 right-5 z-40 card px-4 py-2.5 text-sm text-slate-200 border-accent/40 shadow-xl">{toast}</div>}
     </div>
   )
 }

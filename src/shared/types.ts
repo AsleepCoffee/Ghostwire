@@ -330,6 +330,33 @@ export interface RedditItem {
   permalink: string
 }
 
+/** One host discovered/probed during automated domain recon. */
+export interface ReconHost {
+  host: string
+  ip?: string
+  /** Responded to an HTTP(S) request (httprobe-style liveness). */
+  alive: boolean
+  status: number
+  title?: string
+  scheme?: 'https' | 'http'
+}
+
+/** Aggregated passive recon over a domain (multi-source subdomain enumeration +
+ *  DNS + WHOIS + liveness), the equivalent of running subfinder/assetfinder/amass
+ *  + httprobe together. */
+export interface ReconResult {
+  ok: boolean
+  error?: string
+  domain: string
+  whois: { registrar: string; created: string; expires: string; org: string; nameservers: string[] }
+  dns: { a: string[]; mx: string[]; ns: string[]; txt: string[] }
+  ips: string[]
+  hosts: ReconHost[]
+  emails: string[]
+  /** How many hostnames each source contributed (for transparency). */
+  sources: Record<string, number>
+}
+
 export interface RedditResult {
   ok: boolean
   error?: string
@@ -643,6 +670,9 @@ export interface OsintApi {
      *  activity from PullPush / Arctic Shift (no key). Input is a URL, post id,
      *  or username; mode hints how to treat a bare token. */
     reddit(input: string, mode: 'thread' | 'user'): Promise<RedditResult>
+    /** Automated passive domain recon — multi-source subdomain enumeration + DNS
+     *  + WHOIS + HTTP liveness, all at once. No key needed. */
+    reconDomain(domain: string): Promise<ReconResult>
     /** The bundled Sherlock site list (name + url template with {}). */
     sherlockSites(): Promise<{ name: string; url: string }[]>
     /** Check one Sherlock site for a username. */

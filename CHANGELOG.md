@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.1.91
+- New **Domain Recon** tool (`intel:reconDomain`, Research → Domain Recon). Automated passive recon equivalent to subfinder + assetfinder + amass (passive) + httprobe run together: aggregates subdomains from crt.sh, HackerTarget, AlienVault OTX, certSpotter and Anubis; adds DNS (A/MX/NS/TXT) + RDAP WHOIS; then probes every host (concurrency pool, https→http) for liveness, status, IP and page `<title>`. Results are pickable checkboxes that push selected hosts/IPs/emails/org onto the investigation graph + data points, anchored to the domain and auto-linked. No keys, no external binaries.
+- New shared `lib/investigation.ts` helper (`addToInvestigation` / `addDataPoints`) — find-or-create the active investigation's board, de-dupe nodes, link to an anchor, auto-link, and record data points. 
+- Reddit archive tool can now push findings into the case — "Add to investigation" / "Add all authors" buttons and a per-result "+ case" button add recovered usernames as graph nodes + known-information data points.
+
 ## v0.1.90
 - Fixed auto-update properly. The v0.1.88 draft-flow change caused two draft releases per tag (one from `gh release create`, one from electron-builder); the publish job un-drafted the Linux-only one, so v0.1.88 and v0.1.89 shipped with **no `latest.yml`** → Windows update checks 404'd. Now electron-builder is the sole owner of a single draft (Windows job creates it, Linux job appends to it), the conflicting `gh` pre-create is removed, and the publish job **refuses to un-draft unless `latest.yml` is present** (safety net). Note: v0.1.88/0.1.89 GitHub releases remain missing their Windows assets; v0.1.90 onward are complete.
 

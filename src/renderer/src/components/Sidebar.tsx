@@ -44,6 +44,7 @@ const GROUPS: { heading?: string; items: NavItem[]; toggle?: 'courseNotes' }[] =
       { to: '/enumerate', label: 'Account Finder', icon: 'ScanSearch' },
       { to: '/intel', label: 'Email & Phone', icon: 'UserSearch' },
       { to: '/infra', label: 'Domain & IP', icon: 'Server' },
+      { to: '/recon', label: 'Domain Recon', icon: 'Radar' },
       { to: '/cross-ref', label: 'Cross-Reference', icon: 'Layers' },
       { to: '/co-locate', label: 'Proximity', icon: 'Crosshair' },
       { to: '/fb-id', label: 'Profile ID', icon: 'Fingerprint' },

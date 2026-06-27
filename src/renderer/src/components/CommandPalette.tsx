@@ -88,6 +88,7 @@ export function CommandPalette(): JSX.Element | null {
       ['/enumerate', 'Account Finder', 'ScanSearch'],
       ['/intel', 'Email & Phone Intelligence', 'UserSearch'],
       ['/infra', 'Domain & Infrastructure', 'Server'],
+      ['/recon', 'Domain Recon (subdomains + liveness)', 'Radar'],
       ['/cross-ref', 'Cross-Reference Images', 'Layers'],
       ['/co-locate', 'Proximity Search', 'Crosshair'],
       ['/fb-id', 'Profile ID (Facebook / Instagram)', 'Fingerprint'],

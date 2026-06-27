@@ -26,6 +26,7 @@ import type {
   Persona,
   Project,
   RedditItem,
+  ReconHost,
   ToolLink
 } from '../shared/types'
 
@@ -1598,6 +1599,175 @@ export function registerHandlers(): void {
     } catch (e) {
       return { ok: false, error: String((e as Error)?.message ?? e) }
     }
+  })
+
+  // Automated passive domain recon — runs the equivalent of subfinder +
+  // assetfinder + amass (passive) + httprobe together: pull subdomains from
+  // several free certificate-transparency / passive-DNS sources, fold in DNS +
+  // RDAP WHOIS, then probe every host for HTTP(S) liveness and grab its title.
+  // No API key, no external binaries.
+  ipcMain.handle('intel:reconDomain', async (_e, domainRaw: string) => {
+    const domain = String(domainRaw ?? '')
+      .trim()
+      .toLowerCase()
+      .replace(/^https?:\/\//, '')
+      .replace(/\/.*$/, '')
+    const blank = { whois: { registrar: '', created: '', expires: '', org: '', nameservers: [] }, dns: { a: [], mx: [], ns: [], txt: [] }, ips: [], hosts: [], emails: [], sources: {} }
+    if (!/^([a-z0-9-]+\.)+[a-z]{2,}$/.test(domain)) return { ok: false, error: 'Enter a valid domain (e.g. example.com).', domain, ...blank }
+
+    const isHost = (h: string): boolean => !!h && !h.includes('*') && (h === domain || h.endsWith('.' + domain)) && /^[a-z0-9.-]+$/.test(h)
+    const clean = (s: string): string => s.trim().toLowerCase().replace(/^\*\.?/, '')
+    const subs = new Set<string>()
+    const ipHints = new Map<string, string>()
+    const sources: Record<string, number> = {}
+
+    const getJson = async (url: string, headers?: Record<string, string>): Promise<unknown> => {
+      try {
+        const r = await net.fetch(url, { headers: { Accept: 'application/json', ...headers } })
+        return r.ok ? await r.json() : null
+      } catch {
+        return null
+      }
+    }
+    const getText = async (url: string): Promise<string> => {
+      try {
+        const r = await net.fetch(url)
+        return r.ok ? await r.text() : ''
+      } catch {
+        return ''
+      }
+    }
+    const dohA = async (name: string): Promise<string[]> => {
+      const j = (await getJson(`https://dns.google/resolve?name=${encodeURIComponent(name)}&type=A`)) as { Answer?: { type?: number; data?: string }[] } | null
+      return (j?.Answer ?? []).filter((a) => a.type === 1).map((a) => String(a.data ?? '')).filter(Boolean)
+    }
+    const dohVals = async (name: string, type: string, code: number): Promise<string[]> => {
+      const j = (await getJson(`https://dns.google/resolve?name=${encodeURIComponent(name)}&type=${type}`)) as { Answer?: { type?: number; data?: string }[] } | null
+      return (j?.Answer ?? []).filter((a) => a.type === code).map((a) => String(a.data ?? '').replace(/"/g, '').trim()).filter(Boolean)
+    }
+
+    const track = (label: string, fn: () => void): void => {
+      const before = subs.size
+      fn()
+      sources[label] = subs.size - before
+    }
+
+    // ---- Passive subdomain sources (run concurrently) ----
+    const [crt, ht, otx, certs, anubis, a, mx, ns, txt, rdap] = await Promise.all([
+      getJson(`https://crt.sh/?q=${encodeURIComponent('%.' + domain)}&output=json`),
+      getText(`https://api.hackertarget.com/hostsearch/?q=${encodeURIComponent(domain)}`),
+      getJson(`https://otx.alienvault.com/api/v1/indicators/domain/${encodeURIComponent(domain)}/passive_dns`),
+      getJson(`https://api.certspotter.com/v1/issuances?domain=${encodeURIComponent(domain)}&include_subdomains=true&expand=dns_names`),
+      getJson(`https://jonlu.ca/anubis/subdomains/${encodeURIComponent(domain)}`),
+      dohVals(domain, 'A', 1),
+      dohVals(domain, 'MX', 15),
+      dohVals(domain, 'NS', 2),
+      dohVals(domain, 'TXT', 16),
+      getJson(`https://rdap.org/domain/${encodeURIComponent(domain)}`)
+    ])
+
+    track('crt.sh', () => {
+      for (const row of (Array.isArray(crt) ? crt : []) as { name_value?: string }[])
+        for (const nm of String(row.name_value ?? '').split('\n')) {
+          const h = clean(nm)
+          if (isHost(h)) subs.add(h)
+        }
+    })
+    track('hackertarget', () => {
+      if (ht && !/error|API count exceeded/i.test(ht))
+        for (const line of ht.split('\n')) {
+          const [h, ip] = line.split(',')
+          const host = clean(h ?? '')
+          if (isHost(host)) {
+            subs.add(host)
+            if (ip?.trim()) ipHints.set(host, ip.trim())
+          }
+        }
+    })
+    track('alienvault', () => {
+      for (const r of ((otx as { passive_dns?: { hostname?: string; address?: string }[] } | null)?.passive_dns ?? [])) {
+        const host = clean(String(r.hostname ?? ''))
+        if (isHost(host)) {
+          subs.add(host)
+          if (r.address) ipHints.set(host, String(r.address))
+        }
+      }
+    })
+    track('certspotter', () => {
+      for (const r of (Array.isArray(certs) ? certs : []) as { dns_names?: string[] }[])
+        for (const nm of r.dns_names ?? []) {
+          const h = clean(nm)
+          if (isHost(h)) subs.add(h)
+        }
+    })
+    track('anubis', () => {
+      for (const nm of (Array.isArray(anubis) ? anubis : []) as string[]) {
+        const h = clean(String(nm))
+        if (isHost(h)) subs.add(h)
+      }
+    })
+
+    // ---- WHOIS (RDAP) ----
+    const whois = { registrar: '', created: '', expires: '', org: '', nameservers: [] as string[] }
+    const emails = new Set<string>()
+    if (rdap && typeof rdap === 'object') {
+      const r = rdap as Record<string, unknown>
+      const events = (r.events as { eventAction?: string; eventDate?: string }[]) ?? []
+      whois.created = events.find((e) => e.eventAction === 'registration')?.eventDate ?? ''
+      whois.expires = events.find((e) => e.eventAction === 'expiration')?.eventDate ?? ''
+      whois.nameservers = ((r.nameservers as { ldhName?: string }[]) ?? []).map((x) => String(x.ldhName ?? '').toLowerCase()).filter(Boolean)
+      const entities = (r.entities as { roles?: string[]; vcardArray?: unknown[] }[]) ?? []
+      const vcardField = (ent: { vcardArray?: unknown[] } | undefined, name: string): string => {
+        const vcard = ent?.vcardArray?.[1] as unknown[] | undefined
+        const f = (vcard ?? []).find((v) => Array.isArray(v) && v[0] === name) as unknown[] | undefined
+        return f ? String(f[3] ?? '') : ''
+      }
+      whois.registrar = vcardField(entities.find((e) => e.roles?.includes('registrar')), 'fn')
+      const reg = entities.find((e) => e.roles?.includes('registrant'))
+      whois.org = vcardField(reg, 'org') || vcardField(reg, 'fn')
+      for (const ent of entities) {
+        const em = vcardField(ent, 'email')
+        if (em && em.includes('@')) emails.add(em.toLowerCase())
+      }
+    }
+
+    // ---- Liveness probe (httprobe-equivalent) + title, with a concurrency pool ----
+    subs.add(domain)
+    const hostList = Array.from(subs).sort().slice(0, 60)
+    const probe = async (host: string): Promise<ReconHost> => {
+      for (const scheme of ['https', 'http'] as const) {
+        try {
+          const r = await net.fetch(`${scheme}://${host}`, { redirect: 'follow', signal: AbortSignal.timeout(7000) })
+          let title = ''
+          try {
+            const body = (await r.text()).slice(0, 5000)
+            title = body.match(/<title[^>]*>([^<]{1,180})<\/title>/i)?.[1]?.trim() ?? ''
+          } catch {
+            /* body unreadable — still alive */
+          }
+          const ip = ipHints.get(host) ?? (await dohA(host))[0]
+          return { host, ip, alive: true, status: r.status, title, scheme }
+        } catch {
+          /* try next scheme */
+        }
+      }
+      const ip = ipHints.get(host) ?? (await dohA(host))[0]
+      return { host, ip, alive: false, status: 0 }
+    }
+    const hosts: ReconHost[] = []
+    const queue = [...hostList]
+    const workers = Array.from({ length: 12 }, async () => {
+      for (;;) {
+        const h = queue.shift()
+        if (!h) break
+        hosts.push(await probe(h))
+      }
+    })
+    await Promise.all(workers)
+    hosts.sort((x, y) => Number(y.alive) - Number(x.alive) || x.host.localeCompare(y.host))
+
+    const ips = Array.from(new Set([...a, ...hosts.map((h) => h.ip).filter((x): x is string => !!x)])).sort()
+    return { ok: true, domain, whois, dns: { a, mx, ns, txt }, ips, hosts, emails: Array.from(emails), sources }
   })
 
   // AI geolocation — ask an OpenAI vision model where an evidence image was taken.

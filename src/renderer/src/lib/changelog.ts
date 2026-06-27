@@ -7,6 +7,14 @@ export interface ChangelogEntry {
 /** In-app patch notes. Newest first. Keep in sync with CHANGELOG.md. */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.1.91',
+    date: '2026-06-27',
+    notes: [
+      'New Domain Recon tool (Research → Domain Recon) — one click runs the equivalent of subfinder + assetfinder + amass (passive) + httprobe together: it pulls subdomains from several certificate-transparency / passive-DNS sources at once, folds in DNS + WHOIS, then probes every host for HTTP(S) liveness and grabs its page title and IP. Tick the findings you want and push them straight onto the investigation graph + known information. No keys, no installs.',
+      'Add findings to your investigation from more tools — the Reddit archive tool now has “Add to investigation” / “Add all authors” buttons (and a per-result + case button) that drop recovered usernames onto the link chart and into the case’s known information.'
+    ]
+  },
+  {
     version: '0.1.90',
     date: '2026-06-27',
     notes: [
