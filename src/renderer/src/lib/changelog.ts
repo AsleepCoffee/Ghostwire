@@ -7,6 +7,13 @@ export interface ChangelogEntry {
 /** In-app patch notes. Newest first. Keep in sync with CHANGELOG.md. */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.1.86',
+    date: '2026-06-27',
+    notes: [
+      'Clearer API-key guidance — key inputs in Settings can now show an always-visible hint. Added one for WiGLE spelling out that you paste the long “Encoded for use” value (not the API Name or API Token on their own).'
+    ]
+  },
+  {
     version: '0.1.85',
     date: '2026-06-27',
     notes: [

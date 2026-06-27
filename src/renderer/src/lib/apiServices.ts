@@ -12,6 +12,9 @@ export interface ApiService {
   signup: string
   /** What having this key unlocks in GhostWire. */
   unlocks: string
+  /** Optional always-visible hint shown under the key input (e.g. which of
+   *  several credential values to paste). */
+  hint?: string
   /** Optional launch URL for the "API Integrations" tools (unlocked by the key).
    *  {QUERY} is replaced by the search term. */
   tool?: { url: string; query: boolean; category: string }
@@ -76,7 +79,8 @@ export const API_SERVICES: ApiService[] = [
     free: 'Free account; paste the "Encoded for use" token (or API Name:Token). Daily query limit.',
     tier: 'free',
     signup: 'https://wigle.net/account',
-    unlocks: 'Wireless (WiGLE) network search & mapping.'
+    unlocks: 'Wireless (WiGLE) network search & mapping.',
+    hint: 'On wigle.net → Account, paste the long "Encoded for use" value (NOT the API Name or API Token on their own). "API Name:API Token" with the colon also works.'
   },
   {
     id: 'emailhippo',

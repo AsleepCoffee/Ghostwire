@@ -96,6 +96,7 @@ export function Settings(): JSX.Element {
           >
             {show ? <EyeOff size={15} /> : <Eye size={15} />}
           </button>
+          {s.hint && <p className="text-[11px] text-slate-500 mt-1 leading-snug">{s.hint}</p>}
         </div>
         <div className="w-48 shrink-0 flex items-center gap-1.5">
           <button

@@ -1,5 +1,8 @@
 # Changelog
 
+## v0.1.86
+- API services can carry an always-visible `hint` shown under their key input in Settings. Added a WiGLE hint: paste the long "Encoded for use" value (not the API Name or API Token alone); "API Name:API Token" with the colon also works.
+
 ## v0.1.85
 - Browser session persists across restarts — open tabs (url + persona) and the active tab are saved to settings (`browserTabs`/`browserActiveIndex`) and restored on launch. A `sessionReady` gate prevents the restore render from overwriting the saved snapshot before the tabs commit.
 
