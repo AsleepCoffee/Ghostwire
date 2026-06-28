@@ -74,8 +74,6 @@
     "build": "electron-vite build",
     "build:win": "electron-vite build && electron-builder --win --publish never",
     "build:linux": "electron-vite build && electron-builder --linux --publish never",
-    "release": "electron-vite build && electron-builder --win --publish always",
-    "release:linux": "electron-vite build && electron-builder --linux --publish always",
     "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json"
   },
   "dependencies": {
