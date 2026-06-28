@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.1.97
+- Forensic full-page capture: new browser toolbar button screenshots the entire scrollable page via the Chrome DevTools Protocol (`Page.captureScreenshot` with `captureBeyondViewport`, height-capped at 25k px) and files it to evidence with source URL + capture time + SHA-256, then opens the annotate panel. New `browser:captureFullPage(webContentsId)` handler.
+- OSINT bookmarks panel: optional toggleable sidebar in the browser with the curated course bookmark set (195 links / 12 categories, parsed from the imported `bookmarks_*.html` into `lib/bookmarks.ts`). Collapsible tree, type-to-filter, click to open in a new tab. Persisted via `settings.showBookmarks`.
+
 ## v0.1.96
 - Report export options + professional deliverables. New export panel: toggle GhostWire branding, set "Prepared by"/Organisation, choose a classification. All formats (HTML/PDF/DOCX/MD) gain a cover (case reference `GW-XXXXXXXX-YYYYMMDD`, classification banner), an auto-generated **Executive summary**, **Scope & methodology**, and **Limitations & disclaimer** sections. Choices persist in settings (`reportOptions`). Threaded `ReportOptions` through preload → IPC → `gatherReport` → all three builders; unbranded omits the logo/name/footer.
 - Domain Recon coverage: added urlscan.io, RapidDNS and Wayback Machine CDX sources, plus an active DoH brute of ~75 common subdomain names with wildcard-DNS detection (skips the brute when a wildcard is present to avoid false positives). Removed the dead Anubis source; raised the live-probe cap to 80 hosts.

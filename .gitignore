@@ -16,3 +16,6 @@ ghostwire.db
 
 # Local Claude session state
 .claude/
+
+# Raw bookmark import artifacts (data is codified in src/.../lib/bookmarks.ts)
+bookmarks_*.html

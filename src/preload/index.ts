@@ -85,7 +85,8 @@ const api: OsintApi = {
       const listener = (_e: unknown, urls: string[]): void => cb(urls)
       ipcRenderer.on('browser:open', listener as never)
       return () => ipcRenderer.removeListener('browser:open', listener as never)
-    }
+    },
+    captureFullPage: (webContentsId) => ipcRenderer.invoke('browser:captureFullPage', webContentsId)
   },
   clipboard: {
     writeText: (text) => ipcRenderer.invoke('clipboard:write', text),

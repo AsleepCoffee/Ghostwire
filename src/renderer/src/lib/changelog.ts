@@ -7,6 +7,14 @@ export interface ChangelogEntry {
 /** In-app patch notes. Newest first. Keep in sync with CHANGELOG.md. */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.1.97',
+    date: '2026-06-28',
+    notes: [
+      'Forensic full-page capture — a new button in the browser toolbar screenshots the ENTIRE scrollable page (not just the visible part) and files it to the investigation with its source URL, capture time and SHA-256 integrity hash, then prompts for a caption/notes.',
+      'OSINT bookmarks panel — toggle a curated bookmarks sidebar in the browser (195+ OSINT sites across Company, Internet Scan, Email, Phone, People, Maps, Search, Social, Username checks and more). Filter as you type; click to open in a new tab. Toggle it from the library icon in the browser toolbar.'
+    ]
+  },
+  {
     version: '0.1.96',
     date: '2026-06-27',
     notes: [

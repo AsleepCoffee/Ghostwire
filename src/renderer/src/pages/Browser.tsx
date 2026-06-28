@@ -19,12 +19,17 @@ import {
   Copy,
   Check,
   Highlighter,
-  BookmarkPlus
+  BookmarkPlus,
+  ScrollText,
+  Library,
+  ChevronRight,
+  ChevronDown
 } from 'lucide-react'
 import { api, type Persona, type VpnConfigStatus } from '../lib/api'
 import { personaColor } from '../lib/constants'
 import { consumePending, subscribeOpen, getPasteImage, subscribePasteImage, setPasteImage, registerTabReader, registerHtmlReader, type OpenRequest, type Autofill, type PasteImage } from '../lib/browserBus'
 import { useSettings } from '../lib/settings'
+import { OSINT_BOOKMARKS, type BmGroup } from '../lib/bookmarks'
 
 const HOME = 'https://www.google.com/'
 /** A fresh tab opens blank (no page load) so the address bar keeps focus — just
@@ -40,6 +45,7 @@ interface WebviewEl extends HTMLElement {
   getURL(): string
   executeJavaScript(code: string): Promise<unknown>
   capturePage(rect?: { x: number; y: number; width: number; height: number }): Promise<{ toDataURL(): string }>
+  getWebContentsId(): number
 }
 
 interface Tab {
@@ -303,6 +309,35 @@ export function Browser(): JSX.Element {
     } catch {
       setToast('Could not capture this page')
       setTimeout(() => setToast(''), 2600)
+    }
+  }
+
+  // Forensic capture: the ENTIRE scrollable page (not just the viewport) via CDP,
+  // filed straight to evidence with its source URL + capture time + integrity hash.
+  const [fullBusy, setFullBusy] = useState(false)
+  const captureFullPage = async (): Promise<void> => {
+    if (!active) return
+    const wv = refs.current.get(active.id)
+    if (!wv) return
+    setFullBusy(true)
+    try {
+      const r = await api.browser.captureFullPage(wv.getWebContentsId())
+      if (!r.ok || !r.dataUrl) {
+        setToast(r.error || 'Full-page capture failed')
+        setTimeout(() => setToast(''), 3000)
+        return
+      }
+      const ev = await api.evidence.capture({
+        dataUrl: r.dataUrl,
+        sourceUrl: active.url,
+        title: active.title,
+        projectId: settings.activeProjectId ?? null,
+        kind: 'screenshot'
+      })
+      const note = `Full-page forensic capture of ${active.url} at ${new Date().toISOString()} (${r.width}×${r.height}px).`
+      setAnnotate({ id: ev.id, title: ev.title ?? active.title ?? '', note, thumb: r.dataUrl })
+    } finally {
+      setFullBusy(false)
     }
   }
 
@@ -692,9 +727,28 @@ export function Browser(): JSX.Element {
           )}
         </div>
 
-        {/* Save the current page to the investigation */}
+        {/* Save the current page (visible viewport) to the investigation */}
         <button className="btn-ghost !px-2 text-accent" title="Save this page to the investigation (screenshot + URL)" onClick={savePage} disabled={!active}>
           <BookmarkPlus size={17} />
+        </button>
+
+        {/* Forensic full-page capture */}
+        <button
+          className="btn-ghost !px-2 text-accent disabled:opacity-40"
+          title="Forensic capture: full scrollable page → evidence"
+          onClick={captureFullPage}
+          disabled={!active || fullBusy}
+        >
+          {fullBusy ? <Loader2 size={17} className="animate-spin" /> : <ScrollText size={17} />}
+        </button>
+
+        {/* Toggle the OSINT bookmarks panel */}
+        <button
+          className={`btn-ghost !px-2 ${settings.showBookmarks ? 'text-brand-glow' : ''}`}
+          title="OSINT bookmarks"
+          onClick={() => update({ showBookmarks: !settings.showBookmarks })}
+        >
+          <Library size={17} />
         </button>
 
         <div className="relative">
@@ -745,6 +799,11 @@ export function Browser(): JSX.Element {
         </div>
       )}
 
+      {/* Content row: optional OSINT bookmarks panel + the webviews */}
+      <div className="flex-1 min-h-0 flex">
+      {settings.showBookmarks && (
+        <BookmarksPanel onOpen={(url) => openTabs({ tabs: [{ url }] })} onClose={() => update({ showBookmarks: false })} />
+      )}
       {/* Webviews — all mounted; only active visible so background tabs keep loading */}
       <div className="flex-1 min-h-0 relative bg-white">
         {tabs.length === 0 && (
@@ -845,6 +904,7 @@ export function Browser(): JSX.Element {
             </div>
           </div>
         )}
+      </div>
       </div>
 
       {toast && (
@@ -1033,6 +1093,88 @@ function BrowserView({
         allowpopups="true"
         style={{ width: '100%', height: '100%', display: 'inline-flex' }}
       />
+    </div>
+  )
+}
+
+/** Collapsible OSINT bookmarks tree shown beside the webview when toggled on. */
+function BookmarksPanel({ onOpen, onClose }: { onOpen: (url: string) => void; onClose: () => void }): JSX.Element {
+  const [q, setQ] = useState('')
+  const query = q.trim().toLowerCase()
+
+  const filter = (g: BmGroup): BmGroup | null => {
+    if (!query) return g
+    const links = (g.links ?? []).filter((l) => l.name.toLowerCase().includes(query) || l.url.toLowerCase().includes(query))
+    const groups = (g.groups ?? []).map(filter).filter((x): x is BmGroup => !!x)
+    if (links.length || groups.length || g.name.toLowerCase().includes(query)) return { ...g, links, groups }
+    return null
+  }
+  const groups = OSINT_BOOKMARKS.map(filter).filter((x): x is BmGroup => !!x)
+
+  return (
+    <div className="w-64 shrink-0 border-r border-ink-700 bg-ink-900 flex flex-col">
+      <div className="flex items-center justify-between px-3 py-2 border-b border-ink-700">
+        <span className="text-xs font-semibold text-slate-200 flex items-center gap-1.5">
+          <Library size={14} /> OSINT bookmarks
+        </span>
+        <button className="btn-ghost !p-1" onClick={onClose} title="Hide bookmarks">
+          <X size={14} />
+        </button>
+      </div>
+      <div className="p-2 border-b border-ink-700">
+        <input className="input !py-1 text-xs" placeholder="Filter bookmarks…" value={q} onChange={(e) => setQ(e.target.value)} />
+      </div>
+      <div className="flex-1 overflow-y-auto py-1.5">
+        {groups.map((g) => (
+          <BmNode key={g.name} group={g} depth={0} onOpen={onOpen} forceOpen={!!query} />
+        ))}
+        {groups.length === 0 && <p className="text-xs text-slate-500 px-3 py-2">No matches.</p>}
+      </div>
+    </div>
+  )
+}
+
+function BmNode({
+  group,
+  depth,
+  onOpen,
+  forceOpen
+}: {
+  group: BmGroup
+  depth: number
+  onOpen: (url: string) => void
+  forceOpen: boolean
+}): JSX.Element {
+  const [open, setOpen] = useState(false)
+  const isOpen = forceOpen || open
+  return (
+    <div>
+      <button
+        className="w-full flex items-center gap-1 px-2 py-1 text-[11px] uppercase tracking-wide text-slate-400 hover:text-slate-200"
+        style={{ paddingLeft: depth * 10 + 8 }}
+        onClick={() => setOpen((o) => !o)}
+      >
+        {isOpen ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+        <span className="truncate">{group.name}</span>
+      </button>
+      {isOpen && (
+        <div>
+          {(group.groups ?? []).map((sg) => (
+            <BmNode key={sg.name} group={sg} depth={depth + 1} onOpen={onOpen} forceOpen={forceOpen} />
+          ))}
+          {(group.links ?? []).map((l) => (
+            <button
+              key={l.url + l.name}
+              className="w-full text-left px-2 py-1 text-xs text-slate-300 hover:bg-ink-800 hover:text-brand-glow rounded truncate"
+              style={{ paddingLeft: (depth + 1) * 10 + 14 }}
+              title={l.url}
+              onClick={() => onOpen(l.url)}
+            >
+              {l.name}
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   )
 }

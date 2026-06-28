@@ -244,6 +244,8 @@ export interface AppSettings {
   highlightSelectors?: boolean
   /** Remembered report-export choices (branding, prepared-by, classification). */
   reportOptions?: ReportOptions
+  /** Show the curated OSINT bookmarks panel in the in-app browser. */
+  showBookmarks?: boolean
   /** Open in-app browser tabs, restored on next launch so the session persists. */
   browserTabs?: { url: string; personaId?: string }[]
   /** Index of the active tab among browserTabs, restored on next launch. */
@@ -637,6 +639,10 @@ export interface OsintApi {
   browser: {
     /** Subscribe to main-process requests to open URLs as in-app browser tabs. */
     onOpen(cb: (urls: string[]) => void): () => void
+    /** Forensic full-page screenshot of a webview's whole scrollable page (CDP). */
+    captureFullPage(
+      webContentsId: number
+    ): Promise<{ ok: boolean; error?: string; dataUrl?: string; width?: number; height?: number }>
   }
   clipboard: {
     writeText(text: string): Promise<void>

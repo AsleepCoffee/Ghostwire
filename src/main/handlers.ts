@@ -1,4 +1,4 @@
-import { ipcMain, dialog, BrowserWindow, clipboard, nativeImage, app, net } from 'electron'
+import { ipcMain, dialog, BrowserWindow, clipboard, nativeImage, app, net, webContents } from 'electron'
 import { randomUUID, createHash } from 'crypto'
 import { existsSync, mkdirSync, writeFileSync, copyFileSync, unlinkSync, readFileSync } from 'fs'
 import { join, dirname, basename } from 'path'
@@ -1836,6 +1836,47 @@ export function registerHandlers(): void {
 
     const ips = Array.from(new Set([...a, ...hosts.map((h) => h.ip).filter((x): x is string => !!x)])).sort()
     return { ok: true, domain, whois, dns: { a, mx, ns, txt }, ips, hosts, emails: Array.from(emails), sources }
+  })
+
+  // Forensic full-page capture — screenshot the ENTIRE scrollable page (not just
+  // the viewport) via the Chrome DevTools Protocol, for evidence collection.
+  ipcMain.handle('browser:captureFullPage', async (_e, webContentsId: number) => {
+    const wc = webContents.fromId(webContentsId)
+    if (!wc) return { ok: false, error: 'No page is open to capture.' }
+    const dbg = wc.debugger
+    let attached = false
+    try {
+      try {
+        dbg.attach('1.3')
+        attached = true
+      } catch {
+        /* may already be attached by us — proceed */
+      }
+      const metrics = (await dbg.sendCommand('Page.getLayoutMetrics')) as {
+        cssContentSize?: { width: number; height: number }
+        contentSize?: { width: number; height: number }
+      }
+      const size = metrics.cssContentSize ?? metrics.contentSize ?? { width: 1280, height: 2000 }
+      const width = Math.max(1, Math.ceil(size.width))
+      // Cap height so a pathologically long page can't blow up memory.
+      const height = Math.min(25000, Math.max(1, Math.ceil(size.height)))
+      const shot = (await dbg.sendCommand('Page.captureScreenshot', {
+        format: 'png',
+        captureBeyondViewport: true,
+        clip: { x: 0, y: 0, width, height, scale: 1 }
+      })) as { data: string }
+      return { ok: true, dataUrl: `data:image/png;base64,${shot.data}`, width, height }
+    } catch (e) {
+      return { ok: false, error: String((e as Error)?.message ?? e) }
+    } finally {
+      if (attached) {
+        try {
+          dbg.detach()
+        } catch {
+          /* best effort */
+        }
+      }
+    }
   })
 
   // AI geolocation — ask an OpenAI vision model where an evidence image was taken.
