@@ -21,6 +21,7 @@ import type {
   EntityEdge,
   EntityNode,
   Evidence,
+  EvidenceVerify,
   GeoResult,
   Note,
   Persona,
@@ -779,24 +780,49 @@ export function registerHandlers(): void {
   })
   // Re-hash a stored exhibit and compare it to the hash recorded at capture — proves integrity.
   ipcMain.handle('evidence:verify', (_e, id: string) => {
-    const r = get('SELECT path, sha256, capturedAt FROM evidence WHERE id = ?', [id]) as
-      | { path: string; sha256: string; capturedAt: number }
+    const r = get('SELECT path, sha256, capturedAt, artifacts FROM evidence WHERE id = ?', [id]) as
+      | { path: string; sha256: string; capturedAt: number; artifacts?: string }
       | undefined
     if (!r) return { status: 'missing', sizeBytes: 0, storedHash: '', currentHash: '' }
+
+    // Re-hash forensic sidecar artifacts (MHTML archive, manifest) too, so the
+    // whole capture set can be proven unaltered — not just the screenshot.
+    let artifacts: EvidenceVerify['artifacts']
+    try {
+      const list = r.artifacts ? (JSON.parse(r.artifacts) as { name: string; path: string; sha256: string }[]) : []
+      if (list.length) {
+        artifacts = list.map((a) => {
+          const b = readMedia(a.path)
+          if (!b) return { name: a.name, status: 'missing' as const, storedHash: a.sha256, currentHash: '', bytes: 0 }
+          const cur = createHash('sha256').update(b).digest('hex')
+          return {
+            name: a.name,
+            status: cur === a.sha256 ? ('verified' as const) : ('altered' as const),
+            storedHash: a.sha256,
+            currentHash: cur,
+            bytes: b.length
+          }
+        })
+      }
+    } catch {
+      /* malformed artifacts — skip */
+    }
+
     const buf = readMedia(r.path)
-    if (!buf) return { status: 'missing', sizeBytes: 0, storedHash: r.sha256 ?? '', currentHash: '' }
+    if (!buf) return { status: 'missing', sizeBytes: 0, storedHash: r.sha256 ?? '', currentHash: '', artifacts }
     const current = createHash('sha256').update(buf).digest('hex')
     const stored = r.sha256 ?? ''
     if (!stored) {
       // Legacy exhibit captured before hashing — backfill it now and treat as the baseline.
       run('UPDATE evidence SET sha256 = ? WHERE id = ?', [current, id])
-      return { status: 'recorded', sizeBytes: buf.length, storedHash: current, currentHash: current }
+      return { status: 'recorded', sizeBytes: buf.length, storedHash: current, currentHash: current, artifacts }
     }
     return {
       status: current === stored ? 'verified' : 'altered',
       sizeBytes: buf.length,
       storedHash: stored,
-      currentHash: current
+      currentHash: current,
+      artifacts
     }
   })
 

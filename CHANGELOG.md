@@ -1,5 +1,8 @@
 # Changelog
 
+## v0.1.99
+- Archive re-verification: `evidence:verify` now re-hashes the forensic sidecar artifacts (MHTML archive + manifest) against their recorded SHA-256, not just the primary screenshot. `EvidenceVerify` gained a per-artifact `artifacts[]` result; Evidence detail shows each as "unaltered" / "MISMATCH — modified" / "file missing" so a captured page can be proven unchanged since collection.
+
 ## v0.1.98
 - Complete forensic web capture. The full-page button now produces a defensible capture set as one exhibit: full-page PNG screenshot + a complete **MHTML page archive** (HTML + inlined resources, via CDP `Page.captureSnapshot`) + a **hashed manifest** (url, finalUrl, ISO timestamp, user-agent, page dimensions, per-artifact SHA-256). New `evidence:forensicCapture` handler; artifacts stored in a new `evidence.artifacts` column.
 - Evidence detail lists forensic artifacts (size + SHA-256) with an **Export** button (`evidence:exportArtifact`) to save the `.mhtml`/manifest to disk and re-open the exact captured page. Artifact hashes now appear in HTML/PDF/Word reports and the chain of custody.

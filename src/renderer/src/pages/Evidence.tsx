@@ -859,6 +859,23 @@ function EvidenceDetail({
                 </span>
               </div>
             )}
+            {verify?.artifacts && verify.artifacts.length > 0 && (
+              <div className="space-y-1">
+                {verify.artifacts.map((a) => (
+                  <div
+                    key={a.name}
+                    className={`flex items-center gap-1.5 text-[11px] rounded-md px-2 py-1 ${
+                      a.status === 'verified' ? 'bg-ok/10 text-ok' : 'bg-warn/10 text-warn'
+                    }`}
+                  >
+                    {a.status === 'verified' ? <ShieldCheck size={12} /> : <ShieldAlert size={12} />}
+                    <span className="truncate">
+                      {a.name}: {a.status === 'verified' ? 'unaltered' : a.status === 'missing' ? 'file missing' : 'MISMATCH — modified'}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
           {exif && (
             <div className="rounded-lg border border-ink-700 p-2.5 space-y-1.5">

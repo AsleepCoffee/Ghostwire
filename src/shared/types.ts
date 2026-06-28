@@ -543,6 +543,14 @@ export interface EvidenceVerify {
   sizeBytes: number
   storedHash: string
   currentHash: string
+  /** Per-artifact re-hash results (MHTML archive, manifest) for forensic captures. */
+  artifacts?: {
+    name: string
+    status: 'verified' | 'altered' | 'missing'
+    storedHash: string
+    currentHash: string
+    bytes: number
+  }[]
 }
 
 export interface UpdateStatus {

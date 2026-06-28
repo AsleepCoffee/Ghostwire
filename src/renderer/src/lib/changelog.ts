@@ -7,6 +7,13 @@ export interface ChangelogEntry {
 /** In-app patch notes. Newest first. Keep in sync with CHANGELOG.md. */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.1.99',
+    date: '2026-06-28',
+    notes: [
+      'Verify the whole forensic capture — “Verify integrity” on an exhibit now re-hashes the MHTML page archive and manifest too (not just the screenshot) and shows a per-artifact unaltered / MISMATCH result, so you can prove a captured page hasn’t changed since collection.'
+    ]
+  },
+  {
     version: '0.1.98',
     date: '2026-06-28',
     notes: [
