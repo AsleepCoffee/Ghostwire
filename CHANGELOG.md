@@ -1,6 +1,6 @@
 # Changelog
 
-## v0.1.102
+## v0.1.103
 - Clearer **Build from source** guide in the README — step-by-step prerequisites, clone, install, and build commands for Windows and Linux, so anyone can compile GhostWire themselves instead of trusting the prebuilt binary.
 - Tidied up release notes and the build pipeline.
 

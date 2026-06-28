@@ -7,7 +7,7 @@ export interface ChangelogEntry {
 /** In-app patch notes. Newest first. Keep in sync with CHANGELOG.md. */
 export const CHANGELOG: ChangelogEntry[] = [
   {
-    version: '0.1.102',
+    version: '0.1.103',
     date: '2026-06-28',
     notes: [
       'Clearer “Build from source” guide — the README now walks through compiling GhostWire yourself step by step (prerequisites, clone, install, build) for Windows and Linux, and release notes have been tidied up.'
