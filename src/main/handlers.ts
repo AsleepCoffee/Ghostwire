@@ -27,6 +27,7 @@ import type {
   Project,
   RedditItem,
   ReconHost,
+  ReportOptions,
   ToolLink
 } from '../shared/types'
 
@@ -349,7 +350,7 @@ export async function readExif(buf: Buffer): Promise<ExifSummary> {
 }
 
 /** Gather everything for a full case report, with evidence images embedded. */
-async function gatherReport(id: string): Promise<ReportData | null> {
+async function gatherReport(id: string, opts?: ReportOptions): Promise<ReportData | null> {
   const pr = get('SELECT * FROM projects WHERE id = ?', [id])
   if (!pr) return null
   const project = mapProject(pr)
@@ -396,7 +397,20 @@ async function gatherReport(id: string): Promise<ReportData | null> {
     }),
     edges: all('SELECT * FROM edges WHERE boardId = ?', [b.id]).map(mapEdge)
   }))
-  return { project, evidence, notes, activity, personas, graphs, logo: reportLogo() }
+  const branded = opts?.branded !== false
+  return {
+    project,
+    evidence,
+    notes,
+    activity,
+    personas,
+    graphs,
+    logo: branded ? reportLogo() : undefined,
+    branded,
+    analyst: opts?.analyst,
+    org: opts?.org,
+    classification: opts?.classification
+  }
 }
 
 /** The GhostWire app icon as a data URI, for the report header (best-effort). */
@@ -522,8 +536,8 @@ export function registerHandlers(): void {
     return file
   })
 
-  ipcMain.handle('projects:exportReportHtml', async (_e, id: string) => {
-    const data = await gatherReport(id)
+  ipcMain.handle('projects:exportReportHtml', async (_e, id: string, opts?: ReportOptions) => {
+    const data = await gatherReport(id, opts)
     if (!data) return null
     const safe = data.project.name.replace(/[\\/:*?"<>|]/g, '-').slice(0, 100) || 'investigation'
     const win = BrowserWindow.getFocusedWindow()
@@ -538,8 +552,8 @@ export function registerHandlers(): void {
     return res.filePath
   })
 
-  ipcMain.handle('projects:exportReportPdf', async (_e, id: string) => {
-    const data = await gatherReport(id)
+  ipcMain.handle('projects:exportReportPdf', async (_e, id: string, opts?: ReportOptions) => {
+    const data = await gatherReport(id, opts)
     if (!data) return null
     const safe = data.project.name.replace(/[\\/:*?"<>|]/g, '-').slice(0, 100) || 'investigation'
     const win = BrowserWindow.getFocusedWindow()
@@ -568,8 +582,8 @@ export function registerHandlers(): void {
     return res.filePath
   })
 
-  ipcMain.handle('projects:exportReportDocx', async (_e, id: string) => {
-    const data = await gatherReport(id)
+  ipcMain.handle('projects:exportReportDocx', async (_e, id: string, opts?: ReportOptions) => {
+    const data = await gatherReport(id, opts)
     if (!data) return null
     const safe = data.project.name.replace(/[\\/:*?"<>|]/g, '-').slice(0, 100) || 'investigation'
     const win = BrowserWindow.getFocusedWindow()
@@ -1653,12 +1667,14 @@ export function registerHandlers(): void {
     }
 
     // ---- Passive subdomain sources (run concurrently) ----
-    const [crt, ht, otx, certs, anubis, a, mx, ns, txt, rdap] = await Promise.all([
+    const [crt, ht, otx, certs, wayback, urlscan, rapiddns, a, mx, ns, txt, rdap] = await Promise.all([
       getJson(`https://crt.sh/?q=${encodeURIComponent('%.' + domain)}&output=json`),
       getText(`https://api.hackertarget.com/hostsearch/?q=${encodeURIComponent(domain)}`),
       getJson(`https://otx.alienvault.com/api/v1/indicators/domain/${encodeURIComponent(domain)}/passive_dns`),
       getJson(`https://api.certspotter.com/v1/issuances?domain=${encodeURIComponent(domain)}&include_subdomains=true&expand=dns_names`),
-      getJson(`https://jonlu.ca/anubis/subdomains/${encodeURIComponent(domain)}`),
+      getText(`https://web.archive.org/cdx/search/cdx?url=*.${encodeURIComponent(domain)}&output=text&fl=original&collapse=urlkey&limit=8000`),
+      getJson(`https://urlscan.io/api/v1/search/?q=domain:${encodeURIComponent(domain)}&size=200`),
+      getText(`https://rapiddns.io/subdomain/${encodeURIComponent(domain)}?full=1`),
       dohVals(domain, 'A', 1),
       dohVals(domain, 'MX', 15),
       dohVals(domain, 'NS', 2),
@@ -1700,9 +1716,24 @@ export function registerHandlers(): void {
           if (isHost(h)) subs.add(h)
         }
     })
-    track('anubis', () => {
-      for (const nm of (Array.isArray(anubis) ? anubis : []) as string[]) {
-        const h = clean(String(nm))
+    track('wayback', () => {
+      for (const line of (wayback || '').split('\n')) {
+        const h = clean(line.match(/^https?:\/\/([^/:\s]+)/i)?.[1] ?? '')
+        if (isHost(h)) subs.add(h)
+      }
+    })
+    track('urlscan', () => {
+      const results = (urlscan as { results?: { page?: { domain?: string }; task?: { domain?: string } }[] } | null)?.results ?? []
+      for (const r of results)
+        for (const d of [r.page?.domain, r.task?.domain]) {
+          const h = clean(String(d ?? ''))
+          if (isHost(h)) subs.add(h)
+        }
+    })
+    track('rapiddns', () => {
+      const re = new RegExp('[a-z0-9_-]+(?:\\.[a-z0-9_-]+)*\\.' + domain.replace(/\./g, '\\.'), 'gi')
+      for (const m of (rapiddns || '').matchAll(re)) {
+        const h = clean(m[0])
         if (isHost(h)) subs.add(h)
       }
     })
@@ -1731,9 +1762,46 @@ export function registerHandlers(): void {
       }
     }
 
+    // ---- Active DNS brute of common names (amass-enum style) ----
+    // Skip when the domain has a wildcard record (every name would "resolve"),
+    // which would produce nothing but false positives.
+    let bruteCount = 0
+    const wildcard = await dohA(`gw-no-such-host-${Date.now()}.${domain}`)
+    if (!wildcard.length) {
+      const NAMES = [
+        'www', 'mail', 'webmail', 'smtp', 'pop', 'imap', 'ns1', 'ns2', 'mx', 'ftp', 'sftp', 'vpn', 'remote', 'portal',
+        'admin', 'api', 'dev', 'staging', 'stage', 'test', 'uat', 'qa', 'beta', 'app', 'apps', 'm', 'mobile', 'shop',
+        'store', 'blog', 'news', 'support', 'help', 'docs', 'status', 'cdn', 'static', 'assets', 'img', 'images', 'media',
+        'files', 'download', 'secure', 'login', 'auth', 'sso', 'dashboard', 'panel', 'cpanel', 'whm', 'git', 'gitlab',
+        'jenkins', 'ci', 'jira', 'wiki', 'demo', 'internal', 'intranet', 'owa', 'autodiscover', 'exchange', 'gateway',
+        'proxy', 'db', 'backup', 'careers', 'jobs', 'cloud', 'connect', 'crm', 'erp', 'monitor', 'grafana', 'kibana'
+      ]
+      const q = NAMES.filter((n) => !subs.has(`${n}.${domain}`))
+      const found: string[] = []
+      const dig = async (): Promise<void> => {
+        for (;;) {
+          const n = q.shift()
+          if (!n) break
+          const host = `${n}.${domain}`
+          const ips = await dohA(host)
+          if (ips.length) {
+            found.push(host)
+            ipHints.set(host, ips[0])
+          }
+        }
+      }
+      await Promise.all(Array.from({ length: 15 }, dig))
+      for (const h of found)
+        if (isHost(h) && !subs.has(h)) {
+          subs.add(h)
+          bruteCount++
+        }
+    }
+    sources['dns-brute'] = bruteCount
+
     // ---- Liveness probe (httprobe-equivalent) + title, with a concurrency pool ----
     subs.add(domain)
-    const hostList = Array.from(subs).sort().slice(0, 60)
+    const hostList = Array.from(subs).sort().slice(0, 80)
     const probe = async (host: string): Promise<ReconHost> => {
       for (const scheme of ['https', 'http'] as const) {
         try {

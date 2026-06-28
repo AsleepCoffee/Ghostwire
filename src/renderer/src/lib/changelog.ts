@@ -7,6 +7,14 @@ export interface ChangelogEntry {
 /** In-app patch notes. Newest first. Keep in sync with CHANGELOG.md. */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.1.96',
+    date: '2026-06-27',
+    notes: [
+      'Client-ready reports — exports now have an options panel: toggle GhostWire branding on/off, add a “Prepared by” analyst + organisation, and pick a classification (Confidential/Restricted/Internal/Unclassified). Every format (HTML, PDF, Word, Markdown) now opens with a professional cover (case reference, classification banner), an auto Executive Summary, and Scope & Methodology + Limitations & Disclaimer sections.',
+      'Domain Recon is more thorough — added urlscan.io, RapidDNS and the Wayback Machine as subdomain sources, plus an active DNS brute of ~75 common subdomain names (skipped automatically on wildcard domains). Removed the dead Anubis source.'
+    ]
+  },
+  {
     version: '0.1.95',
     date: '2026-06-27',
     notes: [

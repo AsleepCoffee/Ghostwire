@@ -21,6 +21,65 @@ export interface ReportData {
   graphs: { board: Board; entities: EntityNode[]; edges: EntityEdge[] }[]
   /** GhostWire logo as a data URI for the report header. */
   logo?: string
+  /** Include GhostWire branding (logo, name, footer). Default true. */
+  branded?: boolean
+  /** "Prepared by" — analyst/investigator on the cover. */
+  analyst?: string
+  /** Organisation / agency on the cover. */
+  org?: string
+  /** Confidentiality marking shown on the cover and page headers. */
+  classification?: string
+}
+
+/** A stable-ish case reference for the cover, e.g. GW-1A2B3C4D-20260627. */
+function reportRef(p: Project): string {
+  const d = new Date()
+  const pad = (n: number): string => String(n).padStart(2, '0')
+  const ymd = `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}`
+  return `GW-${String(p.id).replace(/[^a-zA-Z0-9]/g, '').slice(0, 8).toUpperCase()}-${ymd}`
+}
+
+/** Auto executive summary sentences from the case data. */
+function execSummaryText(d: ReportData): string {
+  const p = d.project
+  const entities = d.graphs.reduce((s, g) => s + g.entities.length, 0)
+  const geo = d.evidence.filter((e) => evidenceGeo(e)).length
+  const bits: string[] = []
+  bits.push(
+    `This report documents the findings of an open-source intelligence (OSINT) investigation${
+      p.subject ? ` into ${p.subject}` : ''
+    }, designated case reference ${reportRef(p)}.`
+  )
+  if (p.objectives) bits.push(`The investigation set out to: ${p.objectives.replace(/\s+/g, ' ').trim()}`)
+  bits.push(
+    `It collected ${d.evidence.length} exhibit${d.evidence.length === 1 ? '' : 's'}` +
+      (entities ? `, mapped ${entities} entit${entities === 1 ? 'y' : 'ies'} across ${d.graphs.length} link chart${d.graphs.length === 1 ? '' : 's'}` : '') +
+      (geo ? `, and geolocated ${geo} item${geo === 1 ? '' : 's'}` : '') +
+      `. Every exhibit was hashed (SHA-256) at capture to support integrity verification.`
+  )
+  return bits.join(' ')
+}
+
+const SCOPE_TEXT =
+  'This assessment relied solely on passive, open-source and publicly available information (OSINT). No intrusive techniques, authentication bypass, or access to non-public systems was performed. Sources include public records, certificate transparency logs, DNS and WHOIS data, social media, search engines and web archives. Findings reflect information available at the time of collection and should be corroborated before any action is taken.'
+
+const DISCLAIMER_TEXT =
+  'Open-source information can be incomplete, outdated, deliberately falsified, or attributed to the wrong individual. Identifiers (names, usernames, photos) may be shared by unrelated parties. Nothing in this report should be treated as definitive proof; it is intended as investigative lead material. The author accepts no liability for decisions made on the basis of this document. Handle in accordance with its confidentiality marking.'
+
+/** Cover metadata rows shared by every format: label/value pairs. */
+function coverRows(d: ReportData): [string, string][] {
+  const p = d.project
+  const rows: [string, string][] = []
+  if (p.subject) rows.push(['Subject', p.subject])
+  rows.push(['Case type', p.type])
+  rows.push(['Status', p.status])
+  rows.push(['Case reference', reportRef(p)])
+  rows.push(['Classification', (d.classification || 'CONFIDENTIAL').toUpperCase()])
+  if (d.analyst) rows.push(['Prepared by', d.analyst])
+  if (d.org) rows.push(['Organisation', d.org])
+  rows.push(['Opened', fmt(p.createdAt)])
+  rows.push(['Report generated', fmtFull(new Date())])
+  return rows
 }
 
 /** Best location for an exhibit: a pinned location wins, else raw EXIF GPS. */
@@ -162,8 +221,12 @@ interface Section {
 /** Which sections this report actually has, in order, for the table of contents. */
 function tocSections(d: ReportData): Section[] {
   const p = d.project
-  const out: Section[] = [{ id: 'overview', title: 'Overview' }]
+  const out: Section[] = [
+    { id: 'overview', title: 'Overview' },
+    { id: 'summary', title: 'Executive summary' }
+  ]
   if (p.objectives) out.push({ id: 'objectives', title: 'Objectives' })
+  out.push({ id: 'scope', title: 'Scope & methodology' })
   if (p.known) out.push({ id: 'background', title: 'Background' })
   if (p.dataPoints?.length) out.push({ id: 'known', title: 'Known information', count: p.dataPoints.length })
   if (d.graphs.length) out.push({ id: 'links', title: 'Link analysis', count: d.graphs.length })
@@ -174,6 +237,7 @@ function tocSections(d: ReportData): Section[] {
   if (d.personas.length) out.push({ id: 'personas', title: 'Personas', count: d.personas.length })
   if (d.activity.length) out.push({ id: 'timeline', title: 'Activity timeline', count: d.activity.length })
   out.push({ id: 'custody', title: 'Chain of custody', count: d.evidence.length })
+  out.push({ id: 'disclaimer', title: 'Limitations & disclaimer' })
   return out
 }
 
@@ -209,6 +273,8 @@ function custodyTable(d: ReportData): string {
 export function buildHtmlReport(d: ReportData): string {
   const p = d.project
   const toc = tocSections(d)
+  const branded = d.branded !== false
+  const classification = (d.classification || 'CONFIDENTIAL').toUpperCase()
 
   const evidenceHtml = d.evidence.length
     ? `<div class="evgrid">${d.evidence
@@ -296,12 +362,11 @@ export function buildHtmlReport(d: ReportData): string {
     section('overview', 'Overview', undefined, `
       <div class="statbar">${stats.map((s) => `<div class="stat"><b>${s.n}</b><span>${esc(s.l)}</span></div>`).join('')}</div>
       <div class="meta">
-        <div><b>Type</b>${esc(p.type)}</div>
-        <div><b>Status</b>${esc(p.status)}</div>
-        ${p.subject ? `<div><b>Subject</b>${esc(p.subject)}</div>` : ''}
-        <div><b>Created</b>${esc(fmt(p.createdAt))}</div>
+        ${coverRows(d).map(([k, v]) => `<div><b>${esc(k)}</b>${esc(v)}</div>`).join('')}
       </div>`),
+    section('summary', 'Executive summary', undefined, `<p class="prose">${esc(execSummaryText(d))}</p>`),
     p.objectives ? section('objectives', 'Objectives', undefined, `<pre class="prose">${esc(p.objectives)}</pre>`) : '',
+    section('scope', 'Scope & methodology', undefined, `<p class="prose">${esc(SCOPE_TEXT)}</p>`),
     p.known ? section('background', 'Background', undefined, `<pre class="prose">${esc(p.known)}</pre>`) : '',
     p.dataPoints?.length ? section('known', 'Known information', p.dataPoints.length, dataPointsTable(d)) : '',
     d.graphs.length ? section('links', 'Link analysis', d.graphs.length, graphsHtml) : '',
@@ -319,7 +384,8 @@ export function buildHtmlReport(d: ReportData): string {
     d.activity.length ? section('timeline', 'Activity timeline', d.activity.length, timelineHtml) : '',
     section('custody', 'Chain of custody', d.evidence.length, `
       <p class="muted">Each exhibit's SHA-256 was recorded when it was captured. Re-hashing a file and matching this value proves it has not been altered since.</p>
-      ${custodyTable(d)}`)
+      ${custodyTable(d)}`),
+    section('disclaimer', 'Limitations & disclaimer', undefined, `<p class="prose">${esc(DISCLAIMER_TEXT)}</p>`)
   ].join('\n')
 
   return `<!doctype html><html lang="en" data-theme="dark"><head><meta charset="utf-8"/>
@@ -363,6 +429,7 @@ ${geoPoints.length ? '<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9
   .toolbtns button:hover{ color:var(--ink); border-color:var(--accent); }
   /* Main */
   main{ padding:34px 40px 80px; min-width:0; }
+  .classbar{ text-align:center; font-weight:700; font-size:11px; letter-spacing:2px; color:#b91c1c; border:1px solid color-mix(in srgb,#b91c1c 40%,transparent); background:color-mix(in srgb,#b91c1c 10%,transparent); border-radius:8px; padding:5px; margin-bottom:14px; }
   header.hd{ margin-bottom:8px; }
   header.hd h1{ font-size:28px; margin:0 0 4px; letter-spacing:-.3px; }
   header.hd .sub{ color:var(--muted); margin:0 0 6px; }
@@ -432,10 +499,14 @@ ${geoPoints.length ? '<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9
 <body>
   <div class="layout">
     <aside>
-      <div class="brandrow">
+      ${
+        branded
+          ? `<div class="brandrow">
         ${d.logo ? `<img class="logo" src="${d.logo}" alt="GhostWire"/>` : ''}
         <div class="brand">GHOSTWIRE</div>
-      </div>
+      </div>`
+          : ''
+      }
       <div class="casen">${esc(p.name)}</div>
       <div class="searchbox">
         <input id="search" type="search" placeholder="Search report…" autocomplete="off"/>
@@ -448,17 +519,20 @@ ${geoPoints.length ? '<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9
       </div>
     </aside>
     <main>
+      <div class="classbar">${esc(classification)}</div>
       <header class="hd">
         <div class="coverrow">
-          ${d.logo ? `<img class="coverlogo" src="${d.logo}" alt=""/>` : ''}
+          ${branded && d.logo ? `<img class="coverlogo" src="${d.logo}" alt=""/>` : ''}
           <div>
             <h1>${esc(p.name)}</h1>
-            <p class="sub">Investigation report · ${esc(p.type)} · generated ${esc(fmt(new Date()))}</p>
+            <p class="sub">OSINT investigation report · ${esc(reportRef(p))} · generated ${esc(fmt(new Date()))}</p>
           </div>
         </div>
       </header>
       ${body}
-      <footer>Generated by GhostWire — OSINT Workbench. Evidence hashes are SHA-256 of the stored file at capture time. Images and data are embedded in this file; the location map needs an internet connection to load tiles.</footer>
+      <footer>${
+        branded ? 'Generated by GhostWire — OSINT Workbench. ' : ''
+      }Evidence hashes are SHA-256 of the stored file at capture time. Images and data are embedded in this file; the location map needs an internet connection to load tiles. Classification: ${esc(classification)}.</footer>
     </main>
   </div>
   <div class="lb" id="lb"><span class="x" id="lbx">&times;</span><img id="lbimg" alt=""/><div class="cap" id="lbcap"></div></div>
@@ -540,6 +614,8 @@ ${
 export function buildPrintReport(d: ReportData): string {
   const p = d.project
   const dp = d.project.dataPoints ?? []
+  const branded = d.branded !== false
+  const classification = (d.classification || 'CONFIDENTIAL').toUpperCase()
 
   const graphsHtml = d.graphs.length
     ? d.graphs
@@ -619,20 +695,27 @@ export function buildPrintReport(d: ReportData): string {
   .timeline .when{ color:var(--muted); margin-right:10px; }
   .tag{ display:inline-block; background:#eef2ff; color:#4338ca; border-radius:4px; padding:0 6px; margin-right:8px; font-size:11px; text-transform:uppercase; }
   .plist{ list-style:none; padding:0; } .plist li{ padding:3px 0; }
+  .classbar{ text-align:center; font-weight:700; font-size:10px; letter-spacing:2px; color:#b91c1c; border:1px solid #f1c0c0; background:#fdecec; border-radius:6px; padding:5px; margin-bottom:16px; }
+  .coverrow{ display:flex; align-items:center; gap:14px; margin-bottom:4px; }
+  .coverlogo{ width:42px; height:42px; border-radius:9px; }
+  .prose{ white-space:pre-wrap; font:inherit; margin:0; }
   footer{ margin-top:36px; padding-top:12px; border-top:1px solid var(--line); color:var(--muted); font-size:12px; }
   @media print{ body{ padding:0; } h2{ page-break-after:avoid; } }
 </style></head>
 <body>
-  <h1>${esc(p.name)}</h1>
-  <p class="sub">Investigation report · generated ${esc(fmt(new Date()))}</p>
-  <div class="meta">
-    <div><b>Type</b>${esc(p.type)}</div>
-    <div><b>Status</b>${esc(p.status)}</div>
-    ${p.subject ? `<div><b>Subject</b>${esc(p.subject)}</div>` : ''}
-    <div><b>Created</b>${esc(fmt(p.createdAt))}</div>
+  <div class="classbar">${esc(classification)}</div>
+  <div class="coverrow">
+    ${branded && d.logo ? `<img class="coverlogo" src="${d.logo}" alt=""/>` : ''}
+    <h1>${esc(p.name)}</h1>
   </div>
-  ${p.objectives ? `<h2>Objectives</h2><pre style="white-space:pre-wrap;font:inherit;margin:0">${esc(p.objectives)}</pre>` : ''}
-  ${p.known ? `<h2>Background &amp; notes</h2><pre style="white-space:pre-wrap;font:inherit;margin:0">${esc(p.known)}</pre>` : ''}
+  <p class="sub">OSINT investigation report · ${esc(reportRef(p))} · generated ${esc(fmt(new Date()))}</p>
+  <div class="meta">
+    ${coverRows(d).map(([k, v]) => `<div><b>${esc(k)}</b>${esc(v)}</div>`).join('')}
+  </div>
+  <h2>Executive summary</h2><p class="prose">${esc(execSummaryText(d))}</p>
+  ${p.objectives ? `<h2>Objectives</h2><pre class="prose">${esc(p.objectives)}</pre>` : ''}
+  <h2>Scope &amp; methodology</h2><p class="prose">${esc(SCOPE_TEXT)}</p>
+  ${p.known ? `<h2>Background &amp; notes</h2><pre class="prose">${esc(p.known)}</pre>` : ''}
   ${dp.length ? `<h2>Known information</h2>${dataPointsTable(d)}` : ''}
   <h2>Link analysis</h2>${graphsHtml}
   <h2>Evidence <span class="muted">(${d.evidence.length})</span></h2>${evidenceHtml}
@@ -642,7 +725,8 @@ export function buildPrintReport(d: ReportData): string {
   <h2>Chain of custody</h2>
   <p class="muted">Each exhibit's SHA-256 was recorded at capture time. Re-hashing a file and matching this value proves it is unaltered.</p>
   ${custodyTable(d)}
-  <footer>Generated by GhostWire — OSINT Workbench.</footer>
+  <h2>Limitations &amp; disclaimer</h2><p class="prose">${esc(DISCLAIMER_TEXT)}</p>
+  <footer>${branded ? 'Generated by GhostWire — OSINT Workbench. ' : ''}Classification: ${esc(classification)}.</footer>
 </body></html>`
 }
 
@@ -653,15 +737,17 @@ export function buildPrintReport(d: ReportData): string {
 export function buildDocxHtml(d: ReportData): string {
   const p = d.project
   const dp = d.project.dataPoints ?? []
+  const branded = d.branded !== false
+  const classification = (d.classification || 'CONFIDENTIAL').toUpperCase()
   const H: string[] = []
+  H.push(`<p style="text-align:center;color:#b91c1c;font-weight:bold;letter-spacing:2px;font-size:9pt">${esc(classification)}</p>`)
   H.push(`<h1>${esc(p.name)}</h1>`)
-  H.push(`<p><i>Investigation report — generated ${esc(fmtFull(new Date()))}</i></p>`)
-  H.push('<table><tr><td><b>Type</b></td><td>' + esc(p.type) + '</td></tr>' +
-    '<tr><td><b>Status</b></td><td>' + esc(p.status) + '</td></tr>' +
-    (p.subject ? '<tr><td><b>Subject</b></td><td>' + esc(p.subject) + '</td></tr>' : '') +
-    '<tr><td><b>Created</b></td><td>' + esc(fmt(p.createdAt)) + '</td></tr></table>')
+  H.push(`<p><i>OSINT investigation report — ${esc(reportRef(p))} — generated ${esc(fmtFull(new Date()))}</i></p>`)
+  H.push('<table>' + coverRows(d).map(([k, v]) => `<tr><td><b>${esc(k)}</b></td><td>${esc(v)}</td></tr>`).join('') + '</table>')
 
+  H.push('<h2>Executive summary</h2>'); H.push(`<p>${esc(execSummaryText(d))}</p>`)
   if (p.objectives) { H.push('<h2>Objectives</h2>'); H.push(`<p>${esc(p.objectives).replace(/\n/g, '<br/>')}</p>`) }
+  H.push('<h2>Scope &amp; methodology</h2>'); H.push(`<p>${esc(SCOPE_TEXT)}</p>`)
   if (p.known) { H.push('<h2>Background &amp; notes</h2>'); H.push(`<p>${esc(p.known).replace(/\n/g, '<br/>')}</p>`) }
 
   if (dp.length) {
@@ -726,6 +812,10 @@ export function buildDocxHtml(d: ReportData): string {
     H.push('<table><tr><td><b>#</b></td><td><b>Exhibit</b></td><td><b>Captured</b></td><td><b>SHA-256</b></td></tr>' +
       d.evidence.map((e, i) => `<tr><td>${i + 1}</td><td>${esc(e.title || 'Untitled')}</td><td>${esc(fmtFull(e.capturedAt))}</td><td style="font-size:8pt">${e.sha256 ? esc(e.sha256) : 'not hashed'}</td></tr>`).join('') + '</table>')
   } else H.push('<p>No evidence captured.</p>')
+
+  H.push('<h2>Limitations &amp; disclaimer</h2>')
+  H.push(`<p>${esc(DISCLAIMER_TEXT)}</p>`)
+  H.push(`<p style="font-size:8pt;color:#6b7280">${branded ? 'Generated by GhostWire — OSINT Workbench. ' : ''}Classification: ${esc(classification)}.</p>`)
 
   return `<!doctype html><html><head><meta charset="utf-8"/></head><body>${H.join('\n')}</body></html>`
 }

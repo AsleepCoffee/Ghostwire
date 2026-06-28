@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.1.96
+- Report export options + professional deliverables. New export panel: toggle GhostWire branding, set "Prepared by"/Organisation, choose a classification. All formats (HTML/PDF/DOCX/MD) gain a cover (case reference `GW-XXXXXXXX-YYYYMMDD`, classification banner), an auto-generated **Executive summary**, **Scope & methodology**, and **Limitations & disclaimer** sections. Choices persist in settings (`reportOptions`). Threaded `ReportOptions` through preload → IPC → `gatherReport` → all three builders; unbranded omits the logo/name/footer.
+- Domain Recon coverage: added urlscan.io, RapidDNS and Wayback Machine CDX sources, plus an active DoH brute of ~75 common subdomain names with wildcard-DNS detection (skips the brute when a wildcard is present to avoid false positives). Removed the dead Anubis source; raised the live-probe cap to 80 hosts.
+
 ## v0.1.95
 - Release pipeline: stage as a **prerelease** instead of a draft. `gh release upload/view <tag>` 404s on drafts on the ubuntu runners (GitHub's `/releases/tags/{tag}` excludes drafts), which broke v0.1.94's Linux upload + publish steps. A prerelease is published (so it's found by tag on every runner) but is excluded from `/releases/latest` and ignored by electron-updater (`allowPrerelease` is false), so it stays invisible to auto-update until the publish job flips it to a full latest release. Carries all pending features (Domain Recon, add-to-investigation everywhere).
 

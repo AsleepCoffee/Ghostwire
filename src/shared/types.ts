@@ -242,6 +242,8 @@ export interface AppSettings {
   selectorsByProject?: Record<string, string[]>
   /** Highlight selectors on pages (default on when selectors exist). */
   highlightSelectors?: boolean
+  /** Remembered report-export choices (branding, prepared-by, classification). */
+  reportOptions?: ReportOptions
   /** Open in-app browser tabs, restored on next launch so the session persists. */
   browserTabs?: { url: string; personaId?: string }[]
   /** Index of the active tab among browserTabs, restored on next launch. */
@@ -505,6 +507,18 @@ export interface GeoResult {
   summary?: string
 }
 
+/** Per-export choices for case reports (branding + client deliverable header). */
+export interface ReportOptions {
+  /** Include GhostWire logo/name/footer. Default true. */
+  branded: boolean
+  /** "Prepared by" — analyst/investigator name on the cover. */
+  analyst?: string
+  /** Organisation / agency name on the cover. */
+  org?: string
+  /** Confidentiality marking, e.g. CONFIDENTIAL. */
+  classification?: string
+}
+
 /** Result of re-hashing a stored exhibit to confirm it is unaltered. */
 export interface EvidenceVerify {
   /** verified = matches capture hash · altered = mismatch · recorded = legacy item just hashed · missing = file gone. */
@@ -531,13 +545,13 @@ export interface OsintApi {
     counts(): Promise<Record<string, ProjectCounts>>
     contents(id: string): Promise<{ personas: Persona[]; notes: Note[]; boards: Board[] }>
     /** Export a Markdown report (to the vault if set, else a chosen file). */
-    exportReport(id: string): Promise<string | null>
+    exportReport(id: string, opts?: ReportOptions): Promise<string | null>
     /** Export a self-contained HTML report (graph + evidence + notes + timeline). */
-    exportReportHtml(id: string): Promise<string | null>
+    exportReportHtml(id: string, opts?: ReportOptions): Promise<string | null>
     /** Export the report rendered to PDF. */
-    exportReportPdf(id: string): Promise<string | null>
+    exportReportPdf(id: string, opts?: ReportOptions): Promise<string | null>
     /** Export the report as an editable Word (.docx) document. */
-    exportReportDocx(id: string): Promise<string | null>
+    exportReportDocx(id: string, opts?: ReportOptions): Promise<string | null>
   }
   evidence: {
     capture(payload: {

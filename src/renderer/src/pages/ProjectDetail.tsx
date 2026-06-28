@@ -32,7 +32,8 @@ import {
   type DataPoint,
   type EntityType,
   type Evidence,
-  type Activity
+  type Activity,
+  type ReportOptions
 } from '../lib/api'
 import { PROJECT_TYPES, ENTITY_TYPES, personaColor } from '../lib/constants'
 import { Icon, StatusBadge } from '../components/ui'
@@ -70,6 +71,10 @@ export function ProjectDetail(): JSX.Element {
   const [editing, setEditing] = useState(false)
   const [reportOpen, setReportOpen] = useState(false)
   const [reportBusy, setReportBusy] = useState(false)
+  const [ropts, setROpts] = useState<ReportOptions>(
+    settings.reportOptions ?? { branded: true, classification: 'CONFIDENTIAL' }
+  )
+  const setRO = (patch: Partial<ReportOptions>): void => setROpts((o) => ({ ...o, ...patch }))
   const [pivot, setPivot] = useState<{ value: string; subject: PivotSubject } | null>(null)
   const [known, setKnown] = useState('')
   const [objectives, setObjectives] = useState('')
@@ -100,15 +105,17 @@ export function ProjectDetail(): JSX.Element {
   const doExport = async (kind: 'pdf' | 'html' | 'md' | 'docx'): Promise<void> => {
     setReportOpen(false)
     setReportBusy(true)
+    const o: ReportOptions = { ...ropts, analyst: ropts.analyst?.trim() || undefined, org: ropts.org?.trim() || undefined }
+    update({ reportOptions: o }) // remember the choices for next time
     try {
       const path =
         kind === 'pdf'
-          ? await api.projects.exportReportPdf(id)
+          ? await api.projects.exportReportPdf(id, o)
           : kind === 'html'
-            ? await api.projects.exportReportHtml(id)
+            ? await api.projects.exportReportHtml(id, o)
             : kind === 'docx'
-              ? await api.projects.exportReportDocx(id)
-              : await api.projects.exportReport(id)
+              ? await api.projects.exportReportDocx(id, o)
+              : await api.projects.exportReport(id, o)
       if (path) flash(`Report saved → ${path}`)
     } catch (e) {
       flash(`Export failed: ${String((e as Error)?.message ?? e)}`)
@@ -301,20 +308,43 @@ export function ProjectDetail(): JSX.Element {
             {reportOpen && (
               <>
                 <div className="fixed inset-0 z-30" onClick={() => setReportOpen(false)} />
-                <div className="absolute right-0 mt-1 z-40 w-52 card py-1 shadow-2xl">
-                  <div className="px-3 py-1 text-[10px] uppercase tracking-widest text-slate-600">Export report</div>
-                  <button className="w-full text-left px-3 py-1.5 text-sm text-slate-200 hover:bg-ink-700" onClick={() => doExport('html')}>
-                    HTML — interactive deliverable
-                  </button>
-                  <button className="w-full text-left px-3 py-1.5 text-sm text-slate-200 hover:bg-ink-700" onClick={() => doExport('docx')}>
-                    Word (.docx) — editable
-                  </button>
-                  <button className="w-full text-left px-3 py-1.5 text-sm text-slate-200 hover:bg-ink-700" onClick={() => doExport('pdf')}>
-                    PDF — print-ready
-                  </button>
-                  <button className="w-full text-left px-3 py-1.5 text-sm text-slate-200 hover:bg-ink-700" onClick={() => doExport('md')}>
-                    Markdown (for Obsidian)
-                  </button>
+                <div className="absolute right-0 mt-1 z-40 w-72 card p-3 shadow-2xl space-y-2.5">
+                  <div className="text-[10px] uppercase tracking-widest text-slate-600">Report options</div>
+                  <label className="flex items-center gap-2 text-sm text-slate-200 cursor-pointer">
+                    <input type="checkbox" className="accent-accent" checked={ropts.branded !== false} onChange={(e) => setRO({ branded: e.target.checked })} />
+                    Include GhostWire branding
+                  </label>
+                  <div>
+                    <label className="text-[11px] text-slate-500">Prepared by</label>
+                    <input className="input !py-1 text-sm" placeholder="Analyst / investigator (optional)" value={ropts.analyst ?? ''} onChange={(e) => setRO({ analyst: e.target.value })} />
+                  </div>
+                  <div>
+                    <label className="text-[11px] text-slate-500">Organisation</label>
+                    <input className="input !py-1 text-sm" placeholder="Agency / company (optional)" value={ropts.org ?? ''} onChange={(e) => setRO({ org: e.target.value })} />
+                  </div>
+                  <div>
+                    <label className="text-[11px] text-slate-500">Classification</label>
+                    <select className="input !py-1 text-sm" value={ropts.classification ?? 'CONFIDENTIAL'} onChange={(e) => setRO({ classification: e.target.value })}>
+                      {['CONFIDENTIAL', 'RESTRICTED', 'INTERNAL', 'UNCLASSIFIED'].map((c) => (
+                        <option key={c} value={c}>{c}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="pt-1 border-t border-ink-700">
+                    <div className="px-0 py-1 text-[10px] uppercase tracking-widest text-slate-600">Export as</div>
+                    <button className="w-full text-left px-2 py-1.5 text-sm text-slate-200 hover:bg-ink-700 rounded" onClick={() => doExport('html')}>
+                      HTML — interactive deliverable
+                    </button>
+                    <button className="w-full text-left px-2 py-1.5 text-sm text-slate-200 hover:bg-ink-700 rounded" onClick={() => doExport('docx')}>
+                      Word (.docx) — editable
+                    </button>
+                    <button className="w-full text-left px-2 py-1.5 text-sm text-slate-200 hover:bg-ink-700 rounded" onClick={() => doExport('pdf')}>
+                      PDF — print-ready
+                    </button>
+                    <button className="w-full text-left px-2 py-1.5 text-sm text-slate-200 hover:bg-ink-700 rounded" onClick={() => doExport('md')}>
+                      Markdown (for Obsidian)
+                    </button>
+                  </div>
                 </div>
               </>
             )}
