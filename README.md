@@ -40,20 +40,48 @@ Compare the result to the matching line in `SHA256SUMS.txt` on the release. If t
 
 ## 🛠️ Build from source
 
-GhostWire is fully open source — if you'd rather not trust a prebuilt binary, **compile your own**. The releases are produced by CI from these exact commands (see [`.github/workflows/release.yml`](.github/workflows/release.yml)), so a local build matches what's published.
+GhostWire is fully open source — if you'd rather not trust a prebuilt binary, **compile your own**. The official releases are produced by CI from these exact commands (see [`.github/workflows/release.yml`](.github/workflows/release.yml)), so your local build runs the same code.
 
-**Requirements:** [Node.js](https://nodejs.org/) **22+** and npm. (Building the Windows installer requires Windows; the Linux AppImage/.deb requires Linux.)
+**1. Prerequisites**
+
+- [**Node.js 22+**](https://nodejs.org/) and **npm** (`node --version` should print v22 or higher)
+- [**git**](https://git-scm.com/)
+- Build on the OS you want to ship: **Windows** produces the `.exe` installer, **Linux** produces the `.AppImage` and `.deb`. (There's no cross-compiling.)
+
+**2. Get the code**
 
 ```bash
 git clone https://github.com/AsleepCoffee/Ghostwire.git
 cd Ghostwire
-git checkout v<version>     # optional: build a specific release tag
-npm ci                      # install exact, locked dependencies
-
-npm run build:win           # → dist/GhostWire-Setup-<version>.exe (+ .blockmap, latest.yml)
-# or
-npm run build:linux         # → dist/GhostWire-<version>.AppImage and .deb
+git checkout v0.1.101        # optional: build a specific release tag instead of main
 ```
+
+**3. Install exact dependencies**
+
+```bash
+npm ci                       # uses the locked versions in package-lock.json
+```
+
+**4. Build the installer for your platform**
+
+```bash
+# On Windows:
+npm run build:win            # -> dist/GhostWire-Setup-<version>.exe  (+ .blockmap, latest.yml)
+
+# On Linux:
+npm run build:linux          # -> dist/GhostWire-<version>.AppImage  and  ghostwire_<version>_amd64.deb
+```
+
+The finished installer/AppImage is written to the **`dist/`** folder. Install or run it like any other download.
+
+**Run it without packaging (for development):**
+
+```bash
+npm run dev                  # launches the app from source with hot reload
+npm run typecheck            # optional: TypeScript checks
+```
+
+> **Note:** a self-built installer won't be byte-for-byte identical to the published one — Electron embeds build timestamps, so the binaries aren't bit-reproducible. The **source at each tag is what's published**, and running your own build (or `npm run dev`) means you never have to trust the prebuilt binary at all.
 
 The installer/AppImage lands in `dist/`. To run from source without packaging: `npm run dev`. Type-check with `npm run typecheck`.
 

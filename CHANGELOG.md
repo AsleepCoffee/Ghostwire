@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.1.102
+- Clearer **Build from source** guide in the README — step-by-step prerequisites, clone, install, and build commands for Windows and Linux, so anyone can compile GhostWire themselves instead of trusting the prebuilt binary.
+- Tidied up release notes and the build pipeline.
+
 ## v0.1.101
 - Evidence locker accepts **any file type** (new `evidence:addFile` handler, hashed at ingest); non-image exhibits get a **View** button that opens them in the offline `file://` viewer (PDF/HTML/text/video/MHTML render in Chromium). Grid gains **type filter** (Screenshots/Images/Files) and **sort** (newest/oldest/title/type).
 - **Verifiable releases**: the publish job now generates **`SHA256SUMS.txt`** of every asset and uploads it, and appends a "Verify your download" + "Build from source" footer (from `.github/RELEASE_FOOTER.md`) to every release's notes. README gained matching sections so users can check the binary's hash or self-compile.

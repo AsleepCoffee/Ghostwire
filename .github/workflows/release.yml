@@ -29,19 +29,11 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
 
-      # We do NOT let electron-builder publish — across the two OS jobs it kept
-      # creating duplicate releases for the tag and splitting assets (v0.1.88-93).
-      # Instead gh owns ONE release, electron-builder only BUILDS (--publish never),
-      # and assets are uploaded explicitly with `gh release upload`.
-      #
-      # The release is created as a PRERELEASE, not a draft. A draft can't be
-      # resolved by `gh release upload/view <tag>` on the ubuntu runners (GitHub's
-      # /releases/tags/{tag} endpoint 404s on drafts — that broke v0.1.94's Linux
-      # + publish jobs). A prerelease IS published so it's found by tag on every
-      # runner, yet it's excluded from /releases/latest and ignored by
-      # electron-updater (allowPrerelease=false), so it stays invisible to
-      # auto-update until the publish job flips it to a full latest release.
-      - name: Create the prerelease (gh owns it)
+      # gh owns a single release; electron-builder only builds (--publish never)
+      # and assets are uploaded explicitly. It's created as a prerelease so it's
+      # resolvable by tag on every runner yet stays out of "latest" and hidden
+      # from auto-update until the publish job promotes it.
+      - name: Create the prerelease
         shell: bash
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -54,7 +46,7 @@ jobs:
       - name: Build Windows installer (no publish)
         run: npm run build:win
 
-      - name: Upload Windows installer + update manifest to the draft
+      - name: Upload Windows installer + update manifest to the release
         shell: bash
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -82,15 +74,13 @@ jobs:
             flag {print}
           ' CHANGELOG.md)
           if [ -z "$NOTES" ]; then NOTES="See the commit history for changes in ${TAG}."; fi
-          # Append a standard verify + build-from-source footer (kept in a repo
-          # template so we avoid fragile heredoc indentation inside YAML).
+          # Append the standard verify + build-from-source footer.
           {
             printf '%s\n\n' "$NOTES"
             sed -e "s|__TAG__|${TAG}|g" -e "s|__V__|${V}|g" -e "s|__REPO__|${GITHUB_REPOSITORY}|g" \
               .github/RELEASE_FOOTER.md
           } > release-notes.md
-          # Find the release (including a draft electron-builder may still be
-          # finalising) via the list endpoint, then PATCH only its body.
+          # Resolve the release id, then set its body.
           RID=""
           for i in 1 2 3 4 5 6 7 8; do
             RID=$(gh api "repos/${GITHUB_REPOSITORY}/releases" --paginate \
@@ -128,13 +118,11 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      # Build only (no publish), then upload into the single gh-owned draft that
-      # release-win created. Same pattern as Windows — gh is the only thing that
-      # touches the release, so assets can't be split across rival drafts.
+      # Build only, then upload into the release that release-win created.
       - name: Build Linux packages (no publish)
         run: npm run build:linux
 
-      - name: Upload Linux packages into the draft
+      - name: Upload Linux packages into the release
         shell: bash
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -142,10 +130,9 @@ jobs:
           TAG="${GITHUB_REF_NAME}"
           gh release upload "$TAG" dist/*.AppImage dist/*.deb dist/latest-linux.yml --clobber
 
-  # Flip the draft to a published release only after BOTH installers are uploaded,
-  # so it becomes "latest" (and visible to auto-update) only when latest.yml and
-  # the installers are actually present. Runs as long as Windows succeeded, so a
-  # flaky Linux build never blocks the Windows update from shipping.
+  # Promote the prerelease to "latest" only after both installers are uploaded,
+  # so auto-update never sees a half-built release. Runs if Windows succeeded, so
+  # a flaky Linux build doesn't block the Windows update.
   publish:
     runs-on: ubuntu-latest
     needs: [release-win, release-linux]
