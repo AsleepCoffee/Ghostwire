@@ -7,6 +7,14 @@ export interface ChangelogEntry {
 /** In-app patch notes. Newest first. Keep in sync with CHANGELOG.md. */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.1.101',
+    date: '2026-06-28',
+    notes: [
+      'Evidence locker handles any file type — drag in PDFs, documents, video, anything; non-image files get a “View” button that opens them in the in-app offline viewer. Filter the grid by type (Screenshots / Images / Files) and sort by newest, oldest, title, or type.',
+      'Verifiable releases — every release now ships a SHA256SUMS.txt of all files, and the release notes include exact steps to verify your download’s hash and to build GhostWire yourself from source. Added a “Verify your download” and “Build from source” section to the README too.'
+    ]
+  },
+  {
     version: '0.1.100',
     date: '2026-06-28',
     notes: [

@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.1.101
+- Evidence locker accepts **any file type** (new `evidence:addFile` handler, hashed at ingest); non-image exhibits get a **View** button that opens them in the offline `file://` viewer (PDF/HTML/text/video/MHTML render in Chromium). Grid gains **type filter** (Screenshots/Images/Files) and **sort** (newest/oldest/title/type).
+- **Verifiable releases**: the publish job now generates **`SHA256SUMS.txt`** of every asset and uploads it, and appends a "Verify your download" + "Build from source" footer (from `.github/RELEASE_FOOTER.md`) to every release's notes. README gained matching sections so users can check the binary's hash or self-compile.
+
 ## v0.1.100
 - View forensic captures in-app: the Evidence panel's MHTML artifact now has a **View** button that opens the saved page archive in a full-screen offline viewer (a `file://`-loaded webview — Chromium renders MHTML reliably from disk). New `evidence:artifactFileUrl` handler + `mediaFileUrl` helper. Browse the exact captured page with no internet and no re-fetch.
 

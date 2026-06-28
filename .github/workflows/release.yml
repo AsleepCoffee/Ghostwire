@@ -75,13 +75,20 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           TAG="${GITHUB_REF_NAME}"
+          V="${TAG#v}"
           NOTES=$(awk -v tag="## ${TAG}" '
             $0 == tag {flag=1; next}
             /^## / && flag {flag=0}
             flag {print}
           ' CHANGELOG.md)
           if [ -z "$NOTES" ]; then NOTES="See the commit history for changes in ${TAG}."; fi
-          printf '%s' "$NOTES" > release-notes.md
+          # Append a standard verify + build-from-source footer (kept in a repo
+          # template so we avoid fragile heredoc indentation inside YAML).
+          {
+            printf '%s\n\n' "$NOTES"
+            sed -e "s|__TAG__|${TAG}|g" -e "s|__V__|${V}|g" -e "s|__REPO__|${GITHUB_REPOSITORY}|g" \
+              .github/RELEASE_FOOTER.md
+          } > release-notes.md
           # Find the release (including a draft electron-builder may still be
           # finalising) via the list endpoint, then PATCH only its body.
           RID=""
@@ -158,6 +165,17 @@ jobs:
           if ! echo "$ASSETS" | grep -qx 'latest.yml'; then
             echo "::error::latest.yml is missing from the $TAG release — refusing to publish."
             exit 1
+          fi
+          # Publish SHA-256 checksums of every asset so users can verify their
+          # download (or a self-compiled build) against this release. Compute to a
+          # temp file OUTSIDE the download dir so the sums file can't hash itself.
+          work="$(mktemp -d)"
+          sums="$(mktemp)"
+          gh release download "$TAG" --dir "$work" || true
+          ( cd "$work" && sha256sum * ) 2>/dev/null | grep -v ' SHA256SUMS.txt$' > "$sums" || true
+          if [ -s "$sums" ]; then
+            cp "$sums" "$work/SHA256SUMS.txt"
+            gh release upload "$TAG" "$work/SHA256SUMS.txt" --clobber
           fi
           # Flip prerelease -> full release and mark it latest.
           gh release edit "$TAG" --prerelease=false --latest

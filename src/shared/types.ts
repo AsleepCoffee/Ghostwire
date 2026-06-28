@@ -594,6 +594,8 @@ export interface OsintApi {
       title?: string
       projectId?: string | null
     }): Promise<{ ok: boolean; error?: string; evidence?: Evidence; thumb?: string }>
+    /** Add any file (any type) to the evidence locker, hashed at ingest. */
+    addFile(payload: { dataUrl: string; name?: string; projectId?: string | null }): Promise<Evidence>
     /** Save a stored artifact (e.g. the MHTML archive) out to a file on disk. */
     exportArtifact(path: string, defaultName: string): Promise<string | null>
     /** Resolve a stored artifact to a file:// URL for viewing (MHTML archive). */

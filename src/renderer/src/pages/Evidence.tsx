@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Images,
@@ -68,13 +68,25 @@ export function EvidencePage(): JSX.Element {
   const [toast, setToast] = useState('')
   const [urlInput, setUrlInput] = useState('')
   const [query, setQuery] = useState('')
+  const [typeFilter, setTypeFilter] = useState<'all' | 'screenshot' | 'image' | 'file'>('all')
+  const [sortBy, setSortBy] = useState<'new' | 'old' | 'title' | 'type'>('new')
   const fileRef = useRef<HTMLInputElement>(null)
 
-  const shown = items.filter((e) => {
+  const shown = useMemo(() => {
     const q = query.trim().toLowerCase()
-    if (!q) return true
-    return `${e.title ?? ''} ${e.sourceUrl ?? ''} ${e.note ?? ''} ${e.ocr ?? ''}`.toLowerCase().includes(q)
-  })
+    const list = items.filter(
+      (e) =>
+        (typeFilter === 'all' || e.kind === typeFilter) &&
+        (!q || `${e.title ?? ''} ${e.sourceUrl ?? ''} ${e.note ?? ''} ${e.ocr ?? ''}`.toLowerCase().includes(q))
+    )
+    const cmp: Record<typeof sortBy, (a: Evidence, b: Evidence) => number> = {
+      new: (a, b) => b.capturedAt - a.capturedAt,
+      old: (a, b) => a.capturedAt - b.capturedAt,
+      title: (a, b) => (a.title || a.sourceUrl || '').localeCompare(b.title || b.sourceUrl || ''),
+      type: (a, b) => a.kind.localeCompare(b.kind) || b.capturedAt - a.capturedAt
+    }
+    return [...list].sort(cmp[sortBy])
+  }, [items, query, typeFilter, sortBy])
 
   const flash = (m: string): void => {
     setToast(m)
@@ -105,8 +117,17 @@ export function EvidencePage(): JSX.Element {
   }
 
   const onFiles = async (files: FileList | File[]): Promise<void> => {
-    for (const f of Array.from(files)) {
-      if (f.type.startsWith('image/')) await ingestDataUrl(await fileToDataUrl(f), f.name)
+    setBusy(true)
+    try {
+      for (const f of Array.from(files)) {
+        const dataUrl = await fileToDataUrl(f)
+        if (f.type.startsWith('image/')) await api.evidence.capture({ dataUrl, kind: 'image', projectId, title: f.name })
+        else await api.evidence.addFile({ dataUrl, name: f.name, projectId })
+      }
+      load()
+      flash(`Added ${Array.from(files).length} item${files.length === 1 ? '' : 's'} to evidence`)
+    } finally {
+      setBusy(false)
     }
   }
 
@@ -223,12 +244,11 @@ export function EvidencePage(): JSX.Element {
             ))}
           </select>
           <button className="btn-ghost border border-ink-600" onClick={() => fileRef.current?.click()} disabled={busy}>
-            {busy ? <Loader2 size={16} className="animate-spin" /> : <Upload size={16} />} Add images
+            {busy ? <Loader2 size={16} className="animate-spin" /> : <Upload size={16} />} Add files
           </button>
           <input
             ref={fileRef}
             type="file"
-            accept="image/*"
             multiple
             hidden
             onChange={(e) => e.target.files && onFiles(e.target.files)}
@@ -260,7 +280,31 @@ export function EvidencePage(): JSX.Element {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
           />
-          {query && <span className="text-xs text-slate-500 shrink-0">{shown.length}/{items.length}</span>}
+          <select
+            className="input !w-auto shrink-0 text-sm"
+            value={typeFilter}
+            onChange={(e) => setTypeFilter(e.target.value as typeof typeFilter)}
+            title="Filter by type"
+          >
+            <option value="all">All types</option>
+            <option value="screenshot">Screenshots</option>
+            <option value="image">Images</option>
+            <option value="file">Files</option>
+          </select>
+          <select
+            className="input !w-auto shrink-0 text-sm"
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
+            title="Sort"
+          >
+            <option value="new">Newest first</option>
+            <option value="old">Oldest first</option>
+            <option value="title">Title (A–Z)</option>
+            <option value="type">Type</option>
+          </select>
+          <span className="text-xs text-slate-500 shrink-0">
+            {shown.length}/{items.length}
+          </span>
         </div>
       )}
 
@@ -490,6 +534,13 @@ function EvidenceDetail({
     if (url) setViewer({ url, name: a.name })
   }
 
+  // View the exhibit file itself (PDF, HTML, text, video, MHTML…) in the offline
+  // viewer — Chromium renders most types from file://.
+  const viewMain = async (): Promise<void> => {
+    const url = await api.evidence.artifactFileUrl(ev.path)
+    if (url) setViewer({ url, name: ev.title || 'File' })
+  }
+
   const runOcr = async (): Promise<void> => {
     setOcrBusy(true)
     setOcrErr('')
@@ -526,6 +577,21 @@ function EvidenceDetail({
             <img src={ev.path} alt={ev.title || 'evidence'} className="w-full" />
             <span className="absolute bottom-1.5 right-1.5 bg-ink-950/80 text-slate-200 rounded-md p-1 opacity-0 group-hover:opacity-100 transition-opacity">
               <Maximize2 size={14} />
+            </span>
+          </button>
+        )}
+
+        {ev.kind === 'file' && (
+          <button
+            type="button"
+            className="w-full rounded-lg border border-ink-700 p-3 flex items-center gap-2.5 hover:border-brand text-left"
+            onClick={viewMain}
+            title="Open this file in the offline viewer"
+          >
+            <FileText size={22} className="text-slate-400 shrink-0" />
+            <span className="text-sm text-slate-200 truncate flex-1">{ev.title || 'File'}</span>
+            <span className="flex items-center gap-1 text-[11px] text-brand-glow shrink-0">
+              <Eye size={13} /> View
             </span>
           </button>
         )}

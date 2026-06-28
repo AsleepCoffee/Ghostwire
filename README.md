@@ -29,6 +29,34 @@ Run it and you're set. The app keeps itself up to date automatically (Windows + 
 
 > The installer isn't code-signed, so Windows SmartScreen may show a “more info → run anyway” prompt on first launch. That's normal for indie apps without a paid signing certificate.
 
+## 🔒 Verify your download
+
+Every release includes a **`SHA256SUMS.txt`** listing the SHA-256 of each file. Don't take the binary on faith — check it:
+
+- **Windows (PowerShell):** `Get-FileHash .\GhostWire-Setup-<version>.exe -Algorithm SHA256`
+- **Linux / macOS:** `sha256sum GhostWire-<version>.AppImage`
+
+Compare the result to the matching line in `SHA256SUMS.txt` on the release. If they differ, don't run it.
+
+## 🛠️ Build from source
+
+GhostWire is fully open source — if you'd rather not trust a prebuilt binary, **compile your own**. The releases are produced by CI from these exact commands (see [`.github/workflows/release.yml`](.github/workflows/release.yml)), so a local build matches what's published.
+
+**Requirements:** [Node.js](https://nodejs.org/) **22+** and npm. (Building the Windows installer requires Windows; the Linux AppImage/.deb requires Linux.)
+
+```bash
+git clone https://github.com/AsleepCoffee/Ghostwire.git
+cd Ghostwire
+git checkout v<version>     # optional: build a specific release tag
+npm ci                      # install exact, locked dependencies
+
+npm run build:win           # → dist/GhostWire-Setup-<version>.exe (+ .blockmap, latest.yml)
+# or
+npm run build:linux         # → dist/GhostWire-<version>.AppImage and .deb
+```
+
+The installer/AppImage lands in `dist/`. To run from source without packaging: `npm run dev`. Type-check with `npm run typecheck`.
+
 ## ✨ Features
 
 - **🎭 Sock Puppet Manager** — build personas with full identity details, **random AI-face avatars**, linked accounts with login **and sign-up form autofill**, and a one-click identity + password generator (localised by country). Each persona gets a **fully isolated browser session** (be logged into the same site as several identities at once), can provision a **disposable mailbox** (mail.tm/mail.gw, with a built-in inbox) or use your own **catch-all domain**, and tracks which accounts are created vs. still to make.

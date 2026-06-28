@@ -734,6 +734,26 @@ export function registerHandlers(): void {
     return res.filePath
   })
 
+  // Add any file (PDF, doc, video, etc.) to the locker, hashed at ingest.
+  ipcMain.handle('evidence:addFile', (_e, payload: { dataUrl: string; name?: string; projectId?: string | null }) => {
+    const m = /^data:([^;]+);base64,(.*)$/.exec(payload.dataUrl)
+    if (!m) throw new Error('Unsupported file data')
+    const mime = m[1]
+    const buf = Buffer.from(m[2], 'base64')
+    const sha = createHash('sha256').update(buf).digest('hex')
+    const name = (payload.name || 'file').trim()
+    const fromName = name.includes('.') ? name.split('.').pop() ?? '' : ''
+    const ext = (fromName || mime.split('/')[1] || 'bin').replace(/[^a-z0-9]/gi, '').slice(0, 8) || 'bin'
+    const path = saveMediaBytes('evidence', buf, ext)
+    const id = randomUUID()
+    run(
+      'INSERT INTO evidence (id,projectId,kind,path,sourceUrl,title,sha256,capturedAt,note) VALUES (?,?,?,?,?,?,?,?,?)',
+      [id, payload.projectId ?? null, mime.startsWith('image/') ? 'image' : 'file', path, '', name, sha, now(), '']
+    )
+    logActivity(payload.projectId, 'evidence', `Added file: ${name}`)
+    return mapEvidence(get('SELECT * FROM evidence WHERE id = ?', [id])!)
+  })
+
   ipcMain.handle('evidence:list', (_e, projectId: string | null) => {
     const rows = projectId
       ? all('SELECT * FROM evidence WHERE projectId = ? ORDER BY capturedAt DESC', [projectId])
