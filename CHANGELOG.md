@@ -1,5 +1,8 @@
 # Changelog
 
+## v0.1.100
+- View forensic captures in-app: the Evidence panel's MHTML artifact now has a **View** button that opens the saved page archive in a full-screen offline viewer (a `file://`-loaded webview — Chromium renders MHTML reliably from disk). New `evidence:artifactFileUrl` handler + `mediaFileUrl` helper. Browse the exact captured page with no internet and no re-fetch.
+
 ## v0.1.99
 - Archive re-verification: `evidence:verify` now re-hashes the forensic sidecar artifacts (MHTML archive + manifest) against their recorded SHA-256, not just the primary screenshot. `EvidenceVerify` gained a per-artifact `artifacts[]` result; Evidence detail shows each as "unaltered" / "MISMATCH — modified" / "file missing" so a captured page can be proven unchanged since collection.
 

@@ -596,6 +596,8 @@ export interface OsintApi {
     }): Promise<{ ok: boolean; error?: string; evidence?: Evidence; thumb?: string }>
     /** Save a stored artifact (e.g. the MHTML archive) out to a file on disk. */
     exportArtifact(path: string, defaultName: string): Promise<string | null>
+    /** Resolve a stored artifact to a file:// URL for viewing (MHTML archive). */
+    artifactFileUrl(path: string): Promise<string | null>
     list(projectId: string | null): Promise<Evidence[]>
     remove(id: string): Promise<void>
     setNote(id: string, note: string): Promise<void>

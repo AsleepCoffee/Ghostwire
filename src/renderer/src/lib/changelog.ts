@@ -7,6 +7,13 @@ export interface ChangelogEntry {
 /** In-app patch notes. Newest first. Keep in sync with CHANGELOG.md. */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.1.100',
+    date: '2026-06-28',
+    notes: [
+      'View captured pages in-app — forensic captures now have a “View” button in the Evidence panel that opens the saved MHTML archive in a full-screen offline viewer, so you can browse the exact captured page (no internet, no re-fetch) without exporting it first.'
+    ]
+  },
+  {
     version: '0.1.99',
     date: '2026-06-28',
     notes: [

@@ -5,7 +5,7 @@ import { join, dirname, basename } from 'path'
 import { all, get, run, encryptionAvailable } from './db'
 import { exportAllNotes, writeNote } from './export'
 import exifr from 'exifr'
-import { pickImage, saveDataUrl, saveMediaBytes, resolveMediaPath, importImageFromUrl, readMedia, fetchAvatar, copyMediaToPath } from './media'
+import { pickImage, saveDataUrl, saveMediaBytes, resolveMediaPath, mediaFileUrl, importImageFromUrl, readMedia, fetchAvatar, copyMediaToPath } from './media'
 import { testAllTools } from './toolcheck'
 import { testApiKey } from './apitest'
 import { createMailbox, listMessages, getMessage } from './mail'
@@ -718,6 +718,10 @@ export function registerHandlers(): void {
       }
     }
   )
+
+  // Resolve a stored artifact (e.g. MHTML archive) to a file:// URL so it can be
+  // rendered in a viewer webview.
+  ipcMain.handle('evidence:artifactFileUrl', (_e, mediaUrl: string) => mediaFileUrl(mediaUrl))
 
   // Save a stored forensic artifact (MHTML / manifest) out to a file on disk.
   ipcMain.handle('evidence:exportArtifact', async (_e, mediaUrl: string, defaultName: string) => {

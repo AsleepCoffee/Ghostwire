@@ -81,6 +81,13 @@ export function readMedia(url: string): Buffer | null {
   return p ? readFileSync(p) : null
 }
 
+/** A gwmedia:// url as a file:// URL — for loading MHTML archives in a webview
+ *  (Chromium renders MHTML reliably from file://). */
+export function mediaFileUrl(url: string): string | null {
+  const p = resolveMediaPath(url)
+  return p ? pathToFileURL(p).toString() : null
+}
+
 const BROWSER_UA =
   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36'
 

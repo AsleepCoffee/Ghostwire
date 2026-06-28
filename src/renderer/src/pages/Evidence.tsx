@@ -25,6 +25,7 @@ import {
   MapPinned,
   Globe,
   Maximize2,
+  Eye,
   ZoomIn,
   ZoomOut
 } from 'lucide-react'
@@ -400,6 +401,7 @@ function EvidenceDetail({
   const [renameVal, setRenameVal] = useState('')
   const [lightbox, setLightbox] = useState(false)
   const [zoom, setZoom] = useState(false)
+  const [viewer, setViewer] = useState<{ url: string; name: string } | null>(null)
 
   useEffect(() => {
     if (!lightbox) return
@@ -481,6 +483,11 @@ function EvidenceDetail({
     const ext = a.kind.includes('json') ? 'json' : a.kind.includes('related') ? 'mhtml' : 'bin'
     const base = (ev.title || 'capture').replace(/[^\w.-]+/g, '_').slice(0, 60) || 'capture'
     await api.evidence.exportArtifact(a.path, `${base}.${ext}`)
+  }
+
+  const viewArtifact = async (a: EvidenceArtifact): Promise<void> => {
+    const url = await api.evidence.artifactFileUrl(a.path)
+    if (url) setViewer({ url, name: a.name })
   }
 
   const runOcr = async (): Promise<void> => {
@@ -815,13 +822,24 @@ function EvidenceDetail({
                     <div key={a.path} className="rounded-md border border-ink-700 px-2 py-1.5">
                       <div className="flex items-center justify-between gap-2">
                         <span className="text-xs text-slate-200 truncate">{a.name}</span>
-                        <button
-                          className="btn-ghost border border-ink-600 !py-0.5 text-[11px] shrink-0"
-                          onClick={() => exportArtifact(a)}
-                          title="Save this artifact to disk"
-                        >
-                          <Download size={11} /> Export
-                        </button>
+                        <div className="flex items-center gap-1 shrink-0">
+                          {a.kind.includes('related') && (
+                            <button
+                              className="btn-ghost border border-ink-600 !py-0.5 text-[11px]"
+                              onClick={() => viewArtifact(a)}
+                              title="View the captured page (offline archive)"
+                            >
+                              <Eye size={11} /> View
+                            </button>
+                          )}
+                          <button
+                            className="btn-ghost border border-ink-600 !py-0.5 text-[11px]"
+                            onClick={() => exportArtifact(a)}
+                            title="Save this artifact to disk"
+                          >
+                            <Download size={11} /> Export
+                          </button>
+                        </div>
                       </div>
                       <div className="text-[10px] text-slate-500 mt-0.5 font-mono break-all">
                         {(a.bytes / 1024).toFixed(1)} KB · SHA-256 {a.sha256.slice(0, 24)}…
@@ -989,6 +1007,22 @@ function EvidenceDetail({
           </button>
         </div>
       </div>
+
+      {/* Forensic archive viewer — renders the captured MHTML page offline. */}
+      {viewer && (
+        <div className="fixed inset-0 z-[120] bg-black/95 flex flex-col">
+          <div className="flex items-center justify-between px-4 py-2.5 shrink-0 bg-ink-900 border-b border-ink-700">
+            <span className="text-sm text-slate-300 truncate flex items-center gap-2">
+              <FileText size={14} /> {viewer.name}
+              <span className="text-[11px] text-slate-500">· offline archive · {ev.title || ev.sourceUrl || ''}</span>
+            </span>
+            <button className="btn-ghost !p-1.5 text-slate-200" onClick={() => setViewer(null)} title="Close (the archive is read-only)">
+              <X size={18} />
+            </button>
+          </div>
+          <webview key={viewer.url} src={viewer.url} className="flex-1 min-h-0" style={{ width: '100%', height: '100%' }} />
+        </div>
+      )}
     </div>
   )
 }
