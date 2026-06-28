@@ -139,6 +139,18 @@ const kindLabel: Record<string, string> = {
   screenshot: 'Screenshot', image: 'Image', file: 'File', document: 'Document'
 }
 
+/** Forensic sidecar artifacts (MHTML archive, manifest) with their hashes. */
+function evidenceArtifacts(e: ReportData['evidence'][number]): string {
+  const a = e.artifacts ?? []
+  if (!a.length) return ''
+  return `<div class="arts"><div class="artlabel">Forensic artifacts</div>${a
+    .map(
+      (x) =>
+        `<div class="art"><span>${esc(x.name)}</span> <span class="muted">${(x.bytes / 1024).toFixed(1)} KB</span><br><code class="mono">${esc(x.sha256)}</code></div>`
+    )
+    .join('')}</div>`
+}
+
 /** Entity type → colour (mirrors the in-app palette) for the report's chart. */
 const COLORS: Record<string, string> = {
   person: '#60a5fa', username: '#a78bfa', email: '#f472b6', phone: '#34d399', domain: '#22d3ee',
@@ -305,6 +317,7 @@ export function buildHtmlReport(d: ReportData): string {
                   ? `<div class="hashrow"><span class="hbadge" title="Integrity hash recorded at capture">✓ SHA-256</span><code class="mono" data-hash="${esc(e.sha256)}">${esc(e.sha256.slice(0, 16))}…</code><button class="cphash" data-hash="${esc(e.sha256)}">copy</button></div>`
                   : ''
               }
+              ${evidenceArtifacts(e)}
             </figcaption>
           </figure>`
         )
@@ -471,6 +484,9 @@ ${geoPoints.length ? '<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9
   .hashrow{ display:flex; align-items:center; gap:6px; margin-top:8px; flex-wrap:wrap; }
   .hbadge{ background:color-mix(in srgb,var(--ok) 16%,transparent); color:var(--ok); font-size:10px; font-weight:700; padding:2px 7px; border-radius:20px; }
   .hashrow code{ color:var(--muted); }
+  .arts{ margin-top:8px; border-top:1px dashed var(--line); padding-top:6px; }
+  .artlabel{ font-size:10px; text-transform:uppercase; letter-spacing:.5px; color:var(--muted); margin-bottom:3px; }
+  .art{ font-size:11px; margin-bottom:4px; } .art code{ font-size:10px; color:var(--muted); word-break:break-all; }
   .cphash{ cursor:pointer; border:1px solid var(--line); background:transparent; color:var(--muted); border-radius:6px; font-size:10px; padding:1px 7px; }
   .cphash:hover{ color:var(--ink); }
   /* Notes / timeline / personas */
@@ -638,6 +654,7 @@ export function buildPrintReport(d: ReportData): string {
               ${evidenceCamera(e)}
               ${evidenceLocation(e)}
               ${e.sha256 ? `<div class="hash">SHA-256: ${esc(e.sha256)}</div>` : ''}
+              ${(e.artifacts ?? []).map((x) => `<div class="hash">${esc(x.name)} (${(x.bytes / 1024).toFixed(1)} KB) SHA-256: ${esc(x.sha256)}</div>`).join('')}
               ${e.note ? `<div class="evnote">${esc(e.note)}</div>` : ''}
               ${e.ocr ? `<div class="evnote"><b>OCR:</b> ${esc(e.ocr)}</div>` : ''}
             </div>
@@ -785,6 +802,8 @@ export function buildDocxHtml(d: ReportData): string {
       const g = evidenceGeo(e)
       if (g) H.push(`<p>Location: ${esc(g.label)} (${g.lat.toFixed(5)}, ${g.lng.toFixed(5)})</p>`)
       if (e.sha256) H.push(`<p style="font-size:9pt">SHA-256: ${esc(e.sha256)}</p>`)
+      for (const x of e.artifacts ?? [])
+        H.push(`<p style="font-size:9pt">${esc(x.name)} (${(x.bytes / 1024).toFixed(1)} KB) — SHA-256: ${esc(x.sha256)}</p>`)
       if (e.note) H.push(`<p>${esc(e.note).replace(/\n/g, '<br/>')}</p>`)
       if (e.ocr) H.push(`<p><b>OCR:</b> ${esc(e.ocr).replace(/\n/g, '<br/>')}</p>`)
     })

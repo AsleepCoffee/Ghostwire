@@ -28,7 +28,7 @@ import {
   ZoomIn,
   ZoomOut
 } from 'lucide-react'
-import { api, type Evidence, type Project, type ExifResult, type EvidenceVerify, type GeoResult } from '../lib/api'
+import { api, type Evidence, type EvidenceArtifact, type Project, type ExifResult, type EvidenceVerify, type GeoResult } from '../lib/api'
 import { useSettings } from '../lib/settings'
 import { useConfirm } from '../lib/confirm'
 import { useOpenInBrowser, useOpenTabs, setPasteImage } from '../lib/browserBus'
@@ -477,6 +477,12 @@ function EvidenceDetail({
     }
   }
 
+  const exportArtifact = async (a: EvidenceArtifact): Promise<void> => {
+    const ext = a.kind.includes('json') ? 'json' : a.kind.includes('related') ? 'mhtml' : 'bin'
+    const base = (ev.title || 'capture').replace(/[^\w.-]+/g, '_').slice(0, 60) || 'capture'
+    await api.evidence.exportArtifact(a.path, `${base}.${ext}`)
+  }
+
   const runOcr = async (): Promise<void> => {
     setOcrBusy(true)
     setOcrErr('')
@@ -799,6 +805,30 @@ function EvidenceDetail({
               <div>
                 <div className="label">SHA-256 (at capture)</div>
                 <CopyChip label="SHA-256" value={ev.sha256} />
+              </div>
+            )}
+            {ev.artifacts && ev.artifacts.length > 0 && (
+              <div>
+                <div className="label">Forensic artifacts</div>
+                <div className="space-y-1.5">
+                  {ev.artifacts.map((a) => (
+                    <div key={a.path} className="rounded-md border border-ink-700 px-2 py-1.5">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-xs text-slate-200 truncate">{a.name}</span>
+                        <button
+                          className="btn-ghost border border-ink-600 !py-0.5 text-[11px] shrink-0"
+                          onClick={() => exportArtifact(a)}
+                          title="Save this artifact to disk"
+                        >
+                          <Download size={11} /> Export
+                        </button>
+                      </div>
+                      <div className="text-[10px] text-slate-500 mt-0.5 font-mono break-all">
+                        {(a.bytes / 1024).toFixed(1)} KB · SHA-256 {a.sha256.slice(0, 24)}…
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
             {verify && (

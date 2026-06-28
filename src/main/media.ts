@@ -106,6 +106,12 @@ function saveBuffer(kind: string, buf: Buffer, ext: string): string {
   return mediaUrl(kind, file)
 }
 
+/** Save arbitrary bytes (e.g. an MHTML archive or manifest) into app media;
+ *  returns a gwmedia:// url. Used for forensic capture sidecar artifacts. */
+export function saveMediaBytes(kind: string, buf: Buffer, ext: string): string {
+  return saveBuffer(kind, buf, ext.replace(/[^a-z0-9]/gi, '') || 'bin')
+}
+
 /** Download an image from a URL into app media; returns a gwmedia:// url (or null). */
 export async function importImageFromUrl(kind: string, url: string): Promise<string | null> {
   const got = await downloadImage(url)

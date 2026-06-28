@@ -198,7 +198,8 @@ function migrate(): void {
     'ALTER TABLE evidence ADD COLUMN ocr TEXT',
     'ALTER TABLE evidence ADD COLUMN geoLat REAL',
     'ALTER TABLE evidence ADD COLUMN geoLng REAL',
-    'ALTER TABLE evidence ADD COLUMN geoLabel TEXT'
+    'ALTER TABLE evidence ADD COLUMN geoLabel TEXT',
+    'ALTER TABLE evidence ADD COLUMN artifacts TEXT'
   ]
   for (const sql of adds) {
     try {

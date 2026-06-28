@@ -16,6 +16,8 @@ const api: OsintApi = {
   },
   evidence: {
     capture: (payload) => ipcRenderer.invoke('evidence:capture', payload),
+    forensicCapture: (payload) => ipcRenderer.invoke('evidence:forensicCapture', payload),
+    exportArtifact: (path, defaultName) => ipcRenderer.invoke('evidence:exportArtifact', path, defaultName),
     list: (projectId) => ipcRenderer.invoke('evidence:list', projectId),
     remove: (id) => ipcRenderer.invoke('evidence:remove', id),
     setNote: (id, note) => ipcRenderer.invoke('evidence:setNote', id, note),

@@ -474,6 +474,19 @@ export interface ExifResult {
   all?: Record<string, string>
 }
 
+/** A sidecar file captured alongside an exhibit (forensic web capture):
+ *  the page archive (MHTML), the raw HTML, or the capture manifest. */
+export interface EvidenceArtifact {
+  /** Human label, e.g. "Page archive (MHTML)". */
+  name: string
+  /** gwmedia:// url to the stored file. */
+  path: string
+  /** MIME-ish kind, e.g. "multipart/related", "text/html", "application/json". */
+  kind: string
+  sha256: string
+  bytes: number
+}
+
 export interface Evidence {
   id: string
   projectId: string | null
@@ -491,6 +504,8 @@ export interface Evidence {
   geoLat?: number | null
   geoLng?: number | null
   geoLabel?: string
+  /** Forensic sidecar files (page archive, manifest) captured with this exhibit. */
+  artifacts?: EvidenceArtifact[]
 }
 
 /** One candidate location for an image, from the AI geolocation model. */
@@ -563,6 +578,16 @@ export interface OsintApi {
       projectId?: string | null
       kind?: Evidence['kind']
     }): Promise<Evidence>
+    /** Forensic web capture: full-page screenshot + MHTML page archive + a hashed
+     *  manifest, all filed as one exhibit with sidecar artifacts. */
+    forensicCapture(payload: {
+      webContentsId: number
+      sourceUrl?: string
+      title?: string
+      projectId?: string | null
+    }): Promise<{ ok: boolean; error?: string; evidence?: Evidence; thumb?: string }>
+    /** Save a stored artifact (e.g. the MHTML archive) out to a file on disk. */
+    exportArtifact(path: string, defaultName: string): Promise<string | null>
     list(projectId: string | null): Promise<Evidence[]>
     remove(id: string): Promise<void>
     setNote(id: string, note: string): Promise<void>

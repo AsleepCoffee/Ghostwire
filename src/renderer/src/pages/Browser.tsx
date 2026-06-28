@@ -312,8 +312,9 @@ export function Browser(): JSX.Element {
     }
   }
 
-  // Forensic capture: the ENTIRE scrollable page (not just the viewport) via CDP,
-  // filed straight to evidence with its source URL + capture time + integrity hash.
+  // Forensic capture: the full scrollable page screenshot + a complete MHTML
+  // page archive + a hashed manifest (URL, time, UA, SHA-256s), filed as one
+  // exhibit. The defensible, court-style web capture.
   const [fullBusy, setFullBusy] = useState(false)
   const captureFullPage = async (): Promise<void> => {
     if (!active) return
@@ -321,21 +322,23 @@ export function Browser(): JSX.Element {
     if (!wv) return
     setFullBusy(true)
     try {
-      const r = await api.browser.captureFullPage(wv.getWebContentsId())
-      if (!r.ok || !r.dataUrl) {
-        setToast(r.error || 'Full-page capture failed')
+      const r = await api.evidence.forensicCapture({
+        webContentsId: wv.getWebContentsId(),
+        sourceUrl: active.url,
+        title: active.title,
+        projectId: settings.activeProjectId ?? null
+      })
+      if (!r.ok || !r.evidence) {
+        setToast(r.error || 'Forensic capture failed')
         setTimeout(() => setToast(''), 3000)
         return
       }
-      const ev = await api.evidence.capture({
-        dataUrl: r.dataUrl,
-        sourceUrl: active.url,
-        title: active.title,
-        projectId: settings.activeProjectId ?? null,
-        kind: 'screenshot'
-      })
-      const note = `Full-page forensic capture of ${active.url} at ${new Date().toISOString()} (${r.width}×${r.height}px).`
-      setAnnotate({ id: ev.id, title: ev.title ?? active.title ?? '', note, thumb: r.dataUrl })
+      const arch = r.evidence.artifacts?.find((a) => a.kind === 'multipart/related')
+      const note =
+        `Forensic capture of ${active.url} at ${new Date().toISOString()}.\n` +
+        `Screenshot SHA-256: ${r.evidence.sha256}` +
+        (arch ? `\nMHTML archive SHA-256: ${arch.sha256}` : '')
+      setAnnotate({ id: r.evidence.id, title: r.evidence.title ?? active.title ?? '', note, thumb: r.thumb ?? '' })
     } finally {
       setFullBusy(false)
     }

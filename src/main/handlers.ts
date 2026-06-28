@@ -5,7 +5,7 @@ import { join, dirname, basename } from 'path'
 import { all, get, run, encryptionAvailable } from './db'
 import { exportAllNotes, writeNote } from './export'
 import exifr from 'exifr'
-import { pickImage, saveDataUrl, resolveMediaPath, importImageFromUrl, readMedia, fetchAvatar, copyMediaToPath } from './media'
+import { pickImage, saveDataUrl, saveMediaBytes, resolveMediaPath, importImageFromUrl, readMedia, fetchAvatar, copyMediaToPath } from './media'
 import { testAllTools } from './toolcheck'
 import { testApiKey } from './apitest'
 import { createMailbox, listMessages, getMessage } from './mail'
@@ -176,7 +176,14 @@ function mapEvidence(r: Record<string, unknown>): Evidence {
     ocr: (r.ocr as string) ?? '',
     geoLat: r.geoLat != null ? Number(r.geoLat) : null,
     geoLng: r.geoLng != null ? Number(r.geoLng) : null,
-    geoLabel: (r.geoLabel as string) ?? ''
+    geoLabel: (r.geoLabel as string) ?? '',
+    artifacts: (() => {
+      try {
+        return r.artifacts ? JSON.parse(String(r.artifacts)) : []
+      } catch {
+        return []
+      }
+    })()
   }
 }
 
@@ -622,6 +629,106 @@ export function registerHandlers(): void {
     logActivity(payload.projectId, 'evidence', `Captured evidence: ${payload.title || payload.sourceUrl || 'screenshot'}`)
     return mapEvidence(get('SELECT * FROM evidence WHERE id = ?', [id])!)
   })
+  // Forensic web capture — full-page screenshot + MHTML page archive + a hashed
+  // manifest, filed as one exhibit with the archive/manifest as sidecar artifacts.
+  ipcMain.handle(
+    'evidence:forensicCapture',
+    async (_e, payload: { webContentsId: number; sourceUrl?: string; title?: string; projectId?: string | null }) => {
+      const wc = webContents.fromId(payload.webContentsId)
+      if (!wc) return { ok: false, error: 'No page is open to capture.' }
+      const dbg = wc.debugger
+      let attached = false
+      try {
+        try {
+          dbg.attach('1.3')
+          attached = true
+        } catch {
+          /* may already be attached */
+        }
+        const metrics = (await dbg.sendCommand('Page.getLayoutMetrics')) as {
+          cssContentSize?: { width: number; height: number }
+          contentSize?: { width: number; height: number }
+        }
+        const size = metrics.cssContentSize ?? metrics.contentSize ?? { width: 1280, height: 2000 }
+        const width = Math.max(1, Math.ceil(size.width))
+        const height = Math.min(25000, Math.max(1, Math.ceil(size.height)))
+        const shot = (await dbg.sendCommand('Page.captureScreenshot', {
+          format: 'png',
+          captureBeyondViewport: true,
+          clip: { x: 0, y: 0, width, height, scale: 1 }
+        })) as { data: string }
+        // Complete page archive (HTML + inlined resources) — the forensic record.
+        const snap = (await dbg.sendCommand('Page.captureSnapshot', { format: 'mhtml' })) as { data: string }
+
+        const pngBuf = Buffer.from(shot.data, 'base64')
+        const mhtmlBuf = Buffer.from(snap.data, 'utf-8')
+        const url = payload.sourceUrl || wc.getURL()
+        const title = payload.title || wc.getTitle() || url
+        const ua = wc.getUserAgent?.() ?? app.userAgentFallback ?? ''
+        const pngSha = createHash('sha256').update(pngBuf).digest('hex')
+        const mhtmlSha = createHash('sha256').update(mhtmlBuf).digest('hex')
+
+        const pngPath = saveDataUrl('evidence', `data:image/png;base64,${shot.data}`)
+        const mhtmlPath = saveMediaBytes('evidence', mhtmlBuf, 'mhtml')
+
+        const manifest = {
+          tool: 'GhostWire — forensic web capture',
+          url,
+          finalUrl: wc.getURL(),
+          title,
+          capturedAt: new Date().toISOString(),
+          userAgent: ua,
+          page: { width, height },
+          hashAlgorithm: 'SHA-256',
+          artifacts: {
+            screenshot: { file: 'screenshot.png', sha256: pngSha, bytes: pngBuf.length },
+            archive: { file: 'archive.mhtml', format: 'MHTML', sha256: mhtmlSha, bytes: mhtmlBuf.length }
+          }
+        }
+        const manifestBuf = Buffer.from(JSON.stringify(manifest, null, 2), 'utf-8')
+        const manifestSha = createHash('sha256').update(manifestBuf).digest('hex')
+        const manifestPath = saveMediaBytes('evidence', manifestBuf, 'json')
+
+        const artifacts = [
+          { name: 'Page archive (MHTML)', path: mhtmlPath, kind: 'multipart/related', sha256: mhtmlSha, bytes: mhtmlBuf.length },
+          { name: 'Capture manifest', path: manifestPath, kind: 'application/json', sha256: manifestSha, bytes: manifestBuf.length }
+        ]
+        const id = randomUUID()
+        run(
+          'INSERT INTO evidence (id,projectId,kind,path,sourceUrl,title,sha256,capturedAt,note,artifacts) VALUES (?,?,?,?,?,?,?,?,?,?)',
+          [id, payload.projectId ?? null, 'screenshot', pngPath, url, title, pngSha, now(), '', JSON.stringify(artifacts)]
+        )
+        logActivity(payload.projectId, 'evidence', `Forensic capture: ${title}`)
+        return {
+          ok: true,
+          evidence: mapEvidence(get('SELECT * FROM evidence WHERE id = ?', [id])!),
+          thumb: `data:image/png;base64,${shot.data}`
+        }
+      } catch (e) {
+        return { ok: false, error: String((e as Error)?.message ?? e) }
+      } finally {
+        if (attached) {
+          try {
+            dbg.detach()
+          } catch {
+            /* best effort */
+          }
+        }
+      }
+    }
+  )
+
+  // Save a stored forensic artifact (MHTML / manifest) out to a file on disk.
+  ipcMain.handle('evidence:exportArtifact', async (_e, mediaUrl: string, defaultName: string) => {
+    const src = resolveMediaPath(mediaUrl)
+    if (!src) return null
+    const win = BrowserWindow.getFocusedWindow()
+    const res = await dialog.showSaveDialog(win!, { title: 'Export artifact', defaultPath: defaultName })
+    if (res.canceled || !res.filePath) return null
+    copyFileSync(src, res.filePath)
+    return res.filePath
+  })
+
   ipcMain.handle('evidence:list', (_e, projectId: string | null) => {
     const rows = projectId
       ? all('SELECT * FROM evidence WHERE projectId = ? ORDER BY capturedAt DESC', [projectId])

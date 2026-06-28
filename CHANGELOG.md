@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.1.98
+- Complete forensic web capture. The full-page button now produces a defensible capture set as one exhibit: full-page PNG screenshot + a complete **MHTML page archive** (HTML + inlined resources, via CDP `Page.captureSnapshot`) + a **hashed manifest** (url, finalUrl, ISO timestamp, user-agent, page dimensions, per-artifact SHA-256). New `evidence:forensicCapture` handler; artifacts stored in a new `evidence.artifacts` column.
+- Evidence detail lists forensic artifacts (size + SHA-256) with an **Export** button (`evidence:exportArtifact`) to save the `.mhtml`/manifest to disk and re-open the exact captured page. Artifact hashes now appear in HTML/PDF/Word reports and the chain of custody.
+
 ## v0.1.97
 - Forensic full-page capture: new browser toolbar button screenshots the entire scrollable page via the Chrome DevTools Protocol (`Page.captureScreenshot` with `captureBeyondViewport`, height-capped at 25k px) and files it to evidence with source URL + capture time + SHA-256, then opens the annotate panel. New `browser:captureFullPage(webContentsId)` handler.
 - OSINT bookmarks panel: optional toggleable sidebar in the browser with the curated course bookmark set (195 links / 12 categories, parsed from the imported `bookmarks_*.html` into `lib/bookmarks.ts`). Collapsible tree, type-to-filter, click to open in a new tab. Persisted via `settings.showBookmarks`.

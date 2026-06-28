@@ -7,6 +7,14 @@ export interface ChangelogEntry {
 /** In-app patch notes. Newest first. Keep in sync with CHANGELOG.md. */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.1.98',
+    date: '2026-06-28',
+    notes: [
+      'Forensic web capture, complete — the full-page button now also saves a complete MHTML archive of the page (HTML + inlined resources) plus a hashed capture manifest (URL, final URL, timestamp, user-agent, dimensions, SHA-256 of every artifact), all filed as one exhibit. This is a defensible, court-style web capture.',
+      'Evidence detail now lists each exhibit’s forensic artifacts with their sizes and SHA-256 hashes, and an Export button saves the MHTML archive (or manifest) to disk so you can re-open the exact page later. Artifact hashes are included in all report formats and the chain of custody.'
+    ]
+  },
+  {
     version: '0.1.97',
     date: '2026-06-28',
     notes: [
