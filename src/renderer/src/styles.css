@@ -33,14 +33,14 @@
     background: transparent;
     overflow: hidden;
   }
-  /* Optional branded backdrop: drop an image at src/renderer/public/ghostwire-bg.jpg
+  /* Optional branded backdrop: drop an image at src/renderer/public/ghostwire-bg.png
      and it shows faintly behind the UI (404s harmlessly to the ink colour if absent). */
   .app-backdrop {
     position: fixed;
     inset: 0;
     z-index: 0;
     pointer-events: none;
-    background: url('/ghostwire-bg.jpg') center / cover no-repeat;
+    background: url('/ghostwire-bg.png') center / cover no-repeat;
     opacity: 0.12;
   }
   ::-webkit-scrollbar {
