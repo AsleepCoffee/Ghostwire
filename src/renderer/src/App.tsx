@@ -59,7 +59,8 @@ export default function App(): JSX.Element {
   return (
     <PersonaDockProvider>
     <BrowserRouting />
-    <div className="flex flex-col h-full w-full overflow-hidden">
+    <div className="app-backdrop" />
+    <div className="relative z-10 flex flex-col h-full w-full overflow-hidden">
       <TitleBar />
       <div className="flex flex-1 min-h-0 w-full overflow-hidden">
         <UpdateNotice />

@@ -660,6 +660,8 @@ export interface OsintApi {
     saveCopy(mediaUrl: string, defaultName: string): Promise<string | null>
     /** Parse EXIF (GPS + camera) from a stored gwmedia:// image. */
     exif(mediaUrl: string): Promise<ExifResult>
+    /** Document metadata (PDF / Office) from a stored gwmedia:// file. */
+    docMeta(mediaUrl: string): Promise<{ all: Record<string, string> }>
     /** A stored gwmedia:// image as a data URL (for OCR / processing). */
     dataUrl(mediaUrl: string): Promise<string | null>
     /** Save a data URL (e.g. an exported graph PNG) to a user-chosen file. Returns the path. */

@@ -24,9 +24,24 @@
     height: 100%;
     margin: 0;
   }
+  /* Base colour on <html> so a transparent <body> can reveal the brand backdrop. */
+  html {
+    @apply bg-ink-950;
+  }
   body {
-    @apply bg-ink-950 text-slate-200 font-sans antialiased;
+    @apply text-slate-200 font-sans antialiased;
+    background: transparent;
     overflow: hidden;
+  }
+  /* Optional branded backdrop: drop an image at src/renderer/public/ghostwire-bg.jpg
+     and it shows faintly behind the UI (404s harmlessly to the ink colour if absent). */
+  .app-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    background: url('/ghostwire-bg.jpg') center / cover no-repeat;
+    opacity: 0.12;
   }
   ::-webkit-scrollbar {
     width: 10px;

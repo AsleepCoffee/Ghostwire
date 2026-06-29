@@ -68,6 +68,7 @@ export function EvidencePage(): JSX.Element {
   const [toast, setToast] = useState('')
   const [urlInput, setUrlInput] = useState('')
   const [query, setQuery] = useState('')
+  const [verifyingAll, setVerifyingAll] = useState(false)
   const [typeFilter, setTypeFilter] = useState<'all' | 'screenshot' | 'image' | 'file'>('all')
   const [sortBy, setSortBy] = useState<'new' | 'old' | 'title' | 'type'>('new')
   const fileRef = useRef<HTMLInputElement>(null)
@@ -91,6 +92,30 @@ export function EvidencePage(): JSX.Element {
   const flash = (m: string): void => {
     setToast(m)
     setTimeout(() => setToast(''), 2600)
+  }
+
+  // Re-hash every exhibit (and its forensic artifacts) and report integrity.
+  const verifyAll = async (): Promise<void> => {
+    setVerifyingAll(true)
+    try {
+      let ok = 0
+      let altered = 0
+      let missing = 0
+      for (const e of items) {
+        const r = await api.evidence.verify(e.id)
+        const units = [r.status, ...(r.artifacts ?? []).map((a) => a.status)]
+        for (const s of units) {
+          if (s === 'verified' || s === 'recorded') ok++
+          else if (s === 'altered') altered++
+          else missing++
+        }
+      }
+      const m = `Integrity: ${ok} OK${altered ? ` · ${altered} ALTERED` : ''}${missing ? ` · ${missing} missing` : ''}`
+      setToast(m)
+      setTimeout(() => setToast(''), altered || missing ? 8000 : 4000)
+    } finally {
+      setVerifyingAll(false)
+    }
   }
 
   const load = useCallback((): void => {
@@ -305,6 +330,14 @@ export function EvidencePage(): JSX.Element {
           <span className="text-xs text-slate-500 shrink-0">
             {shown.length}/{items.length}
           </span>
+          <button
+            className="btn-ghost border border-ink-600 shrink-0 text-sm disabled:opacity-50"
+            onClick={verifyAll}
+            disabled={verifyingAll}
+            title="Re-hash every exhibit and its forensic artifacts and report integrity"
+          >
+            {verifyingAll ? <Loader2 size={14} className="animate-spin" /> : <ShieldCheck size={14} />} Verify all
+          </button>
         </div>
       )}
 
@@ -426,6 +459,7 @@ function EvidenceDetail({
   const navigate = useNavigate()
   const { settings } = useSettings()
   const [exif, setExif] = useState<ExifResult | null>(null)
+  const [docMeta, setDocMeta] = useState<Record<string, string> | null>(null)
   const [title, setTitle] = useState(ev.title ?? '')
   const [note, setNote] = useState(ev.note ?? '')
   const [ocrBusy, setOcrBusy] = useState(false)
@@ -467,8 +501,13 @@ function EvidenceDetail({
     setAiErr('')
     setGeo({ lat: ev.geoLat ?? null, lng: ev.geoLng ?? null, label: ev.geoLabel ?? '' })
     setManual({ lat: '', lng: '', label: '' })
-    if (ev.kind !== 'file') api.files.exif(ev.path).then(setExif)
-    else setExif(null)
+    if (ev.kind !== 'file') {
+      api.files.exif(ev.path).then(setExif)
+      setDocMeta(null)
+    } else {
+      setExif(null)
+      api.files.docMeta(ev.path).then((d) => setDocMeta(d.all))
+    }
   }, [ev.id, ev.path, ev.kind, ev.note, ev.title, ev.geoLat, ev.geoLng, ev.geoLabel])
 
   const pinManual = async (): Promise<void> => {
@@ -1002,6 +1041,32 @@ function EvidenceDetail({
               ) : (
                 <div className="text-xs text-slate-500">No embedded metadata (it may have been stripped by the site/platform).</div>
               )}
+            </div>
+          )}
+          {ev.kind === 'file' && docMeta && Object.keys(docMeta).length > 0 && (
+            <div className="rounded-lg border border-ink-700 p-2.5 space-y-1.5">
+              <div className="flex items-center justify-between">
+                <div className="text-[10px] uppercase tracking-widest text-slate-500">Document metadata</div>
+                <button
+                  className="text-[11px] text-slate-500 hover:text-accent-glow flex items-center gap-1"
+                  onClick={() => api.clipboard.writeText(Object.entries(docMeta).map(([k, v]) => `${k}: ${v}`).join('\n'))}
+                >
+                  <Copy size={11} /> Copy all
+                </button>
+              </div>
+              <div className="divide-y divide-ink-800 border-t border-ink-800">
+                {Object.entries(docMeta).map(([k, v]) => (
+                  <div key={k} className="grid grid-cols-[40%_60%] gap-2 py-1">
+                    <div className="text-[11px] text-slate-500 truncate" title={k}>{k}</div>
+                    <div className="text-[11px] text-slate-300 break-words">{v}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+          {ev.kind === 'file' && docMeta && Object.keys(docMeta).length === 0 && (
+            <div className="rounded-lg border border-ink-700 p-2.5 text-xs text-slate-500">
+              No embedded document metadata found.
             </div>
           )}
         </div>

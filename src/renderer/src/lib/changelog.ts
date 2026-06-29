@@ -7,6 +7,16 @@ export interface ChangelogEntry {
 /** In-app patch notes. Newest first. Keep in sync with CHANGELOG.md. */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.1.104',
+    date: '2026-06-28',
+    notes: [
+      'Forensic capture now records the page’s HTTP response — the final status code, full redirect chain, and response headers (server, content-type, etc.) — into the hashed capture manifest, so the network response is part of the evidence record.',
+      'Document metadata for evidence files — PDFs and Word/Excel/PowerPoint files now show their embedded author, creator, dates and app info in the evidence panel (the same way images show EXIF). Great for spotting who really made a document.',
+      '“Verify all” button in the Evidence locker re-hashes every exhibit and its forensic artifacts in one pass and reports overall integrity (how many are unaltered vs. changed/missing).',
+      'Optional branded background image for the app.'
+    ]
+  },
+  {
     version: '0.1.103',
     date: '2026-06-28',
     notes: [

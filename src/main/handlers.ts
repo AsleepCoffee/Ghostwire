@@ -5,6 +5,7 @@ import { join, dirname, basename } from 'path'
 import { all, get, run, encryptionAvailable } from './db'
 import { exportAllNotes, writeNote } from './export'
 import exifr from 'exifr'
+import AdmZip from 'adm-zip'
 import { pickImage, saveDataUrl, saveMediaBytes, resolveMediaPath, mediaFileUrl, importImageFromUrl, readMedia, fetchAvatar, copyMediaToPath } from './media'
 import { testAllTools } from './toolcheck'
 import { testApiKey } from './apitest'
@@ -186,6 +187,56 @@ function mapEvidence(r: Record<string, unknown>): Evidence {
       }
     })()
   }
+}
+
+/** Best-effort HTTP metadata for a forensic capture: the redirect chain and the
+ *  final response headers, from an independent request at capture time (uses the
+ *  app session so cookies/proxy apply). Supplements the rendered capture. */
+function captureHttpMeta(url: string): Promise<{
+  redirectChain: { url: string; status: number }[]
+  finalStatus: number
+  server?: string
+  contentType?: string
+  headers: Record<string, string>
+}> {
+  return new Promise((resolve) => {
+    const redirectChain: { url: string; status: number }[] = []
+    let done = false
+    const flat = (h: Record<string, string | string[]>): Record<string, string> => {
+      const o: Record<string, string> = {}
+      for (const k of Object.keys(h ?? {})) o[k.toLowerCase()] = Array.isArray(h[k]) ? (h[k] as string[]).join(', ') : String(h[k])
+      return o
+    }
+    const finish = (finalStatus: number, headers: Record<string, string>): void => {
+      if (done) return
+      done = true
+      resolve({ redirectChain, finalStatus, server: headers['server'], contentType: headers['content-type'], headers })
+    }
+    const go = (u: string, left: number): void => {
+      try {
+        const req = net.request({ method: 'GET', url: u, redirect: 'manual' })
+        req.on('redirect', (status: number, _m: string, redirectUrl: string, headers: Record<string, string | string[]>) => {
+          redirectChain.push({ url: u, status })
+          try { req.abort() } catch { /* ignore */ }
+          if (left > 0) go(redirectUrl, left - 1)
+          else finish(status, flat(headers))
+        })
+        req.on('response', (res) => {
+          redirectChain.push({ url: u, status: res.statusCode })
+          finish(res.statusCode, flat(res.headers as Record<string, string | string[]>))
+          res.on('data', () => {})
+          res.on('end', () => {})
+          try { req.abort() } catch { /* ignore */ }
+        })
+        req.on('error', () => finish(0, {}))
+        req.end()
+      } catch {
+        finish(0, {})
+      }
+    }
+    setTimeout(() => finish(0, {}), 12000)
+    go(url, 10)
+  })
 }
 
 /** Build a Markdown investigation report and copy referenced evidence next to it. */
@@ -672,6 +723,9 @@ export function registerHandlers(): void {
         const pngPath = saveDataUrl('evidence', `data:image/png;base64,${shot.data}`)
         const mhtmlPath = saveMediaBytes('evidence', mhtmlBuf, 'mhtml')
 
+        // Independent HTTP request to record the redirect chain + response headers.
+        const http = await captureHttpMeta(url).catch(() => null)
+
         const manifest = {
           tool: 'GhostWire — forensic web capture',
           url,
@@ -680,6 +734,9 @@ export function registerHandlers(): void {
           capturedAt: new Date().toISOString(),
           userAgent: ua,
           page: { width, height },
+          http: http
+            ? { finalStatus: http.finalStatus, redirectChain: http.redirectChain, headers: http.headers }
+            : undefined,
           hashAlgorithm: 'SHA-256',
           artifacts: {
             screenshot: { file: 'screenshot.png', sha256: pngSha, bytes: pngBuf.length },
@@ -1107,6 +1164,52 @@ export function registerHandlers(): void {
     const buf = readMedia(mediaUrl)
     if (!buf) return {}
     return readExif(buf)
+  })
+
+  // Document metadata for non-image evidence (PDF /Info + XMP, and OOXML
+  // docProps for Word/Excel/PowerPoint) — author/creator/dates are classic leads.
+  ipcMain.handle('files:docMeta', (_e, mediaUrl: string): { all: Record<string, string> } => {
+    const buf = readMedia(mediaUrl)
+    if (!buf) return { all: {} }
+    const all: Record<string, string> = {}
+    const head = buf.subarray(0, 5).toString('latin1')
+    try {
+      if (head.startsWith('%PDF')) {
+        const txt = buf.toString('latin1')
+        for (const key of ['Title', 'Author', 'Subject', 'Keywords', 'Creator', 'Producer', 'CreationDate', 'ModDate']) {
+          const m = txt.match(new RegExp('/' + key + '\\s*\\(((?:\\\\\\)|[^)])*)\\)'))
+          if (m && m[1]) all[key] = m[1].replace(/\\([()\\])/g, '$1').trim()
+        }
+        const pages = (txt.match(/\/Type\s*\/Page[^s]/g) || []).length
+        if (pages) all.Pages = String(pages)
+      } else if (head.startsWith('PK')) {
+        // OOXML (docx/xlsx/pptx) — metadata lives in docProps/*.xml.
+        const zip = new AdmZip(buf)
+        const pick = (xml: string, tag: string): string => xml.match(new RegExp(`<${tag}[^>]*>([^<]*)</${tag}>`))?.[1] ?? ''
+        const core = zip.getEntry('docProps/core.xml')?.getData().toString('utf-8') ?? ''
+        const app = zip.getEntry('docProps/app.xml')?.getData().toString('utf-8') ?? ''
+        const map: [string, string, string][] = [
+          ['Creator', core, 'dc:creator'],
+          ['Last modified by', core, 'cp:lastModifiedBy'],
+          ['Title', core, 'dc:title'],
+          ['Subject', core, 'dc:subject'],
+          ['Created', core, 'dcterms:created'],
+          ['Modified', core, 'dcterms:modified'],
+          ['Revision', core, 'cp:revision'],
+          ['Application', app, 'Application'],
+          ['Company', app, 'Company'],
+          ['Pages', app, 'Pages'],
+          ['Words', app, 'Words']
+        ]
+        for (const [label, xml, tag] of map) {
+          const v = pick(xml, tag).trim()
+          if (v) all[label] = v
+        }
+      }
+    } catch {
+      /* unreadable / unsupported — return whatever we got */
+    }
+    return { all }
   })
 
   // ===== Activity log =====

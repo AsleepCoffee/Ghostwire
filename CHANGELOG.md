@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.1.104
+- Forensic captures now record the page's HTTP response — final status, full redirect chain, and response headers — into the hashed capture manifest (independent request at capture time via Electron `net.request`, so cookies/proxy apply).
+- Document metadata for non-image evidence: PDFs (`/Info` + basic fields) and OOXML Word/Excel/PowerPoint (`docProps`) show embedded author/creator/dates/app in the evidence panel, alongside the existing image EXIF.
+- **Verify all** in the Evidence locker re-hashes every exhibit and its forensic artifacts and reports overall integrity (OK / altered / missing).
+- Optional branded app background — drop an image at `src/renderer/public/ghostwire-bg.jpg` and it shows faintly behind the UI.
+
 ## v0.1.103
 - Clearer **Build from source** guide in the README — step-by-step prerequisites, clone, install, and build commands for Windows and Linux, so anyone can compile GhostWire themselves instead of trusting the prebuilt binary.
 - Tidied up release notes and the build pipeline.

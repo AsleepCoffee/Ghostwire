@@ -74,6 +74,7 @@ const api: OsintApi = {
     randomAvatar: () => ipcRenderer.invoke('files:randomAvatar'),
     saveCopy: (mediaUrl, defaultName) => ipcRenderer.invoke('files:saveCopy', mediaUrl, defaultName),
     exif: (mediaUrl) => ipcRenderer.invoke('files:exif', mediaUrl),
+    docMeta: (mediaUrl) => ipcRenderer.invoke('files:docMeta', mediaUrl),
     dataUrl: (mediaUrl) => ipcRenderer.invoke('files:dataUrl', mediaUrl),
     exportImage: (dataUrl, defaultName) => ipcRenderer.invoke('files:exportImage', dataUrl, defaultName)
   },
