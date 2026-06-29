@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.1.113
+- GhostWire mode: the custom window title strip (`TitleBar`) is hidden and the window controls (minimize/maximize/close) move into the Topbar's top-right, so the top reads as one seamless glass pane (no divider, no duplicate GhostWire brand). The Topbar becomes the drag region (interactive controls marked no-drag).
+- GhostWire mode: the active-investigation marker (Projects grid + ProjectDetail "Set active") uses a crosshair (`Target`) in theme accent instead of the amber star. Basic mode unchanged.
+
 ## v0.1.112
 - GhostWire-mode Topbar: drops the bottom divider line, goes transparent over the backdrop, and the header row is centered (max-width, mx-auto). Basic mode keeps the bordered bar.
 - Fixed the GhostDashboard "Appearance" footer shortcut — it's now a button that navigates to Settings (which opens on the Appearance section).

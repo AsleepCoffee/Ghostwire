@@ -1,20 +1,26 @@
 import { useEffect, useState, type CSSProperties } from 'react'
 import { Minus, Square, Copy, X } from 'lucide-react'
 import { api } from '../lib/api'
+import { useSettings } from '../lib/settings'
 import iconUrl from '../assets/icon.png'
 
 // -webkit-app-region isn't in the CSSProperties type; declare small helpers.
 const DRAG = { WebkitAppRegion: 'drag' } as unknown as CSSProperties
 const NO_DRAG = { WebkitAppRegion: 'no-drag' } as unknown as CSSProperties
 
-/** Custom themed window title bar (frameless window). */
-export function TitleBar(): JSX.Element {
+/** Custom themed window title bar (frameless window). In GhostWire mode the
+ *  strip is hidden and the window controls live in the Topbar instead, so the
+ *  whole top reads as one pane of glass. */
+export function TitleBar(): JSX.Element | null {
+  const { settings } = useSettings()
   const [maximized, setMaximized] = useState(false)
 
   useEffect(() => {
     api.win.isMaximized().then(setMaximized)
     return api.win.onMaximizeChange(setMaximized)
   }, [])
+
+  if (settings.ghostMode === true) return null
 
   return (
     <div

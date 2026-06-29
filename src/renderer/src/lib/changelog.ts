@@ -7,6 +7,14 @@ export interface ChangelogEntry {
 /** In-app patch notes. Newest first. Keep in sync with CHANGELOG.md. */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.1.113',
+    date: '2026-06-29',
+    notes: [
+      'GhostWire mode: the window title strip merges into the top bar for one seamless pane of glass — no divider, no duplicate brand, and the window controls (— □ ✕) now sit inline at the top-right.',
+      'GhostWire mode: the active-investigation marker uses a crosshair instead of a star, in theme accent.'
+    ]
+  },
+  {
     version: '0.1.112',
     date: '2026-06-29',
     notes: [

@@ -1,9 +1,11 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type CSSProperties } from 'react'
 import { useLocation } from 'react-router-dom'
-import { Search, FolderSearch, Command } from 'lucide-react'
+import { Search, FolderSearch, Command, Minus, Square, Copy, X } from 'lucide-react'
 
 const IS_MAC = typeof navigator !== 'undefined' && /mac/i.test(navigator.platform)
 const CMD_LABEL = IS_MAC ? '⌘K' : 'Ctrl K'
+const DRAG = { WebkitAppRegion: 'drag' } as unknown as CSSProperties
+const NO_DRAG = { WebkitAppRegion: 'no-drag' } as unknown as CSSProperties
 import { useOpenInBrowser } from '../lib/browserBus'
 import { useSettings } from '../lib/settings'
 import { api, type Project } from '../lib/api'
@@ -11,9 +13,15 @@ import { api, type Project } from '../lib/api'
 export function Topbar(): JSX.Element {
   const [q, setQ] = useState('')
   const [projects, setProjects] = useState<Project[]>([])
+  const [maximized, setMaximized] = useState(false)
   const openInBrowser = useOpenInBrowser()
   const { settings, update } = useSettings()
   const loc = useLocation()
+
+  useEffect(() => {
+    api.win.isMaximized().then(setMaximized)
+    return api.win.onMaximizeChange(setMaximized)
+  }, [])
 
   // Keep the investigation list fresh: reload on navigation, on window focus,
   // and whenever something signals a project change.
@@ -41,12 +49,13 @@ export function Topbar(): JSX.Element {
 
   return (
     <header
-      className={`h-16 shrink-0 flex items-center px-5 ${
+      className={`relative h-16 shrink-0 flex items-center px-5 ${
         ghost ? 'bg-transparent' : 'border-b border-ink-700 bg-ink-900/60 backdrop-blur'
       }`}
+      style={ghost ? DRAG : undefined}
     >
       <div className="w-full max-w-[1200px] mx-auto flex items-center gap-4">
-      <form onSubmit={submit} className="flex-1 max-w-xl relative">
+      <form onSubmit={submit} className="flex-1 max-w-xl relative" style={ghost ? NO_DRAG : undefined}>
         <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
         <input
           value={q}
@@ -63,6 +72,7 @@ export function Topbar(): JSX.Element {
       <button
         type="button"
         onClick={() => window.dispatchEvent(new Event('gw:command'))}
+        style={ghost ? NO_DRAG : undefined}
         className="shrink-0 flex items-center gap-2 px-3 py-2 rounded-lg border border-ink-600 bg-ink-850 text-slate-400 hover:text-slate-100 hover:border-accent/50 transition-colors text-sm"
         title="Command palette — jump to any page, investigation, persona or tool"
       >
@@ -72,7 +82,7 @@ export function Topbar(): JSX.Element {
       </button>
 
       {/* Active investigation — where captures & evidence are filed */}
-      <div className="relative shrink-0" title="Active investigation — new evidence/captures are filed here">
+      <div className="relative shrink-0" style={ghost ? NO_DRAG : undefined} title="Active investigation — new evidence/captures are filed here">
         <FolderSearch size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-brand-glow pointer-events-none" />
         <select
           className="input !w-auto pl-9 pr-8 py-1.5 text-sm max-w-[220px]"
@@ -88,6 +98,22 @@ export function Topbar(): JSX.Element {
         </select>
       </div>
       </div>
+
+      {/* In GhostWire mode the dedicated title strip is hidden, so the window
+          controls live here at the top-right — in line with the rest of the bar. */}
+      {ghost && (
+        <div className="absolute right-1 top-0 h-full flex items-stretch" style={NO_DRAG}>
+          <button onClick={() => api.win.minimize()} className="w-11 grid place-items-center text-slate-400 hover:bg-ink-700/60 hover:text-slate-100 transition-colors" title="Minimize">
+            <Minus size={15} />
+          </button>
+          <button onClick={() => api.win.toggleMaximize()} className="w-11 grid place-items-center text-slate-400 hover:bg-ink-700/60 hover:text-slate-100 transition-colors" title={maximized ? 'Restore' : 'Maximize'}>
+            {maximized ? <Copy size={13} /> : <Square size={13} />}
+          </button>
+          <button onClick={() => api.win.close()} className="w-11 grid place-items-center text-slate-400 hover:bg-danger hover:text-white transition-colors" title="Close">
+            <X size={16} />
+          </button>
+        </div>
+      )}
     </header>
   )
 }

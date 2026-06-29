@@ -23,6 +23,7 @@ export function Projects(): JSX.Element {
   const [creating, setCreating] = useState<Partial<Project> | null>(null)
   const nav = useNavigate()
   const { settings, update } = useSettings()
+  const ghost = settings.ghostMode === true
   const activeId = settings.activeProjectId ?? null
 
   const load = async (): Promise<void> => {
@@ -96,7 +97,7 @@ export function Projects(): JSX.Element {
                 >
                   <button
                     className={`absolute top-3 right-3 p-1 rounded-md transition-colors ${
-                      isActive ? 'text-amber-400' : 'text-slate-600 hover:text-slate-300'
+                      isActive ? (ghost ? 'text-accent-glow' : 'text-amber-400') : 'text-slate-600 hover:text-slate-300'
                     }`}
                     title={isActive ? 'Active investigation — new evidence/captures file here' : 'Set as active investigation'}
                     onClick={(e) => {
@@ -104,7 +105,7 @@ export function Projects(): JSX.Element {
                       update({ activeProjectId: isActive ? null : p.id })
                     }}
                   >
-                    <Star size={18} fill={isActive ? 'currentColor' : 'none'} />
+                    {ghost ? <Target size={18} /> : <Star size={18} fill={isActive ? 'currentColor' : 'none'} />}
                   </button>
                   <div className="flex items-start gap-3 pr-7">
                     <div

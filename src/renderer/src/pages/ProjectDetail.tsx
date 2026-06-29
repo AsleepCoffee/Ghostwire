@@ -57,6 +57,7 @@ export function ProjectDetail(): JSX.Element {
   const openInBrowser = useOpenInBrowser()
   const confirm = useConfirm()
   const { settings, update } = useSettings()
+  const ghost = settings.ghostMode === true
   const [project, setProject] = useState<Project | null>(null)
   const [contents, setContents] = useState<{ personas: Persona[]; notes: Note[]; boards: Board[] }>({
     personas: [],
@@ -288,11 +289,21 @@ export function ProjectDetail(): JSX.Element {
             </button>
           )}
           <button
-            className={`btn-ghost border border-ink-600 ${settings.activeProjectId === project.id ? '!text-amber-400 !border-amber-400/40' : ''}`}
+            className={`btn-ghost border border-ink-600 ${
+              settings.activeProjectId === project.id
+                ? ghost
+                  ? '!text-accent-glow !border-accent/40'
+                  : '!text-amber-400 !border-amber-400/40'
+                : ''
+            }`}
             onClick={() => update({ activeProjectId: settings.activeProjectId === project.id ? null : project.id })}
             title={settings.activeProjectId === project.id ? 'Active investigation — click to clear' : 'Set as active investigation'}
           >
-            <Star size={15} fill={settings.activeProjectId === project.id ? 'currentColor' : 'none'} />
+            {ghost ? (
+              <Target size={15} />
+            ) : (
+              <Star size={15} fill={settings.activeProjectId === project.id ? 'currentColor' : 'none'} />
+            )}
             {settings.activeProjectId === project.id ? 'Active' : 'Set active'}
           </button>
           <div className="relative">
