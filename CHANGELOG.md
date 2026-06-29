@@ -1,5 +1,8 @@
 # Changelog
 
+## v0.1.109
+- GhostWire mode gains a **command-center dashboard** (`GhostDashboard`): HUD panels (bracketed corners, glow, monospace labels) wired to live data — investigation status, case/entity/connection counts, UTC + local clock, top entities by frequency across all link charts, recent activity, a quick-pivot bar, command shortcuts, and tool tiles, layered over the animated backdrop + particles. The normal dashboard renders in Basic UI. `Dashboard` now chooses between `BasicDashboard` and `GhostDashboard` by `settings.ghostMode`.
+
 ## v0.1.108
 - GhostWire mode now **defaults to off** (`settings.ghostMode === true` to enable) — the app opens in the clean Basic UI; the immersive backdrop + particles are opt-in via Settings → Appearance.
 

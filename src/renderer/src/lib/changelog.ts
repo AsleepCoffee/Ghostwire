@@ -7,6 +7,11 @@ export interface ChangelogEntry {
 /** In-app patch notes. Newest first. Keep in sync with CHANGELOG.md. */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.1.109',
+    date: '2026-06-29',
+    notes: ['GhostWire mode now has a full command-center dashboard — HUD panels with your live data: investigation status, case/entity/connection counts, a UTC clock, top entities by frequency, recent activity, a quick-pivot bar, and tool tiles, over the animated backdrop. (Basic UI is unchanged.)']
+  },
+  {
     version: '0.1.108',
     date: '2026-06-29',
     notes: ['GhostWire mode now defaults to off — the app opens in the clean Basic UI; turn on the immersive backdrop + particles in Settings → Appearance.']

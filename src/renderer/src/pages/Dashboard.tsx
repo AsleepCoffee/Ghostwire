@@ -29,6 +29,7 @@ import { useSettings } from '../lib/settings'
 import { TIMEZONES, timeInZone, dateInZone } from '../lib/timezones'
 import { PivotModal } from '../components/PivotModal'
 import { TimezonePicker } from '../components/TimezonePicker'
+import { GhostDashboard } from '../components/GhostDashboard'
 import { SUBJECT_LABELS, type PivotSubject } from '../lib/pivot'
 
 const CATEGORY_ICON: Record<string, string> = {
@@ -45,6 +46,11 @@ const CATEGORY_ICON: Record<string, string> = {
 }
 
 export function Dashboard(): JSX.Element {
+  const { settings } = useSettings()
+  return settings.ghostMode === true ? <GhostDashboard /> : <BasicDashboard />
+}
+
+function BasicDashboard(): JSX.Element {
   const nav = useNavigate()
   const [personas, setPersonas] = useState<Persona[]>([])
   const [notes, setNotes] = useState<Note[]>([])
