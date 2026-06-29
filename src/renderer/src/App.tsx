@@ -36,6 +36,7 @@ import { Vpn } from './pages/Vpn'
 import { WhatsNew } from './pages/WhatsNew'
 import { Guide } from './pages/Guide'
 import { Settings } from './pages/Settings'
+import { ParticleBackground } from './components/ParticleBackground'
 
 /** Registers the in-app browser as the sink for every link-open request, so
  *  nothing is ever handed to the system browser. */
@@ -60,6 +61,7 @@ export default function App(): JSX.Element {
     <PersonaDockProvider>
     <BrowserRouting />
     <div className="app-backdrop" />
+    <ParticleBackground />
     <div className="relative z-10 flex flex-col h-full w-full overflow-hidden">
       <TitleBar />
       <div className="flex flex-1 min-h-0 w-full overflow-hidden">

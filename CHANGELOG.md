@@ -1,5 +1,8 @@
 # Changelog
 
+## v0.1.106
+- Animated particle-network backdrop (`ParticleBackground`) over the brand image — drifting nodes with proximity links in the live theme accent, on a `requestAnimationFrame` canvas. Honours `prefers-reduced-motion` and pauses on `visibilitychange`.
+
 ## v0.1.105
 - Added the GhostWire branded background image (`src/renderer/public/ghostwire-bg.png`) behind the UI.
 
