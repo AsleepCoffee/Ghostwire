@@ -37,6 +37,7 @@ import { WhatsNew } from './pages/WhatsNew'
 import { Guide } from './pages/Guide'
 import { Settings } from './pages/Settings'
 import { ParticleBackground } from './components/ParticleBackground'
+import { useSettings } from './lib/settings'
 
 /** Registers the in-app browser as the sink for every link-open request, so
  *  nothing is ever handed to the system browser. */
@@ -56,12 +57,14 @@ function BrowserRouting(): null {
 export default function App(): JSX.Element {
   const loc = useLocation()
   const onBrowser = loc.pathname === '/browser'
+  const { settings } = useSettings()
+  const ghostMode = settings.ghostMode !== false
 
   return (
     <PersonaDockProvider>
     <BrowserRouting />
-    <div className="app-backdrop" />
-    <ParticleBackground />
+    {ghostMode && <div className="app-backdrop" />}
+    {ghostMode && <ParticleBackground />}
     <div className="relative z-10 flex flex-col h-full w-full overflow-hidden">
       <TitleBar />
       <div className="flex flex-1 min-h-0 w-full overflow-hidden">

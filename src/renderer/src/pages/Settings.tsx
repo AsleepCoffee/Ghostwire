@@ -229,6 +229,17 @@ export function Settings(): JSX.Element {
                   )
                 })}
               </div>
+
+              <label className="flex items-center justify-between py-3 mt-5 border-t border-ink-700">
+                <div className="pr-4">
+                  <div className="text-sm text-slate-200 font-medium">GhostWire mode</div>
+                  <div className="text-xs text-slate-500">
+                    Immersive look — the branded backdrop with an animated particle network behind the app. Turn it off for a
+                    clean, flat Basic UI. (Respects “reduce motion”; pauses when the window is hidden.)
+                  </div>
+                </div>
+                <Toggle on={settings.ghostMode !== false} onChange={(v) => update({ ghostMode: v })} />
+              </label>
             </section>
           )}
 

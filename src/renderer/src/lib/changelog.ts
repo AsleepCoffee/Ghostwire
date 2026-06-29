@@ -7,6 +7,11 @@ export interface ChangelogEntry {
 /** In-app patch notes. Newest first. Keep in sync with CHANGELOG.md. */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.1.107',
+    date: '2026-06-29',
+    notes: ['New “GhostWire mode” toggle in Settings → Appearance — switch between the immersive branded backdrop + animated particles and a clean Basic UI.']
+  },
+  {
     version: '0.1.106',
     date: '2026-06-28',
     notes: ['Animated particle network behind the app — drifting nodes that link up, in your theme’s accent colour. Respects “reduce motion” and pauses when the window is hidden.']

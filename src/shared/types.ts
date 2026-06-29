@@ -246,6 +246,8 @@ export interface AppSettings {
   reportOptions?: ReportOptions
   /** Show the curated OSINT bookmarks panel in the in-app browser. */
   showBookmarks?: boolean
+  /** GhostWire mode: immersive branded backdrop + animated particles. Default on. */
+  ghostMode?: boolean
   /** Open in-app browser tabs, restored on next launch so the session persists. */
   browserTabs?: { url: string; personaId?: string }[]
   /** Index of the active tab among browserTabs, restored on next launch. */

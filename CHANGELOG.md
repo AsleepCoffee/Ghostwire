@@ -1,5 +1,8 @@
 # Changelog
 
+## v0.1.107
+- **GhostWire mode** toggle (Settings → Appearance, `settings.ghostMode`, default on): switches between the immersive branded backdrop + animated particle network and a clean Basic UI. App.tsx gates the `.app-backdrop` and `ParticleBackground` on it.
+
 ## v0.1.106
 - Animated particle-network backdrop (`ParticleBackground`) over the brand image — drifting nodes with proximity links in the live theme accent, on a `requestAnimationFrame` canvas. Honours `prefers-reduced-motion` and pauses on `visibilitychange`.
 
