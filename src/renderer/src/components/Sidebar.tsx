@@ -78,10 +78,15 @@ export function Sidebar(): JSX.Element {
     api.app.version().then(setVersion)
   }, [])
   const groups = GROUPS.filter((g) => g.toggle !== 'courseNotes' || settings.showTraining !== false)
+  const ghost = settings.ghostMode === true
   return (
-    <aside className="w-60 shrink-0 bg-ink-900 border-r border-ink-700 flex flex-col">
+    <aside
+      className={`w-60 shrink-0 flex flex-col ${
+        ghost ? 'bg-ink-900/40 backdrop-blur-md border-r border-accent/20' : 'bg-ink-900 border-r border-ink-700'
+      }`}
+    >
       {/* Brand */}
-      <div className="flex items-center gap-3 px-4 h-16 border-b border-ink-700">
+      <div className={`flex items-center gap-3 px-4 h-16 border-b ${ghost ? 'border-accent/20' : 'border-ink-700'}`}>
         <img src={iconUrl} alt="GhostWire" className="w-9 h-9 rounded-xl object-cover shadow-glow" />
         <div className="leading-tight">
           <div className="font-bold text-slate-100 tracking-tight">GhostWire</div>
@@ -94,7 +99,11 @@ export function Sidebar(): JSX.Element {
         {groups.map((g, i) => (
           <div key={i}>
             {g.heading && (
-              <div className="px-3 mb-1.5 text-[10px] font-semibold uppercase tracking-widest text-slate-600">
+              <div
+                className={`px-3 mb-1.5 text-[10px] font-semibold uppercase tracking-widest ${
+                  ghost ? 'text-accent-glow/70 font-mono' : 'text-slate-600'
+                }`}
+              >
                 {g.heading}
               </div>
             )}
@@ -106,9 +115,13 @@ export function Sidebar(): JSX.Element {
                   end={item.to === '/'}
                   className={({ isActive }) =>
                     `flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
-                      isActive
-                        ? 'bg-brand/15 text-brand-glow font-medium'
-                        : 'text-slate-400 hover:text-slate-200 hover:bg-ink-800'
+                      ghost
+                        ? isActive
+                          ? 'bg-accent/15 text-accent-glow font-medium border border-accent/40'
+                          : 'text-slate-400 hover:text-accent-glow hover:bg-accent/10 border border-transparent'
+                        : isActive
+                          ? 'bg-brand/15 text-brand-glow font-medium'
+                          : 'text-slate-400 hover:text-slate-200 hover:bg-ink-800'
                     }`
                   }
                 >

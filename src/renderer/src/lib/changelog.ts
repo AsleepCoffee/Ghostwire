@@ -7,6 +7,14 @@ export interface ChangelogEntry {
 /** In-app patch notes. Newest first. Keep in sync with CHANGELOG.md. */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.1.110',
+    date: '2026-06-29',
+    notes: [
+      'GhostWire mode polish — the sidebar is now themed to match the HUD, the dashboard uses the app’s real terms (Investigations, not “Cases”), and the top-right panel shows real resources (Sock Puppets, Notes, connection status) instead of a placeholder.',
+      'Basic mode now keeps the branded background image too — just without the moving particles (those stay exclusive to GhostWire mode).'
+    ]
+  },
+  {
     version: '0.1.109',
     date: '2026-06-29',
     notes: ['GhostWire mode now has a full command-center dashboard — HUD panels with your live data: investigation status, case/entity/connection counts, a UTC clock, top entities by frequency, recent activity, a quick-pivot bar, and tool tiles, over the animated backdrop. (Basic UI is unchanged.)']

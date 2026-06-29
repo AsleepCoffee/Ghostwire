@@ -63,7 +63,7 @@ export default function App(): JSX.Element {
   return (
     <PersonaDockProvider>
     <BrowserRouting />
-    {ghostMode && <div className="app-backdrop" />}
+    <div className="app-backdrop" />
     {ghostMode && <ParticleBackground />}
     <div className="relative z-10 flex flex-col h-full w-full overflow-hidden">
       <TitleBar />

@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.1.110
+- GhostWire mode polish: sidebar themed to the HUD (glassy panel, accent active items, monospace headings) when on; dashboard uses real app terms (Investigations, not "Cases"); the third top panel is now a real **Resources** module (Sock Puppets, Notes, VPN/connection status) instead of the placeholder "Operational Status".
+- Basic mode now also shows the branded background image — particles remain exclusive to GhostWire mode. (`.app-backdrop` always rendered; `ParticleBackground` gated on `ghostMode`.)
+
 ## v0.1.109
 - GhostWire mode gains a **command-center dashboard** (`GhostDashboard`): HUD panels (bracketed corners, glow, monospace labels) wired to live data — investigation status, case/entity/connection counts, UTC + local clock, top entities by frequency across all link charts, recent activity, a quick-pivot bar, command shortcuts, and tool tiles, layered over the animated backdrop + particles. The normal dashboard renders in Basic UI. `Dashboard` now chooses between `BasicDashboard` and `GhostDashboard` by `settings.ghostMode`.
 

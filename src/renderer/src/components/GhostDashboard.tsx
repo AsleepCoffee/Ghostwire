@@ -51,6 +51,7 @@ export function GhostDashboard(): JSX.Element {
   const { settings } = useSettings()
   const [projects, setProjects] = useState<Project[]>([])
   const [counts, setCounts] = useState({ entities: 0, connections: 0 })
+  const [resources, setResources] = useState({ personas: 0, notes: 0 })
   const [topEntities, setTopEntities] = useState<{ label: string; type: string; count: number }[]>([])
   const [activity, setActivity] = useState<Activity[]>([])
   const [now, setNow] = useState(() => new Date())
@@ -66,9 +67,15 @@ export function GhostDashboard(): JSX.Element {
   useEffect(() => {
     let cancelled = false
     ;(async () => {
-      const [projs, boards] = await Promise.all([api.projects.list(), api.boards.list()])
+      const [projs, boards, personas, notes] = await Promise.all([
+        api.projects.list(),
+        api.boards.list(),
+        api.personas.list(),
+        api.notes.list()
+      ])
       if (cancelled) return
       setProjects(projs)
+      setResources({ personas: personas.length, notes: notes.length })
       let nodes = 0
       let edges = 0
       const tally = new Map<string, { label: string; type: string; count: number }>()
@@ -115,10 +122,10 @@ export function GhostDashboard(): JSX.Element {
             <div className={`text-lg font-bold ${active ? 'text-ok' : 'text-slate-400'}`}>
               {active ? 'ACTIVE' : 'STANDBY'}
             </div>
-            <div className="text-[11px] text-slate-500 truncate mb-3">{active ? active.name : 'No active case'}</div>
+            <div className="text-[11px] text-slate-500 truncate mb-3">{active ? active.name : 'No active investigation'}</div>
             <div className="grid grid-cols-3 gap-2">
               {[
-                { l: 'Cases', v: projects.length, to: '/projects' },
+                { l: 'Investigations', v: projects.length, to: '/projects' },
                 { l: 'Entities', v: counts.entities, to: '/graph' },
                 { l: 'Connections', v: counts.connections, to: '/graph' }
               ].map((s) => (
@@ -139,17 +146,28 @@ export function GhostDashboard(): JSX.Element {
           </div>
 
           <div className="hud p-4">
-            <div className="hud-label mb-2">Operational Status</div>
-            <div className="text-lg font-bold text-ok">NOMINAL</div>
-            <div className="text-[11px] text-slate-500 mb-3">
-              {settings.globalVpnConfigId ? 'VPN exit engaged' : 'Direct connection'}
+            <div className="hud-label mb-2">Resources</div>
+            <div className="grid grid-cols-2 gap-2 mb-3">
+              {[
+                { l: 'Sock Puppets', v: resources.personas, to: '/sock-puppets' },
+                { l: 'Notes', v: resources.notes, to: '/notes' }
+              ].map((s) => (
+                <button key={s.l} onClick={() => nav(s.to)} className="text-left hover:opacity-80">
+                  <div className="text-2xl font-bold text-slate-100 hud-num leading-none">{s.v.toLocaleString()}</div>
+                  <div className="hud-label !text-slate-500 mt-1">{s.l}</div>
+                </button>
+              ))}
             </div>
-            <div className="h-1.5 rounded-full bg-ink-700 overflow-hidden">
-              <div className="h-full rounded-full" style={{ width: '28%', background: 'rgb(var(--ok))' }} />
+            <div className="flex items-center gap-2 text-[11px] border-t border-ink-700 pt-2">
+              <span className={`live-dot ${settings.globalVpnConfigId ? '!bg-ok' : '!bg-slate-500'}`} />
+              <span className="text-slate-400">{settings.globalVpnConfigId ? 'VPN exit engaged' : 'Direct connection'}</span>
+              <button onClick={() => nav('/vpn')} className="ml-auto text-accent-glow hover:underline">
+                VPN
+              </button>
             </div>
             <button
               onClick={() => nav('/evidence')}
-              className="mt-3 text-[11px] text-accent-glow hover:underline flex items-center gap-1"
+              className="mt-2 text-[11px] text-accent-glow hover:underline flex items-center gap-1"
             >
               <ShieldCheck size={12} /> Evidence locker
             </button>
@@ -218,7 +236,7 @@ export function GhostDashboard(): JSX.Element {
                 <div className="hud-label">Recent Activity</div>
                 {active && (
                   <button className="hud-label !text-slate-500 hover:!text-accent-glow" onClick={() => nav(`/projects/${active.id}`)}>
-                    Case →
+                    Open →
                   </button>
                 )}
               </div>
@@ -246,10 +264,10 @@ export function GhostDashboard(): JSX.Element {
         {/* Bottom: quick nav + tools */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
           <div className="hud p-4">
-            <div className="hud-label mb-3">Command</div>
+            <div className="hud-label mb-3">Quick Actions</div>
             <div className="grid grid-cols-3 gap-2.5">
               {[
-                { l: 'New case', i: 'FolderSearch', on: () => nav('/projects') },
+                { l: 'New investigation', i: 'FolderSearch', on: () => nav('/projects') },
                 { l: 'Link chart', i: 'Workflow', on: () => nav('/graph') },
                 { l: 'Sock puppet', i: 'Drama', on: () => nav('/sock-puppets') },
                 { l: 'Domain recon', i: 'Radar', on: () => nav('/recon') },
