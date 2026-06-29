@@ -5,6 +5,7 @@ import { Map as MapIcon, Loader2, RefreshCw } from 'lucide-react'
 import { api, type Project } from '../lib/api'
 import { useSettings } from '../lib/settings'
 import { useOpenInBrowser } from '../lib/browserBus'
+import { RequireCase } from '../components/RequireCase'
 
 interface Pt {
   lat: number
@@ -44,7 +45,15 @@ async function geocode(q: string): Promise<{ lat: number; lng: number } | null> 
 }
 
 export function MapView(): JSX.Element {
-  const { settings } = useSettings()
+  return (
+    <RequireCase feature="The Map">
+      <MapInner />
+    </RequireCase>
+  )
+}
+
+function MapInner(): JSX.Element {
+  const { settings, update } = useSettings()
   const openInBrowser = useOpenInBrowser()
   const openRef = useRef(openInBrowser)
   openRef.current = openInBrowser
@@ -208,7 +217,15 @@ export function MapView(): JSX.Element {
         <div className="ml-auto flex items-center gap-2">
           {loading && <Loader2 size={16} className="animate-spin text-slate-400" />}
           <span className="text-xs text-slate-500">{pts.length} point{pts.length === 1 ? '' : 's'}</span>
-          <select className="input !w-auto" value={projectId ?? ''} onChange={(e) => setProjectId(e.target.value || null)}>
+          <select
+            className="input !w-auto"
+            value={projectId ?? ''}
+            onChange={(e) => {
+              const v = e.target.value || null
+              setProjectId(v)
+              if (v) update({ activeProjectId: v })
+            }}
+          >
             <option value="">All investigations</option>
             {projects.map((p) => (
               <option key={p.id} value={p.id}>

@@ -18,17 +18,36 @@ import {
 } from 'lucide-react'
 import { api, type Note, type Project } from '../lib/api'
 import { EmptyState } from '../components/ui'
+import { RequireCase } from '../components/RequireCase'
 import { useConfirm } from '../lib/confirm'
+import { useSettings } from '../lib/settings'
 import { fmtDate } from '../lib/format'
 
 export function Notes(): JSX.Element {
   const [params] = useSearchParams()
+  // The Course Notes folder (training) isn't tied to an investigation — it
+  // bypasses the case gate so it's always reachable from the Training section.
+  const courseMode = params.get('folder') === 'Course'
+  if (courseMode) return <NotesInner courseMode />
+  return (
+    <RequireCase feature="Notes">
+      <NotesInner />
+    </RequireCase>
+  )
+}
+
+function NotesInner({ courseMode = false }: { courseMode?: boolean }): JSX.Element {
+  const [params] = useSearchParams()
+  const { settings } = useSettings()
+  const caseId = settings.activeProjectId ?? null
   const [notes, setNotes] = useState<Note[]>([])
   const [activeId, setActiveId] = useState<string | null>(null)
   const [query, setQuery] = useState('')
   const [folderFilter, setFolderFilter] = useState<string>(params.get('folder') ?? 'All')
   const [preview, setPreview] = useState(false)
   const [toast, setToast] = useState('')
+  const [showUnfiled, setShowUnfiled] = useState(false)
+  const [projectName, setProjectName] = useState('')
   const saveTimer = useRef<NodeJS.Timeout | null>(null)
   const confirm = useConfirm()
 
@@ -42,20 +61,42 @@ export function Notes(): JSX.Element {
     load()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+  useEffect(() => {
+    if (courseMode || !caseId) return
+    api.projects.list().then((ps) => setProjectName(ps.find((p) => p.id === caseId)?.name ?? ''))
+  }, [caseId, courseMode])
 
   const folders = useMemo(
     () => ['All', ...Array.from(new Set(notes.map((n) => n.folder))).sort()],
     [notes]
   )
 
+  // How many notes belong to no investigation (and aren't Course notes) — offered
+  // for one-click filing into the active case.
+  const unfiledCount = useMemo(
+    () => (courseMode ? 0 : notes.filter((n) => (n.projectId ?? null) === null && n.folder !== 'Course').length),
+    [notes, courseMode]
+  )
+
   const filtered = useMemo(() => {
     const q = query.toLowerCase()
-    return notes.filter(
-      (n) =>
+    return notes.filter((n) => {
+      if (courseMode) {
+        if (n.folder !== 'Course') return false
+      } else {
+        // Course notes live in their own (Training) view; here we show the active
+        // case's notes, plus optionally the loose/unfiled ones.
+        if (n.folder === 'Course') return false
+        const mine = (n.projectId ?? null) === caseId
+        const unfiled = showUnfiled && (n.projectId ?? null) === null
+        if (!mine && !unfiled) return false
+      }
+      return (
         (folderFilter === 'All' || n.folder === folderFilter) &&
         (!q || n.title.toLowerCase().includes(q) || n.body.toLowerCase().includes(q))
-    )
-  }, [notes, query, folderFilter])
+      )
+    })
+  }, [notes, query, folderFilter, courseMode, caseId, showUnfiled])
 
   const active = notes.find((n) => n.id === activeId) ?? null
 
@@ -68,9 +109,19 @@ export function Notes(): JSX.Element {
     const saved = await api.notes.save({
       title: 'Untitled note',
       body: '# Untitled note\n\n',
-      folder: folderFilter === 'All' ? 'Inbox' : folderFilter
+      folder: courseMode ? 'Course' : folderFilter === 'All' ? 'Inbox' : folderFilter,
+      projectId: courseMode ? null : caseId
     })
     await load(saved.id)
+  }
+
+  // Bulk-file every loose note under the active investigation.
+  const assignUnfiled = async (): Promise<void> => {
+    const targets = notes.filter((n) => (n.projectId ?? null) === null && n.folder !== 'Course')
+    for (const n of targets) await api.notes.save({ ...n, projectId: caseId })
+    await load()
+    setShowUnfiled(false)
+    flash(`Filed ${targets.length} note${targets.length === 1 ? '' : 's'} under this investigation`)
   }
 
   const patch = (patch: Partial<Note>): void => {
@@ -151,6 +202,22 @@ export function Notes(): JSX.Element {
             ))}
           </select>
         </div>
+
+        {!courseMode && unfiledCount > 0 && (
+          <div className="px-3 py-2 border-b border-ink-700 bg-ink-900/60">
+            <div className="text-xs text-slate-400">
+              {unfiledCount} note{unfiledCount === 1 ? '' : 's'} not assigned to any investigation.
+            </div>
+            <div className="flex gap-3 mt-1.5 text-xs">
+              <button className="text-brand-glow hover:underline" onClick={assignUnfiled}>
+                File under {projectName || 'this case'}
+              </button>
+              <button className="text-slate-400 hover:text-slate-200" onClick={() => setShowUnfiled((v) => !v)}>
+                {showUnfiled ? 'Hide them' : 'Show them'}
+              </button>
+            </div>
+          </div>
+        )}
 
         <div className="flex-1 overflow-y-auto">
           {filtered.length === 0 ? (

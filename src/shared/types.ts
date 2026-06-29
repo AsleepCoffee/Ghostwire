@@ -29,6 +29,7 @@ export interface Project {
   objectives: string
   /** IANA time zone for the subject (e.g. "America/New_York") — shown as a clock. */
   timezone?: string
+  archived?: boolean
   createdAt: number
   updatedAt: number
 }

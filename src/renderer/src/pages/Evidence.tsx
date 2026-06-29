@@ -35,6 +35,7 @@ import { useConfirm } from '../lib/confirm'
 import { useOpenInBrowser, useOpenTabs, setPasteImage } from '../lib/browserBus'
 import { fmtDateTime } from '../lib/format'
 import { EmptyState } from '../components/ui'
+import { RequireCase } from '../components/RequireCase'
 
 
 /** Reverse-image-search engines. `upload` is the page whose file-input we drop
@@ -56,6 +57,14 @@ const fileToDataUrl = (file: File): Promise<string> =>
   })
 
 export function EvidencePage(): JSX.Element {
+  return (
+    <RequireCase feature="The Evidence Board">
+      <EvidenceBoard />
+    </RequireCase>
+  )
+}
+
+function EvidenceBoard(): JSX.Element {
   const { settings, update } = useSettings()
   const nav = useNavigate()
   const confirm = useConfirm()
@@ -255,13 +264,12 @@ export function EvidencePage(): JSX.Element {
             className="input !w-auto"
             value={projectId ?? ''}
             onChange={(e) => {
-              const v = e.target.value || null
+              const v = e.target.value
               setProjectId(v)
               update({ activeProjectId: v })
             }}
             title="Which investigation this evidence belongs to"
           >
-            <option value="">Unfiled</option>
             {projects.map((p) => (
               <option key={p.id} value={p.id}>
                 {p.name}

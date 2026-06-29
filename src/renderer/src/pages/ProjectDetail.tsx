@@ -1,27 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import {
-  ArrowLeft,
-  Pencil,
-  Trash2,
-  Plus,
-  Crosshair,
-  Drama,
-  NotebookPen,
-  Workflow,
-  Globe,
-  Link2,
-  Unlink,
-  Fingerprint,
-  Lightbulb,
-  Target,
-  FileDown,
-  Camera,
-  ExternalLink,
-  Loader2,
-  ChevronDown,
-  Star
-} from 'lucide-react'
+import { ArrowLeft, Pencil, Trash2, Plus, Crosshair, Drama, NotebookPen, Workflow, Globe, Link2, Unlink, Fingerprint, Lightbulb, Target, FileDown, Camera, ExternalLink, Loader2, ChevronDown, Star, Archive, ArchiveRestore, AlertTriangle } from 'lucide-react'
 import {
   api,
   type Project,
@@ -36,11 +15,10 @@ import {
   type ReportOptions
 } from '../lib/api'
 import { PROJECT_TYPES, ENTITY_TYPES, personaColor } from '../lib/constants'
-import { Icon, StatusBadge } from '../components/ui'
+import { Icon, Modal, StatusBadge } from '../components/ui'
 import { ProjectEditor } from './Projects'
 import { PivotModal } from '../components/PivotModal'
 import { useOpenInBrowser } from '../lib/browserBus'
-import { useConfirm } from '../lib/confirm'
 import { useSettings } from '../lib/settings'
 import { fmtDate, fmtDateTime } from '../lib/format'
 import { subjectForEntity, type PivotSubject } from '../lib/pivot'
@@ -55,7 +33,6 @@ export function ProjectDetail(): JSX.Element {
   const { id = '' } = useParams()
   const nav = useNavigate()
   const openInBrowser = useOpenInBrowser()
-  const confirm = useConfirm()
   const { settings, update } = useSettings()
   const ghost = settings.ghostMode === true
   const [project, setProject] = useState<Project | null>(null)
@@ -83,6 +60,8 @@ export function ProjectDetail(): JSX.Element {
   const [newType, setNewType] = useState<EntityType>('email')
   const [newValue, setNewValue] = useState('')
   const saveTimer = useRef<NodeJS.Timeout | null>(null)
+  const [deleteOpen, setDeleteOpen] = useState(false)
+  const [deleteInput, setDeleteInput] = useState('')
   const flash = (m: string): void => {
     setToast(m)
     setTimeout(() => setToast(''), 2600)
@@ -141,9 +120,16 @@ export function ProjectDetail(): JSX.Element {
     saveTimer.current = setTimeout(() => api.projects.save(updated), 500)
   }
 
-  const remove = async (): Promise<void> => {
+  const archiveProject = async (archived: boolean): Promise<void> => {
     if (!project) return
-    if (!(await confirm({ title: `Delete investigation “${project.name}”?`, message: 'Linked personas, notes, and boards are kept — just unlinked from this investigation.', confirmText: 'Delete', danger: true }))) return
+    await api.projects.save({ ...project, archived })
+    if (archived && settings.activeProjectId === project.id) update({ activeProjectId: null })
+    window.dispatchEvent(new Event('gw:projects-changed'))
+    nav('/projects')
+  }
+
+  const deleteProject = async (): Promise<void> => {
+    if (!project || deleteInput !== project.name) return
     await api.projects.remove(project.id)
     if (settings.activeProjectId === project.id) update({ activeProjectId: null })
     window.dispatchEvent(new Event('gw:projects-changed'))
@@ -363,7 +349,14 @@ export function ProjectDetail(): JSX.Element {
           <button className="btn-ghost !px-2" onClick={() => setEditing(true)} title="Edit details">
             <Pencil size={17} />
           </button>
-          <button className="btn-danger !px-2" onClick={remove} title="Delete investigation">
+          <button
+            className="btn-ghost !px-2"
+            onClick={() => archiveProject(!project.archived)}
+            title={project.archived ? "Restore investigation" : "Archive investigation"}
+          >
+            {project.archived ? <ArchiveRestore size={17} /> : <Archive size={17} />}
+          </button>
+          <button className="btn-danger !px-2" onClick={() => { setDeleteInput(""); setDeleteOpen(true) }} title="Delete investigation permanently">
             <Trash2 size={17} />
           </button>
         </div>
@@ -632,6 +625,45 @@ export function ProjectDetail(): JSX.Element {
         <div className="fixed bottom-5 right-5 z-50 card px-4 py-2.5 text-sm text-slate-200 border-brand/30 shadow-xl">
           {toast}
         </div>
+      )}
+
+      {deleteOpen && (
+        <Modal open onClose={() => setDeleteOpen(false)} title="">
+          <div className="flex flex-col items-center text-center gap-3 pb-1">
+            <div className="w-14 h-14 rounded-2xl bg-red-950/60 border border-red-800/50 flex items-center justify-center">
+              <AlertTriangle size={28} className="text-red-400" />
+            </div>
+            <h2 className="text-lg font-bold text-slate-100">Permanently delete investigation?</h2>
+            <p className="text-sm text-red-400 font-semibold">This action CANNOT be undone.</p>
+            <p className="text-sm text-slate-400 max-w-sm">
+              The investigation record will be permanently deleted. Linked personas, notes, and link charts will be unlinked but kept.
+            </p>
+          </div>
+          <div className="mt-5 space-y-2">
+            <label className="text-xs text-slate-400">
+              To confirm, type the investigation name exactly:
+              <span className="ml-1 font-semibold text-slate-200">{project.name}</span>
+            </label>
+            <input
+              className="input"
+              placeholder={project.name}
+              value={deleteInput}
+              onChange={(e) => setDeleteInput(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && deleteProject()}
+              autoFocus
+            />
+          </div>
+          <div className="flex gap-2 mt-4">
+            <button className="btn-ghost flex-1 justify-center" onClick={() => setDeleteOpen(false)}>Cancel</button>
+            <button
+              className="btn-danger flex-1 justify-center"
+              disabled={deleteInput !== project.name}
+              onClick={deleteProject}
+            >
+              <Trash2 size={15} /> Delete permanently
+            </button>
+          </div>
+        </Modal>
       )}
     </div>
   )

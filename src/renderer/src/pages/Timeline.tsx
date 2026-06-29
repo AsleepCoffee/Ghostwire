@@ -5,6 +5,7 @@ import { api, type Activity, type Project } from '../lib/api'
 import { useSettings } from '../lib/settings'
 import { fmtDate, fmtDateTime } from '../lib/format'
 import { EmptyState } from '../components/ui'
+import { RequireCase } from '../components/RequireCase'
 
 const TYPE_ICON: Record<string, typeof Camera> = {
   evidence: Camera,
@@ -15,7 +16,15 @@ const TYPE_ICON: Record<string, typeof Camera> = {
 const iconFor = (t: string): typeof Camera => TYPE_ICON[t] ?? ActivityIcon
 
 export function Timeline(): JSX.Element {
-  const { settings } = useSettings()
+  return (
+    <RequireCase feature="The Case Timeline">
+      <TimelineInner />
+    </RequireCase>
+  )
+}
+
+function TimelineInner(): JSX.Element {
+  const { settings, update } = useSettings()
   const nav = useNavigate()
   const [projects, setProjects] = useState<Project[]>([])
   const [projectId, setProjectId] = useState<string | null>(settings.activeProjectId ?? null)
@@ -59,9 +68,13 @@ export function Timeline(): JSX.Element {
         <select
           className="input !w-auto ml-auto"
           value={projectId ?? ''}
-          onChange={(e) => setProjectId(e.target.value || null)}
+          onChange={(e) => {
+            const v = e.target.value
+            setProjectId(v)
+            update({ activeProjectId: v })
+          }}
+          title="Active investigation"
         >
-          <option value="">Select investigation…</option>
           {projects.map((p) => (
             <option key={p.id} value={p.id}>
               {p.name}

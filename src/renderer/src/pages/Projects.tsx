@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Plus, Search, Drama, NotebookPen, Workflow, Target, Trash2, Star } from 'lucide-react'
+import { Plus, Search, Drama, NotebookPen, Workflow, Target, Trash2, Star, Archive, ArchiveRestore, ChevronDown, AlertTriangle } from 'lucide-react'
 import {
   api,
   type Project,
@@ -21,6 +21,9 @@ export function Projects(): JSX.Element {
   const [counts, setCounts] = useState<Record<string, ProjectCounts>>({})
   const [query, setQuery] = useState('')
   const [creating, setCreating] = useState<Partial<Project> | null>(null)
+  const [showArchived, setShowArchived] = useState(false)
+  const [deleteTarget, setDeleteTarget] = useState<Project | null>(null)
+  const [deleteInput, setDeleteInput] = useState('')
   const nav = useNavigate()
   const { settings, update } = useSettings()
   const ghost = settings.ghostMode === true
@@ -41,6 +44,116 @@ export function Projects(): JSX.Element {
     )
   }, [projects, query])
 
+  const activeProjects = filtered.filter((p) => !p.archived)
+  const archivedProjects = filtered.filter((p) => p.archived)
+
+  const archiveProject = async (p: Project, archived: boolean): Promise<void> => {
+    await api.projects.save({ ...p, archived })
+    if (archived && settings.activeProjectId === p.id) update({ activeProjectId: null })
+    window.dispatchEvent(new Event('gw:projects-changed'))
+    load()
+  }
+
+  const deleteProject = async (): Promise<void> => {
+    if (!deleteTarget || deleteInput !== deleteTarget.name) return
+    await api.projects.remove(deleteTarget.id)
+    if (settings.activeProjectId === deleteTarget.id) update({ activeProjectId: null })
+    window.dispatchEvent(new Event('gw:projects-changed'))
+    setDeleteTarget(null)
+    setDeleteInput('')
+    load()
+  }
+
+  const renderCard = (p: Project): JSX.Element => {
+    const cfg = PROJECT_TYPES[p.type]
+    const c = counts[p.id] ?? { personas: 0, notes: 0, boards: 0 }
+    const isActive = p.id === activeId
+    return (
+      <div
+        key={p.id}
+        onClick={() => nav(`/projects/${p.id}`)}
+        className={`card p-4 text-left cursor-pointer relative transition-all ${
+          isActive ? 'border-brand/70 shadow-glow ring-1 ring-brand/40' : 'hover:border-brand/40 hover:shadow-glow'
+        } ${p.archived ? 'opacity-60' : ''}`}
+      >
+        {!p.archived && (
+          <button
+            className={`absolute top-3 right-10 p-1 rounded-md transition-colors ${
+              isActive ? (ghost ? 'text-accent-glow' : 'text-amber-400') : 'text-slate-600 hover:text-slate-300'
+            }`}
+            title={isActive ? 'Active investigation' : 'Set as active investigation'}
+            onClick={(e) => {
+              e.stopPropagation()
+              update({ activeProjectId: isActive ? null : p.id })
+            }}
+          >
+            {ghost ? <Target size={18} /> : <Star size={18} fill={isActive ? 'currentColor' : 'none'} />}
+          </button>
+        )}
+        <button
+          className="absolute top-3 right-3 p-1 rounded-md text-slate-600 hover:text-slate-300 transition-colors"
+          title={p.archived ? 'Restore investigation' : 'Archive investigation'}
+          onClick={(e) => {
+            e.stopPropagation()
+            archiveProject(p, !p.archived)
+          }}
+        >
+          {p.archived ? <ArchiveRestore size={16} /> : <Archive size={16} />}
+        </button>
+        <div className="flex items-start gap-3 pr-16">
+          <div
+            className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0"
+            style={{ background: `${cfg.color}1f`, border: `1px solid ${cfg.color}44` }}
+          >
+            <Icon name={cfg.icon} size={22} style={{ color: cfg.color }} />
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2 flex-wrap">
+              <h3 className="font-semibold text-slate-100 truncate">{p.name}</h3>
+              <StatusBadge status={p.status} />
+              {isActive && (
+                <span className="px-1.5 py-0.5 rounded-md text-[10px] font-semibold uppercase tracking-wider border bg-brand/15 text-brand-glow border-brand/30">
+                  Active
+                </span>
+              )}
+              {p.archived && (
+                <span className="px-1.5 py-0.5 rounded-md text-[10px] font-semibold uppercase tracking-wider border bg-ink-700 text-slate-400 border-ink-600">
+                  Archived
+                </span>
+              )}
+            </div>
+            <div className="text-sm text-slate-500 truncate">
+              {cfg.label}
+              {p.subject ? ` · ${p.subject}` : ''}
+            </div>
+          </div>
+        </div>
+        {p.objectives && (
+          <p className="text-xs text-slate-500 mt-3 line-clamp-2">
+            <Target size={11} className="inline mr-1 -mt-0.5" />
+            {p.objectives}
+          </p>
+        )}
+        <div className="mt-3 pt-3 border-t border-ink-700 flex items-center gap-4 text-xs text-slate-400">
+          <span className="flex items-center gap-1"><Drama size={13} /> {c.personas}</span>
+          <span className="flex items-center gap-1"><NotebookPen size={13} /> {c.notes}</span>
+          <span className="flex items-center gap-1"><Workflow size={13} /> {c.boards}</span>
+          <button
+            className="ml-auto p-1 text-slate-600 hover:text-red-400 transition-colors"
+            title="Delete investigation permanently"
+            onClick={(e) => {
+              e.stopPropagation()
+              setDeleteInput('')
+              setDeleteTarget(p)
+            }}
+          >
+            <Trash2 size={14} />
+          </button>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="h-full flex flex-col">
       <div className="flex items-center justify-between px-6 py-4 border-b border-ink-700">
@@ -49,14 +162,13 @@ export function Projects(): JSX.Element {
             <Icon name="FolderSearch" size={20} className="text-brand-glow" /> Investigations
           </h1>
           <p className="text-sm text-slate-500">
-            One workspace per target — track what you know, what you’re hunting, and everything linked to it.
+            One workspace per target — track what you know, what you're hunting, and everything linked to it.
           </p>
         </div>
         <button className="btn-primary" onClick={() => setCreating({ type: 'person', status: 'active' })}>
           <Plus size={16} /> New Investigation
         </button>
       </div>
-
       <div className="px-6 py-3 border-b border-ink-700">
         <div className="relative max-w-md">
           <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
@@ -68,9 +180,8 @@ export function Projects(): JSX.Element {
           />
         </div>
       </div>
-
-      <div className="flex-1 overflow-y-auto p-6">
-        {filtered.length === 0 ? (
+      <div className="flex-1 overflow-y-auto p-6 space-y-6">
+        {activeProjects.length === 0 && archivedProjects.length === 0 ? (
           <EmptyState
             icon="FolderSearch"
             title="No investigations yet"
@@ -81,79 +192,34 @@ export function Projects(): JSX.Element {
               </button>
             }
           />
+        ) : activeProjects.length === 0 ? (
+          <p className="text-sm text-slate-500">No active investigations match your search.</p>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-            {filtered.map((p) => {
-              const cfg = PROJECT_TYPES[p.type]
-              const c = counts[p.id] ?? { personas: 0, notes: 0, boards: 0 }
-              const isActive = p.id === activeId
-              return (
-                <div
-                  key={p.id}
-                  onClick={() => nav(`/projects/${p.id}`)}
-                  className={`card p-4 text-left cursor-pointer relative transition-all ${
-                    isActive ? 'border-brand/70 shadow-glow ring-1 ring-brand/40' : 'hover:border-brand/40 hover:shadow-glow'
-                  }`}
-                >
-                  <button
-                    className={`absolute top-3 right-3 p-1 rounded-md transition-colors ${
-                      isActive ? (ghost ? 'text-accent-glow' : 'text-amber-400') : 'text-slate-600 hover:text-slate-300'
-                    }`}
-                    title={isActive ? 'Active investigation — new evidence/captures file here' : 'Set as active investigation'}
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      update({ activeProjectId: isActive ? null : p.id })
-                    }}
-                  >
-                    {ghost ? <Target size={18} /> : <Star size={18} fill={isActive ? 'currentColor' : 'none'} />}
-                  </button>
-                  <div className="flex items-start gap-3 pr-7">
-                    <div
-                      className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0"
-                      style={{ background: `${cfg.color}1f`, border: `1px solid ${cfg.color}44` }}
-                    >
-                      <Icon name={cfg.icon} size={22} style={{ color: cfg.color }} />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <h3 className="font-semibold text-slate-100 truncate">{p.name}</h3>
-                        <StatusBadge status={p.status} />
-                        {isActive && (
-                          <span className="px-1.5 py-0.5 rounded-md text-[10px] font-semibold uppercase tracking-wider border bg-brand/15 text-brand-glow border-brand/30">
-                            Active
-                          </span>
-                        )}
-                      </div>
-                      <div className="text-sm text-slate-500 truncate">
-                        {cfg.label}
-                        {p.subject ? ` · ${p.subject}` : ''}
-                      </div>
-                    </div>
-                  </div>
-                  {p.objectives && (
-                    <p className="text-xs text-slate-500 mt-3 line-clamp-2">
-                      <Target size={11} className="inline mr-1 -mt-0.5" />
-                      {p.objectives}
-                    </p>
-                  )}
-                  <div className="mt-3 pt-3 border-t border-ink-700 flex items-center gap-4 text-xs text-slate-400">
-                    <span className="flex items-center gap-1">
-                      <Drama size={13} /> {c.personas}
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <NotebookPen size={13} /> {c.notes}
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <Workflow size={13} /> {c.boards}
-                    </span>
-                  </div>
-                </div>
-              )
-            })}
+            {activeProjects.map(renderCard)}
+          </div>
+        )}
+        {archivedProjects.length > 0 && (
+          <div className="border border-ink-700 rounded-xl overflow-hidden">
+            <button
+              className="w-full flex items-center justify-between px-4 py-3 text-sm text-slate-400 hover:text-slate-200 hover:bg-ink-800 transition-colors"
+              onClick={() => setShowArchived((v) => !v)}
+            >
+              <span className="flex items-center gap-2">
+                <Archive size={15} />
+                Archived investigations
+                <span className="text-xs text-slate-600 font-normal">({archivedProjects.length})</span>
+              </span>
+              <ChevronDown size={15} className={`transition-transform ${showArchived ? 'rotate-180' : ''}`} />
+            </button>
+            {showArchived && (
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 p-4 border-t border-ink-700">
+                {archivedProjects.map(renderCard)}
+              </div>
+            )}
           </div>
         )}
       </div>
-
       {creating && (
         <ProjectEditor
           initial={creating}
@@ -163,6 +229,46 @@ export function Projects(): JSX.Element {
             nav(`/projects/${saved.id}`)
           }}
         />
+      )}
+      {deleteTarget && (
+        <Modal open onClose={() => { setDeleteTarget(null); setDeleteInput('') }} title="">
+          <div className="flex flex-col items-center text-center gap-3 pb-1">
+            <div className="w-14 h-14 rounded-2xl bg-red-950/60 border border-red-800/50 flex items-center justify-center">
+              <AlertTriangle size={28} className="text-red-400" />
+            </div>
+            <h2 className="text-lg font-bold text-slate-100">Permanently delete investigation?</h2>
+            <p className="text-sm text-red-400 font-semibold">This action CANNOT be undone.</p>
+            <p className="text-sm text-slate-400 max-w-sm">
+              The investigation record will be permanently deleted. Linked personas, notes, and link charts will be unlinked but kept.
+            </p>
+          </div>
+          <div className="mt-5 space-y-2">
+            <label className="text-xs text-slate-400">
+              To confirm, type the investigation name exactly:
+              <span className="ml-1 font-semibold text-slate-200">{deleteTarget.name}</span>
+            </label>
+            <input
+              className="input"
+              placeholder={deleteTarget.name}
+              value={deleteInput}
+              onChange={(e) => setDeleteInput(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && deleteProject()}
+              autoFocus
+            />
+          </div>
+          <div className="flex gap-2 mt-4">
+            <button className="btn-ghost flex-1 justify-center" onClick={() => { setDeleteTarget(null); setDeleteInput('') }}>
+              Cancel
+            </button>
+            <button
+              className="btn-danger flex-1 justify-center"
+              disabled={deleteInput !== deleteTarget.name}
+              onClick={deleteProject}
+            >
+              <Trash2 size={15} /> Delete permanently
+            </button>
+          </div>
+        </Modal>
       )}
     </div>
   )
@@ -253,9 +359,7 @@ export function ProjectEditor({
             </datalist>
           </div>
         </div>
-
         <TimezonePicker open={tzPicker} onClose={() => setTzPicker(false)} onPick={(tz) => set({ timezone: tz })} />
-        {/* Structured known data points */}
         <div>
           <div className="flex items-center justify-between mb-2">
             <label className="label !mb-0">Known information</label>
@@ -275,9 +379,7 @@ export function ProjectEditor({
                   onChange={(e) => updatePoint(d.id, { type: e.target.value as EntityType })}
                 >
                   {Object.entries(ENTITY_TYPES).map(([t, cfg]) => (
-                    <option key={t} value={t}>
-                      {cfg.label}
-                    </option>
+                    <option key={t} value={t}>{cfg.label}</option>
                   ))}
                 </select>
                 <input
@@ -300,7 +402,6 @@ export function ProjectEditor({
             {points.length === 0 && <p className="text-xs text-slate-500">No data points yet.</p>}
           </div>
         </div>
-
         <div>
           <label className="label">Notes / context</label>
           <textarea
@@ -311,7 +412,7 @@ export function ProjectEditor({
           />
         </div>
         <div>
-          <label className="label">What we’re trying to find</label>
+          <label className="label">What we're trying to find</label>
           <textarea
             className="input min-h-[90px] resize-y"
             placeholder="Objectives & questions to answer…"
@@ -321,9 +422,7 @@ export function ProjectEditor({
         </div>
       </div>
       <div className="flex justify-end gap-2 mt-5 pt-4 border-t border-ink-700">
-        <button className="btn-ghost" onClick={onClose}>
-          Cancel
-        </button>
+        <button className="btn-ghost" onClick={onClose}>Cancel</button>
         <button className="btn-primary" onClick={save} disabled={!p.name?.trim()}>
           {initial.id ? 'Save' : 'Create investigation'}
         </button>

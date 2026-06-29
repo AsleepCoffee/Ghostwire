@@ -7,6 +7,24 @@ export interface ChangelogEntry {
 /** In-app patch notes. Newest first. Keep in sync with CHANGELOG.md. */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.1.121',
+    date: '2026-06-29',
+    notes: [
+      'Link graph auto-selects the board tied to the active investigation and switches automatically when you change cases.',
+      'Boards now require an investigation — the "create board" dialog enforces this and filters out archived cases.',
+      'Archive investigations: cases can be archived (hidden in a collapsed "Archived" drawer on the Investigations page) and restored at any time.',
+      'Delete investigations: permanent deletion requires typing the case name exactly in a confirmation dialog — clearly labelled as irreversible.'
+    ]
+  },
+  {
+    version: '0.1.120',
+    date: '2026-06-29',
+    notes: [
+      'Case-scoped tabs: Evidence Board, Case Timeline, Map and Notes now require an active investigation — if none is set they prompt you to create or open one (instead of showing an empty/“Unfiled” view).',
+      'Evidence no longer has an "Unfiled" bucket — every exhibit belongs to a case. Notes are filed under the active investigation, with a one-click option to file any previously-loose notes into it. The Course Notes (training) folder stays available without a case.'
+    ]
+  },
+  {
     version: '0.1.118',
     date: '2026-06-29',
     notes: [

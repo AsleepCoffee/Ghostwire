@@ -1,5 +1,15 @@
 # Changelog
 
+## v0.1.121
+- Link graph auto-selects the board tied to the active investigation and switches automatically when you change cases.
+- Boards now require an investigation — the "create board" dialog enforces this and filters out archived cases.
+- Archive investigations: cases can be archived and hidden in a collapsed "Archived" drawer on the Investigations page, and restored at any time.
+- Delete investigations: permanent deletion requires typing the case name exactly in a confirmation dialog, clearly labelled as irreversible.
+
+## v0.1.120
+- Case-scoped tabs now require an active investigation: **Evidence Board**, **Case Timeline**, **Map** and **Notes** show a "create or open an investigation" prompt when none is active, instead of an empty/Unfiled view.
+- Evidence dropped the "Unfiled" bucket — every exhibit belongs to a case. New notes are filed under the active investigation, with a one-click banner to file any previously-unfiled notes into it. The **Course Notes** (training) folder stays usable without a case.
+
 ## v0.1.119
 - Welcome popup: shown on first launch and once after each update — pick your appearance mode (Standard vs GhostWire) and color theme up front.
 - Customizable dashboard: an "Edit layout" toggle turns on in-place editing — drag the actual widgets to reorder them, resize each (Small / Medium / Wide), remove them, and use "+ Add widget" to add any of the available widgets. Layout is saved per appearance mode, for both Standard and GhostWire dashboards.

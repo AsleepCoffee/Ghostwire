@@ -33,6 +33,7 @@ CREATE TABLE IF NOT EXISTS projects (
   known TEXT DEFAULT '',
   objectives TEXT DEFAULT '',
   timezone TEXT DEFAULT '',
+  archived INTEGER DEFAULT 0,
   createdAt INTEGER,
   updatedAt INTEGER
 );
@@ -199,7 +200,8 @@ function migrate(): void {
     'ALTER TABLE evidence ADD COLUMN geoLat REAL',
     'ALTER TABLE evidence ADD COLUMN geoLng REAL',
     'ALTER TABLE evidence ADD COLUMN geoLabel TEXT',
-    'ALTER TABLE evidence ADD COLUMN artifacts TEXT'
+    'ALTER TABLE evidence ADD COLUMN artifacts TEXT',
+    'ALTER TABLE projects ADD COLUMN archived INTEGER DEFAULT 0'
   ]
   for (const sql of adds) {
     try {

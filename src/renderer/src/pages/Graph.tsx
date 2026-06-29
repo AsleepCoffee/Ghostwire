@@ -23,11 +23,12 @@ import {
 import '@xyflow/react/dist/style.css'
 import { toPng } from 'html-to-image'
 import { Plus, Trash2, X, ImagePlus, Crosshair, Sparkles, Loader2, ImageDown, Check, AlertTriangle, KeyRound, Minus, ChevronDown, ChevronUp, Globe, BoxSelect, Hand, Search, LayoutGrid, Combine, Link2 } from 'lucide-react'
-import { api, type Board, type EntityNode, type EntityType, type Project, type Evidence } from '../lib/api'
+import { api, type Board, type EntityNode, type EntityType, type Evidence, type Project } from '../lib/api'
 import { autoLink } from '../lib/graphlink'
 import { ENTITY_TYPES } from '../lib/constants'
 import { Icon, EmptyState, Modal } from '../components/ui'
 import { PivotModal } from '../components/PivotModal'
+import { RequireCase } from '../components/RequireCase'
 import { subjectForEntity, type PivotSubject } from '../lib/pivot'
 import { transformsFor, type Transform, type TransformOutput } from '../lib/transforms'
 import { useOpenInBrowser } from '../lib/browserBus'
@@ -146,12 +147,18 @@ function GraphInner(): JSX.Element {
     setTimeout(() => setToast(''), 2600)
   }
 
+  const [params] = useSearchParams()
+
   const loadBoards = async (): Promise<void> => {
     const list = await api.boards.list()
     setBoards(list)
-    if (!boardId && list.length) setBoardId(list[0].id)
+    if (list.length && !params.get('board')) {
+      const activeId = settings.activeProjectId ?? null
+      const preferred = activeId ? list.find((b) => b.projectId === activeId) : null
+      setBoardId((prev) => prev || (preferred ?? list[0]).id)
+    }
   }
-  const [params] = useSearchParams()
+
   useEffect(() => {
     loadBoards()
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -162,6 +169,16 @@ function GraphInner(): JSX.Element {
     const b = params.get('board')
     if (b) setBoardId(b)
   }, [params])
+
+  // Auto-switch to the active investigation's board when the active project changes.
+  useEffect(() => {
+    if (params.get('board')) return
+    const activeId = settings.activeProjectId ?? null
+    if (!activeId) return
+    const projectBoard = boards.find((b) => b.projectId === activeId)
+    if (projectBoard && projectBoard.id !== boardId) setBoardId(projectBoard.id)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [settings.activeProjectId])
 
   const loadGraph = useCallback(async (id: string): Promise<void> => {
     const { nodes: ents, edges: eds } = await api.boards.graph(id)
@@ -190,9 +207,16 @@ function GraphInner(): JSX.Element {
   }, [boardId, loadGraph])
 
   const openCreateBoard = (): void => {
-    setNewBoardName('New Investigation')
-    setNewBoardProject('')
-    api.projects.list().then(setProjects)
+    const activeId = settings.activeProjectId ?? ''
+    setNewBoardProject(activeId)
+    setNewBoardName('New board')
+    api.projects.list().then((list) => {
+      setProjects(list)
+      if (activeId) {
+        const p = list.find((pr) => pr.id === activeId)
+        if (p) setNewBoardName(`${p.name} — link chart`)
+      }
+    })
     setCreatingBoard(true)
   }
 
@@ -613,22 +637,25 @@ function GraphInner(): JSX.Element {
           />
         </div>
         <div>
-          <label className="label">Investigation (optional)</label>
-          <select className="input" value={newBoardProject} onChange={(e) => setNewBoardProject(e.target.value)}>
-            <option value="">— none —</option>
-            {projects.map((pr) => (
+          <label className="label">Investigation <span className="text-red-400">*</span></label>
+          <select className="input" value={newBoardProject} onChange={(e) => setNewBoardProject(e.target.value)} required>
+            <option value="" disabled>Select an investigation…</option>
+            {projects.filter((pr) => !pr.archived).map((pr) => (
               <option key={pr.id} value={pr.id}>
                 {pr.name}
               </option>
             ))}
           </select>
+          {projects.filter((pr) => !pr.archived).length === 0 && (
+            <p className="text-xs text-slate-500 mt-1">No active investigations — <a className="text-brand-glow underline cursor-pointer" onClick={() => { setCreatingBoard(false); nav("/projects") }}>create one first</a>.</p>
+          )}
         </div>
       </div>
       <div className="flex justify-end gap-2 mt-5">
         <button className="btn-ghost" onClick={() => setCreatingBoard(false)}>
           Cancel
         </button>
-        <button className="btn-primary" onClick={createBoard} disabled={!newBoardName.trim()}>
+        <button className="btn-primary" onClick={createBoard} disabled={!newBoardName.trim() || !newBoardProject}>
           Create board
         </button>
       </div>
