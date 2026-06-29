@@ -1,5 +1,8 @@
 # Changelog
 
+## v0.1.105
+- Added the GhostWire branded background image (`src/renderer/public/ghostwire-bg.png`) behind the UI.
+
 ## v0.1.104
 - Forensic captures now record the page's HTTP response — final status, full redirect chain, and response headers — into the hashed capture manifest (independent request at capture time via Electron `net.request`, so cookies/proxy apply).
 - Document metadata for non-image evidence: PDFs (`/Info` + basic fields) and OOXML Word/Excel/PowerPoint (`docProps`) show embedded author/creator/dates/app in the evidence panel, alongside the existing image EXIF.

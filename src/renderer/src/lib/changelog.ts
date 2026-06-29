@@ -7,6 +7,11 @@ export interface ChangelogEntry {
 /** In-app patch notes. Newest first. Keep in sync with CHANGELOG.md. */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.1.105',
+    date: '2026-06-28',
+    notes: ['New GhostWire branded background behind the app.']
+  },
+  {
     version: '0.1.104',
     date: '2026-06-28',
     notes: [
