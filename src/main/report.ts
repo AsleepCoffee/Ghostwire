@@ -793,7 +793,7 @@ export function buildDocxHtml(d: ReportData): string {
   if (d.evidence.length) {
     d.evidence.forEach((e, i) => {
       H.push(`<h3>Exhibit ${i + 1} — ${esc(e.title || e.sourceUrl || 'Evidence')}</h3>`)
-      if (e.dataUri) H.push(`<img src="${e.dataUri}" width="420"/>`)
+      if (e.dataUri) H.push(`<p><i>[Image — see PDF or HTML export for embedded screenshot]</i></p>`)
       H.push(`<p><i>Captured ${esc(fmtFull(e.capturedAt))}</i></p>`)
       if (e.sourceUrl) H.push(`<p>Source: ${esc(e.sourceUrl)}</p>`)
       const cam = [e.exif?.make, e.exif?.model].filter(Boolean).join(' ').trim()

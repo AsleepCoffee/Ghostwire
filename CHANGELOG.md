@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.1.122
+- Fixed DOCX export — Word can now open exported .docx files (invalid margin attributes in the generated XML were causing Word to reject the file).
+- DOCX export no longer embeds large screenshots inline; all text content, metadata, hashes, and chain of custody remain fully included. Use PDF or HTML for image-embedded reports.
+- Report exports via the command palette (Ctrl+K) now respect saved branding, classification, and analyst settings.
+
 ## v0.1.121
 - Link graph auto-selects the board tied to the active investigation and switches automatically when you change cases.
 - Boards now require an investigation — the "create board" dialog enforces this and filters out archived cases.

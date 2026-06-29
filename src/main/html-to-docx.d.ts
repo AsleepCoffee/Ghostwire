@@ -1,7 +1,7 @@
 declare module 'html-to-docx' {
   interface DocxOptions {
     title?: string
-    margins?: { top?: number; right?: number; bottom?: number; left?: number }
+    margins?: { top?: number; right?: number; bottom?: number; left?: number; header?: number; footer?: number; gutter?: number }
     table?: { row?: { cantSplit?: boolean } }
     [key: string]: unknown
   }

@@ -7,6 +7,15 @@ export interface ChangelogEntry {
 /** In-app patch notes. Newest first. Keep in sync with CHANGELOG.md. */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.1.122',
+    date: '2026-06-29',
+    notes: [
+      'Fixed DOCX export — Word can now open exported .docx files (invalid "undefined" margin attributes in the XML were causing Word to reject the file).',
+      'DOCX export no longer embeds large screenshots inline (which caused html-to-docx to crash); all text content, metadata, hashes, and chain of custody are fully included. Use PDF or HTML export for image-embedded reports.',
+      'Report exports from the command palette (Ctrl+K) now respect your saved branding, classification, and analyst settings.'
+    ]
+  },
+  {
     version: '0.1.121',
     date: '2026-06-29',
     notes: [

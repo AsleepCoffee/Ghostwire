@@ -654,11 +654,21 @@ export function registerHandlers(): void {
       filters: [{ name: 'Word document', extensions: ['docx'] }]
     })
     if (res.canceled || !res.filePath) return null
-    const buf = (await HTMLtoDOCX(buildDocxHtml(data), null, {
+    const result = await HTMLtoDOCX(buildDocxHtml(data), null, {
       title: `${data.project.name} — Investigation report`,
-      margins: { top: 720, right: 720, bottom: 720, left: 720 }
-    })) as Buffer | ArrayBuffer
-    writeFileSync(res.filePath, Buffer.isBuffer(buf) ? buf : Buffer.from(buf as ArrayBuffer))
+      margins: { top: 720, right: 720, bottom: 720, left: 720, header: 360, footer: 360, gutter: 0 }
+    })
+    if (!result) throw new Error('DOCX generation returned empty result')
+    let finalBuf: Buffer
+    if (Buffer.isBuffer(result)) {
+      finalBuf = result
+    } else if (result instanceof ArrayBuffer) {
+      finalBuf = Buffer.from(result)
+    } else {
+      // Electron main process exposes Blob globally; html-to-docx may return one
+      finalBuf = Buffer.from(await (result as unknown as Blob).arrayBuffer())
+    }
+    writeFileSync(res.filePath, finalBuf)
     logActivity(id, 'report', 'Exported Word report (.docx)')
     return res.filePath
   })

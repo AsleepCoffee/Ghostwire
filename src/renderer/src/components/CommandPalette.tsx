@@ -123,9 +123,10 @@ export function CommandPalette(): JSX.Element | null {
         icon: 'FileDown',
         run: () => {
           setOpen(false)
-          if (kind === 'pdf') api.projects.exportReportPdf(activeId)
-          else if (kind === 'html') api.projects.exportReportHtml(activeId)
-          else api.projects.exportReport(activeId)
+          const opts = settings.reportOptions ?? { branded: true, classification: 'CONFIDENTIAL' }
+          if (kind === 'pdf') api.projects.exportReportPdf(activeId, opts)
+          else if (kind === 'html') api.projects.exportReportHtml(activeId, opts)
+          else api.projects.exportReport(activeId, opts)
         }
       })
       out.push(exp('pdf', 'Export report — PDF'), exp('html', 'Export report — HTML'), exp('md', 'Export report — Markdown'))
