@@ -238,7 +238,7 @@ export function Settings(): JSX.Element {
                     clean, flat Basic UI. (Respects “reduce motion”; pauses when the window is hidden.)
                   </div>
                 </div>
-                <Toggle on={settings.ghostMode !== false} onChange={(v) => update({ ghostMode: v })} />
+                <Toggle on={settings.ghostMode === true} onChange={(v) => update({ ghostMode: v })} />
               </label>
             </section>
           )}

@@ -1,5 +1,8 @@
 # Changelog
 
+## v0.1.108
+- GhostWire mode now **defaults to off** (`settings.ghostMode === true` to enable) — the app opens in the clean Basic UI; the immersive backdrop + particles are opt-in via Settings → Appearance.
+
 ## v0.1.107
 - **GhostWire mode** toggle (Settings → Appearance, `settings.ghostMode`, default on): switches between the immersive branded backdrop + animated particle network and a clean Basic UI. App.tsx gates the `.app-backdrop` and `ParticleBackground` on it.
 

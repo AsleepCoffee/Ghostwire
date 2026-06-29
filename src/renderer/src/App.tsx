@@ -58,7 +58,7 @@ export default function App(): JSX.Element {
   const loc = useLocation()
   const onBrowser = loc.pathname === '/browser'
   const { settings } = useSettings()
-  const ghostMode = settings.ghostMode !== false
+  const ghostMode = settings.ghostMode === true
 
   return (
     <PersonaDockProvider>

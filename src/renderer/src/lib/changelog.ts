@@ -7,6 +7,11 @@ export interface ChangelogEntry {
 /** In-app patch notes. Newest first. Keep in sync with CHANGELOG.md. */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.1.108',
+    date: '2026-06-29',
+    notes: ['GhostWire mode now defaults to off — the app opens in the clean Basic UI; turn on the immersive backdrop + particles in Settings → Appearance.']
+  },
+  {
     version: '0.1.107',
     date: '2026-06-29',
     notes: ['New “GhostWire mode” toggle in Settings → Appearance — switch between the immersive branded backdrop + animated particles and a clean Basic UI.']
