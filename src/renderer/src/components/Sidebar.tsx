@@ -82,11 +82,11 @@ export function Sidebar(): JSX.Element {
   return (
     <aside
       className={`w-60 shrink-0 flex flex-col ${
-        ghost ? 'bg-ink-900/40 backdrop-blur-md border-r border-accent/20' : 'bg-ink-900 border-r border-ink-700'
+        ghost ? 'bg-gradient-to-r from-ink-950/85 via-ink-950/60 to-transparent' : 'bg-ink-900 border-r border-ink-700'
       }`}
     >
       {/* Brand */}
-      <div className={`flex items-center gap-3 px-4 h-16 border-b ${ghost ? 'border-accent/20' : 'border-ink-700'}`}>
+      <div className={`flex items-center gap-3 px-4 h-16 ${ghost ? '' : 'border-b border-ink-700'}`}>
         <img src={iconUrl} alt="GhostWire" className="w-9 h-9 rounded-xl object-cover shadow-glow" />
         <div className="leading-tight">
           <div className="font-bold text-slate-100 tracking-tight">GhostWire</div>
@@ -98,34 +98,28 @@ export function Sidebar(): JSX.Element {
       <nav className="flex-1 overflow-y-auto py-3 px-2 space-y-4">
         {groups.map((g, i) => (
           <div key={i}>
-            {g.heading && (
-              <div
-                className={`px-3 mb-1.5 text-[10px] font-semibold uppercase tracking-widest ${
-                  ghost ? 'text-accent-glow/70 font-mono' : 'text-slate-600'
-                }`}
-              >
+            {g.heading && !ghost && (
+              <div className="px-3 mb-1.5 text-[10px] font-semibold uppercase tracking-widest text-slate-600">
                 {g.heading}
               </div>
             )}
-            <div className="space-y-0.5">
+            <div className={ghost ? 'space-y-1' : 'space-y-0.5'}>
               {g.items.map((item) => (
                 <NavLink
                   key={item.to}
                   to={item.to}
                   end={item.to === '/'}
                   className={({ isActive }) =>
-                    `flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
-                      ghost
-                        ? isActive
-                          ? 'bg-accent/15 text-accent-glow font-medium border border-accent/40'
-                          : 'text-slate-400 hover:text-accent-glow hover:bg-accent/10 border border-transparent'
-                        : isActive
-                          ? 'bg-brand/15 text-brand-glow font-medium'
-                          : 'text-slate-400 hover:text-slate-200 hover:bg-ink-800'
-                    }`
+                    ghost
+                      ? `flex items-center gap-3 px-3 py-2 text-xs uppercase tracking-[0.14em] transition-colors ${
+                          isActive ? 'text-accent-glow font-semibold gw-nav-active' : 'text-slate-400 hover:text-accent-glow'
+                        }`
+                      : `flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
+                          isActive ? 'bg-brand/15 text-brand-glow font-medium' : 'text-slate-400 hover:text-slate-200 hover:bg-ink-800'
+                        }`
                   }
                 >
-                  <Icon name={item.icon} size={18} />
+                  <Icon name={item.icon} size={ghost ? 17 : 18} className={ghost ? 'shrink-0' : ''} />
                   {item.label}
                 </NavLink>
               ))}
@@ -135,8 +129,8 @@ export function Sidebar(): JSX.Element {
       </nav>
 
       {/* Footer status */}
-      <div className="p-3 border-t border-ink-700">
-        <div className="flex items-center gap-2 px-2 py-2 rounded-lg bg-ink-800 border border-ink-700">
+      <div className={`p-3 ${ghost ? '' : 'border-t border-ink-700'}`}>
+        <div className={`flex items-center gap-2 px-2 py-2 rounded-lg ${ghost ? '' : 'bg-ink-800 border border-ink-700'}`}>
           <Icon name="HardDriveDownload" size={16} className="text-ok" />
           <div className="text-xs">
             <div className="text-slate-300 font-medium">Local data</div>

@@ -1,5 +1,8 @@
 # Changelog
 
+## v0.1.111
+- GhostWire-mode sidebar restyled to match the command-center mockup: transparent over the backdrop (left gradient fade instead of a solid panel), uppercase letter-spaced line-icon items, group headings hidden for a flat list, and a glowing cyan active item (`.gw-nav-active`). Basic mode sidebar is unchanged.
+
 ## v0.1.110
 - GhostWire mode polish: sidebar themed to the HUD (glassy panel, accent active items, monospace headings) when on; dashboard uses real app terms (Investigations, not "Cases"); the third top panel is now a real **Resources** module (Sock Puppets, Notes, VPN/connection status) instead of the placeholder "Operational Status".
 - Basic mode now also shows the branded background image — particles remain exclusive to GhostWire mode. (`.app-backdrop` always rendered; `ParticleBackground` gated on `ghostMode`.)

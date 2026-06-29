@@ -86,6 +86,13 @@
   .hud-num {
     font-variant-numeric: tabular-nums;
   }
+  /* Active sidebar item in GhostWire mode — bright cyan with a soft glow. */
+  .gw-nav-active {
+    text-shadow: 0 0 12px rgb(var(--accent) / 0.55);
+  }
+  .gw-nav-active svg {
+    filter: drop-shadow(0 0 6px rgb(var(--accent) / 0.6));
+  }
   /* Animated particle network drawn over the backdrop, behind the UI. */
   .app-particles {
     position: fixed;
