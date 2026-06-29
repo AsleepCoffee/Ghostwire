@@ -1,5 +1,8 @@
 # Changelog
 
+## v0.1.116
+- GhostWire mode: the sidebar now has a macOS-dock-style proximity effect — nav items magnify and slide out as the cursor moves over them, with nearby items riding along.
+
 ## v0.1.115
 - GhostWire mode: the sidebar keeps the small GhostWire icon at the top-left (only the "GhostWire / OSINT Workbench" text is dropped).
 

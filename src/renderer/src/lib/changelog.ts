@@ -7,6 +7,11 @@ export interface ChangelogEntry {
 /** In-app patch notes. Newest first. Keep in sync with CHANGELOG.md. */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.1.116',
+    date: '2026-06-29',
+    notes: ['GhostWire mode: macOS-dock-style sidebar — nav items magnify and glide out as your cursor passes over them, with neighbours riding along.']
+  },
+  {
     version: '0.1.115',
     date: '2026-06-29',
     notes: ['GhostWire mode: keep the little GhostWire icon at the top-left of the sidebar (just the name text is dropped).']

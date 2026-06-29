@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { NavLink } from 'react-router-dom'
 import { Icon } from './ui'
 import { useSettings } from '../lib/settings'
@@ -79,6 +79,44 @@ export function Sidebar(): JSX.Element {
   }, [])
   const groups = GROUPS.filter((g) => g.toggle !== 'courseNotes' || settings.showTraining !== false)
   const ghost = settings.ghostMode === true
+
+  // macOS-dock-style proximity magnification (GhostWire mode only): as the cursor
+  // moves down the nav, each item lifts/scales based on its distance from the
+  // pointer, so neighbours ride along instead of only the hovered row. Driven by
+  // direct DOM writes inside rAF (no per-frame React re-render); a short CSS
+  // transition smooths the motion and the glide back on mouse-out.
+  const navRef = useRef<HTMLElement>(null)
+  const rafRef = useRef<number>()
+  const RADIUS = 84 // px of influence above/below the cursor
+  const MAX_SHIFT = 13 // px the closest item slides out
+  const MAX_SCALE = 0.14 // extra scale on the closest item
+
+  const applyDock = (y: number): void => {
+    const items = navRef.current?.querySelectorAll<HTMLElement>('[data-dock]')
+    if (!items) return
+    items.forEach((el) => {
+      const r = el.getBoundingClientRect()
+      const dist = Math.abs(r.top + r.height / 2 - y)
+      const f = Math.max(0, 1 - dist / RADIUS)
+      const ease = f * f * (3 - 2 * f) // smoothstep falloff
+      el.style.transform = `translateX(${ease * MAX_SHIFT}px) scale(${1 + ease * MAX_SCALE})`
+    })
+  }
+
+  const onNavMove = (e: React.MouseEvent): void => {
+    if (!ghost) return
+    const y = e.clientY
+    if (rafRef.current) cancelAnimationFrame(rafRef.current)
+    rafRef.current = requestAnimationFrame(() => applyDock(y))
+  }
+
+  const onNavLeave = (): void => {
+    if (rafRef.current) cancelAnimationFrame(rafRef.current)
+    navRef.current?.querySelectorAll<HTMLElement>('[data-dock]').forEach((el) => {
+      el.style.transform = ''
+    })
+  }
+
   return (
     <aside
       className={`w-60 shrink-0 flex flex-col ${
@@ -98,7 +136,12 @@ export function Sidebar(): JSX.Element {
       </div>
 
       {/* Nav */}
-      <nav className="flex-1 overflow-y-auto py-3 px-2 space-y-4">
+      <nav
+        ref={navRef}
+        onMouseMove={onNavMove}
+        onMouseLeave={onNavLeave}
+        className="flex-1 overflow-y-auto py-3 px-2 space-y-4"
+      >
         {groups.map((g, i) => (
           <div key={i}>
             {g.heading && !ghost && (
@@ -112,6 +155,16 @@ export function Sidebar(): JSX.Element {
                   key={item.to}
                   to={item.to}
                   end={item.to === '/'}
+                  data-dock={ghost ? '' : undefined}
+                  style={
+                    ghost
+                      ? {
+                          transformOrigin: 'left center',
+                          transition: 'transform 0.18s ease-out, color 0.15s ease-out',
+                          willChange: 'transform'
+                        }
+                      : undefined
+                  }
                   className={({ isActive }) =>
                     ghost
                       ? `flex items-center gap-3 px-3 py-2 text-xs uppercase tracking-[0.14em] transition-colors ${
