@@ -141,7 +141,7 @@ export function DashboardGrid({
           .
         </div>
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-stretch">
           {visible.map((w) => {
             const m = metaById.get(w.id)
             return (
@@ -204,7 +204,7 @@ export function DashboardGrid({
                     </div>
                   </div>
                 )}
-                <div className={editing ? 'pointer-events-none select-none opacity-90' : ''}>{nodes[w.id]}</div>
+                <div className={`h-full ${editing ? 'pointer-events-none select-none opacity-90' : ''}`}>{nodes[w.id]}</div>
               </div>
             )
           })}
