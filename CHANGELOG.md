@@ -1,5 +1,8 @@
 # Changelog
 
+## v0.1.115
+- GhostWire mode: the sidebar keeps the small GhostWire icon at the top-left (only the "GhostWire / OSINT Workbench" text is dropped).
+
 ## v0.1.114
 - Fixed PivotModal: the "select all by default" effect was keyed on the `queries` array identity, which is recreated on every parent re-render (e.g. the dashboard's 1s clock), so it kept resetting the selection and you couldn't un-tick lookups. Now keyed on a stable string of the query URLs — selection only resets when the actual query set changes.
 - GhostWire mode: `.card`/Panel/modal surfaces across all pages get the glassy accent-tinted HUD treatment (`.ghost-mode .card`), matching the dashboard. Sidebar's small GhostWire/OSINT-Workbench header is hidden in GhostWire mode (h-16 spacer kept for alignment).

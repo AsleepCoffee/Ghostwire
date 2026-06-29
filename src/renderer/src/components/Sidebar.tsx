@@ -85,17 +85,15 @@ export function Sidebar(): JSX.Element {
         ghost ? 'bg-gradient-to-r from-ink-950/85 via-ink-950/60 to-transparent' : 'bg-ink-900 border-r border-ink-700'
       }`}
     >
-      {/* Brand — hidden in GhostWire mode (the center emblem carries it); the
-          h-16 spacer stays so nav still lines up under the top bar. */}
+      {/* Brand — in GhostWire mode keep just the icon (text dropped, the center
+          emblem carries the name). */}
       <div className={`flex items-center gap-3 px-4 h-16 ${ghost ? '' : 'border-b border-ink-700'}`}>
+        <img src={iconUrl} alt="GhostWire" className="w-9 h-9 rounded-xl object-cover shadow-glow" />
         {!ghost && (
-          <>
-            <img src={iconUrl} alt="GhostWire" className="w-9 h-9 rounded-xl object-cover shadow-glow" />
-            <div className="leading-tight">
-              <div className="font-bold text-slate-100 tracking-tight">GhostWire</div>
-              <div className="text-[10px] text-slate-500 uppercase tracking-widest">OSINT Workbench</div>
-            </div>
-          </>
+          <div className="leading-tight">
+            <div className="font-bold text-slate-100 tracking-tight">GhostWire</div>
+            <div className="text-[10px] text-slate-500 uppercase tracking-widest">OSINT Workbench</div>
+          </div>
         )}
       </div>
 
