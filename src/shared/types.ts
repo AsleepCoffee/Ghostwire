@@ -248,10 +248,30 @@ export interface AppSettings {
   showBookmarks?: boolean
   /** GhostWire mode: immersive branded backdrop + animated particles. Default off. */
   ghostMode?: boolean
+  /** App version the welcome/appearance popup was last shown for. Shown again on first run and after each update. */
+  seenWelcomeVersion?: string
+  /** Per-mode dashboard widget layout (which widgets show, their order and size). */
+  dashboardLayout?: DashboardLayout
   /** Open in-app browser tabs, restored on next launch so the session persists. */
   browserTabs?: { url: string; personaId?: string }[]
   /** Index of the active tab among browserTabs, restored on next launch. */
   browserActiveIndex?: number
+}
+
+/** Dashboard widget sizing preset (column span in a 12-col grid). */
+export type DashboardWidgetSize = 'S' | 'M' | 'L'
+
+/** One widget's placement on the dashboard. */
+export interface DashboardWidgetCfg {
+  id: string
+  visible: boolean
+  size: DashboardWidgetSize
+}
+
+/** Saved dashboard layouts, kept separately for each appearance mode. */
+export interface DashboardLayout {
+  ghost?: DashboardWidgetCfg[]
+  basic?: DashboardWidgetCfg[]
 }
 
 export interface BackupInfo {

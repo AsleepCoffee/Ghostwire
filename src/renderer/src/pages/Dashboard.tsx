@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   FolderSearch,
@@ -18,6 +18,7 @@ import {
   Radar,
   PlayCircle,
   Clock,
+  Settings2,
   X
 } from 'lucide-react'
 import { api, type Persona, type Note, type ToolLink, type Project } from '../lib/api'
@@ -30,7 +31,21 @@ import { TIMEZONES, timeInZone, dateInZone } from '../lib/timezones'
 import { PivotModal } from '../components/PivotModal'
 import { TimezonePicker } from '../components/TimezonePicker'
 import { GhostDashboard } from '../components/GhostDashboard'
+import { DashboardCustomizer } from '../components/DashboardCustomizer'
+import { type WidgetMeta, SIZE_SPAN, resolveLayout } from '../lib/dashboard'
 import { SUBJECT_LABELS, type PivotSubject } from '../lib/pivot'
+
+/** The Standard-mode dashboard widget catalogue (default order + sizes). */
+const BASIC_WIDGETS: WidgetMeta[] = [
+  { id: 'hero', label: 'Hero banner', hint: 'Greeting, resume, clocks', sizes: ['L'], defaultSize: 'L' },
+  { id: 'stats', label: 'Stat tiles', hint: 'Investigations / puppets / tools / notes', sizes: ['L'], defaultSize: 'L' },
+  { id: 'quickStart', label: 'Quick start', hint: 'Pivot box + shortcuts', sizes: ['L'], defaultSize: 'L' },
+  { id: 'recentInvestigations', label: 'Recent investigations', sizes: ['S', 'M', 'L'], defaultSize: 'S' },
+  { id: 'sockPuppets', label: 'Sock puppets', sizes: ['S', 'M', 'L'], defaultSize: 'S' },
+  { id: 'recentNotes', label: 'Recent notes', sizes: ['S', 'M', 'L'], defaultSize: 'S' },
+  { id: 'quickTools', label: 'Quick tools', hint: 'Featured tool launcher', sizes: ['M', 'L'], defaultSize: 'L' },
+  { id: 'quickCapture', label: 'Quick capture', hint: 'Scratch note pad', sizes: ['M', 'L'], defaultSize: 'L' }
+]
 
 const CATEGORY_ICON: Record<string, string> = {
   Search: 'Search',
@@ -56,8 +71,9 @@ function BasicDashboard(): JSX.Element {
   const [notes, setNotes] = useState<Note[]>([])
   const [tools, setTools] = useState<ToolLink[]>([])
   const [projects, setProjects] = useState<Project[]>([])
+  const [customizing, setCustomizing] = useState(false)
   const openInBrowser = useOpenInBrowser()
-  const { settings } = useSettings()
+  const { settings, update } = useSettings()
 
   const launchTool = (t: ToolLink): void => {
     const url = t.url.replace('{QUERY}', '')
@@ -93,190 +109,227 @@ function BasicDashboard(): JSX.Element {
     return ordered.map((p) => ({ label: p.subject || p.name, tz: p.timezone as string }))
   }, [projects, settings.activeProjectId])
 
-  return (
-    <div className="h-full overflow-y-auto">
-      <div className="p-6 space-y-5 max-w-[1500px] mx-auto">
-        {/* Hero */}
-        <Hero activeInvestigations={projects.length} personaCount={personas.length} resume={resume} extraClocks={extraClocks} />
+  const layout = useMemo(() => resolveLayout(BASIC_WIDGETS, settings.dashboardLayout?.basic), [settings.dashboardLayout])
 
-        {/* Stats strip */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          {stats.map((s, i) => (
-            <button
-              key={s.label}
-              onClick={() => nav(s.to)}
-              style={{ animationDelay: `${i * 60}ms` }}
-              className="group card-interactive animate-fade-up p-4 text-left overflow-hidden"
-            >
-              <span className="sheen" />
-              <span
-                className="absolute left-0 top-0 h-full w-1 rounded-l-xl transition-all duration-200 group-hover:w-1.5"
-                style={{ background: s.color }}
-              />
-              <div className="flex items-start justify-between">
-                <div
-                  className="w-11 h-11 rounded-xl flex items-center justify-center ring-1 transition-transform duration-200 group-hover:scale-110"
-                  style={{ background: `${s.color}1f`, color: s.color, boxShadow: `inset 0 0 0 1px ${s.color}33` }}
-                >
-                  <s.icon size={20} />
-                </div>
-                <ArrowUpRight size={16} className="text-slate-600 group-hover:text-slate-300 transition-colors" />
-              </div>
-              <div className="mt-3 text-3xl font-bold text-slate-100 leading-none tabular-nums">{s.value}</div>
-              <div className="text-xs text-slate-500 mt-1.5 uppercase tracking-wider font-medium">{s.label}</div>
-            </button>
-          ))}
-        </div>
-
-        {/* Quick start */}
-        <QuickStart />
-
-        {/* Recent activity — three equal columns */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-          <Panel
-            title="Recent Investigations"
-            className="h-80"
-            action={
-              <button className="text-xs text-brand-glow hover:underline" onClick={() => nav('/projects')}>
-                View all
-              </button>
-            }
-            bodyClassName="overflow-y-auto"
+  const nodes: Record<string, ReactNode> = {
+    hero: <Hero activeInvestigations={projects.length} personaCount={personas.length} resume={resume} extraClocks={extraClocks} />,
+    stats: (
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {stats.map((s, i) => (
+          <button
+            key={s.label}
+            onClick={() => nav(s.to)}
+            style={{ animationDelay: `${i * 60}ms` }}
+            className="group card-interactive animate-fade-up p-4 text-left overflow-hidden"
           >
-            {projects.length === 0 ? (
-              <EmptyRow text="No investigations yet" cta="Start one" onClick={() => nav('/projects')} />
-            ) : (
-              <div className="divide-y divide-ink-800">
-                {projects.slice(0, 7).map((pr) => {
-                  const cfg = PROJECT_TYPES[pr.type]
-                  return (
-                    <button
-                      key={pr.id}
-                      onClick={() => nav(`/projects/${pr.id}`)}
-                      className="group w-full flex items-center gap-3 px-4 py-2.5 text-left border-l-2 border-transparent hover:border-brand/60 hover:bg-ink-800/80 transition-colors"
-                    >
-                      <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition-transform group-hover:scale-110" style={{ background: `${cfg.color}1f` }}>
-                        <Icon name={cfg.icon} size={15} style={{ color: cfg.color }} />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <div className="text-sm font-medium text-slate-200 truncate">{pr.name}</div>
-                        <div className="text-xs text-slate-500 truncate">
-                          {cfg.label}
-                          {pr.subject ? ` · ${pr.subject}` : ''}
-                        </div>
-                      </div>
-                      <StatusBadge status={pr.status} />
-                      <ChevronRight size={15} className="text-slate-600 shrink-0 group-hover:text-slate-300 group-hover:translate-x-0.5 transition-all" />
-                    </button>
-                  )
-                })}
-              </div>
-            )}
-          </Panel>
-
-          <Panel
-            title="Sock Puppets"
-            className="h-80"
-            action={
-              <button className="btn-primary !py-1 !px-2 text-xs" onClick={() => nav('/sock-puppets')}>
-                <Plus size={14} /> New
-              </button>
-            }
-            bodyClassName="overflow-y-auto"
-          >
-            {personas.length === 0 ? (
-              <EmptyRow text="No personas yet" cta="Create one" onClick={() => nav('/sock-puppets')} />
-            ) : (
-              <div className="divide-y divide-ink-800">
-                {personas.slice(0, 7).map((p) => (
-                  <button
-                    key={p.id}
-                    onClick={() => openInBrowser(['https://duckduckgo.com/'], p.id)}
-                    className="group w-full flex items-center gap-3 px-4 py-2.5 text-left border-l-2 border-transparent hover:border-brand/60 hover:bg-ink-800/80 transition-colors"
-                  >
-                    {p.avatarPath ? (
-                      <img src={p.avatarPath} alt="" className="w-9 h-9 rounded-lg object-cover shrink-0 transition-transform group-hover:scale-110" style={{ border: `1px solid ${personaColor(p.id)}55` }} />
-                    ) : (
-                      <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0 transition-transform group-hover:scale-110" style={{ background: `${personaColor(p.id)}22`, border: `1px solid ${personaColor(p.id)}55` }}>
-                        <Fingerprint size={17} style={{ color: personaColor(p.id) }} />
-                      </div>
-                    )}
-                    <div className="min-w-0 flex-1">
-                      <div className="text-sm font-medium text-slate-200 truncate">{p.name}</div>
-                      <div className="text-xs text-slate-500 truncate">@{p.handle}</div>
-                    </div>
-                    <StatusBadge status={p.status} />
-                  </button>
-                ))}
-              </div>
-            )}
-          </Panel>
-
-          <Panel
-            title="Recent Notes"
-            className="h-80"
-            action={
-              <button className="text-xs text-brand-glow hover:underline" onClick={() => nav('/notes')}>
-                View all
-              </button>
-            }
-            bodyClassName="overflow-y-auto"
-          >
-            {notes.length === 0 ? (
-              <EmptyRow text="No notes yet" cta="Create one" onClick={() => nav('/notes')} />
-            ) : (
-              <div className="divide-y divide-ink-800">
-                {notes.slice(0, 7).map((n) => (
-                  <button key={n.id} onClick={() => nav('/notes')} className="group w-full flex items-center gap-3 px-4 py-2.5 text-left border-l-2 border-transparent hover:border-brand/60 hover:bg-ink-800/80 transition-colors">
-                    <div className="w-8 h-8 rounded-lg bg-ink-800 border border-ink-700 flex items-center justify-center shrink-0 transition-transform group-hover:scale-110">
-                      <NotebookPen size={15} className="text-slate-400" />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="text-sm font-medium text-slate-200 truncate">{n.title}</div>
-                      <div className="text-xs text-slate-500 truncate">
-                        {n.folder} · {fmtDate(n.updatedAt)}
-                      </div>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            )}
-          </Panel>
-        </div>
-
-        {/* Quick tools */}
-        <Panel
-          title="Quick Tools"
-          action={
-            <button className="text-xs text-brand-glow hover:underline" onClick={() => nav('/tools')}>
-              All tools
-            </button>
-          }
-        >
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 p-4">
-            {featuredTools.map((t) => (
-              <button
-                key={t.id}
-                onClick={() => launchTool(t)}
-                className="group card-interactive flex items-center gap-3 p-3 text-left overflow-hidden"
+            <span className="sheen" />
+            <span
+              className="absolute left-0 top-0 h-full w-1 rounded-l-xl transition-all duration-200 group-hover:w-1.5"
+              style={{ background: s.color }}
+            />
+            <div className="flex items-start justify-between">
+              <div
+                className="w-11 h-11 rounded-xl flex items-center justify-center ring-1 transition-transform duration-200 group-hover:scale-110"
+                style={{ background: `${s.color}1f`, color: s.color, boxShadow: `inset 0 0 0 1px ${s.color}33` }}
               >
-                <span className="sheen" />
-                <div className="w-9 h-9 rounded-lg bg-ink-850 border border-ink-700 flex items-center justify-center shrink-0 text-brand-glow transition-all duration-200 group-hover:scale-110 group-hover:border-brand/40">
-                  <Icon name={CATEGORY_ICON[t.category] ?? 'Wrench'} size={17} />
-                </div>
+                <s.icon size={20} />
+              </div>
+              <ArrowUpRight size={16} className="text-slate-600 group-hover:text-slate-300 transition-colors" />
+            </div>
+            <div className="mt-3 text-3xl font-bold text-slate-100 leading-none tabular-nums">{s.value}</div>
+            <div className="text-xs text-slate-500 mt-1.5 uppercase tracking-wider font-medium">{s.label}</div>
+          </button>
+        ))}
+      </div>
+    ),
+    quickStart: <QuickStart />,
+    recentInvestigations: (
+      <Panel
+        title="Recent Investigations"
+        className="h-80"
+        action={
+          <button className="text-xs text-brand-glow hover:underline" onClick={() => nav('/projects')}>
+            View all
+          </button>
+        }
+        bodyClassName="overflow-y-auto"
+      >
+        {projects.length === 0 ? (
+          <EmptyRow text="No investigations yet" cta="Start one" onClick={() => nav('/projects')} />
+        ) : (
+          <div className="divide-y divide-ink-800">
+            {projects.slice(0, 7).map((pr) => {
+              const cfg = PROJECT_TYPES[pr.type]
+              return (
+                <button
+                  key={pr.id}
+                  onClick={() => nav(`/projects/${pr.id}`)}
+                  className="group w-full flex items-center gap-3 px-4 py-2.5 text-left border-l-2 border-transparent hover:border-brand/60 hover:bg-ink-800/80 transition-colors"
+                >
+                  <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition-transform group-hover:scale-110" style={{ background: `${cfg.color}1f` }}>
+                    <Icon name={cfg.icon} size={15} style={{ color: cfg.color }} />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="text-sm font-medium text-slate-200 truncate">{pr.name}</div>
+                    <div className="text-xs text-slate-500 truncate">
+                      {cfg.label}
+                      {pr.subject ? ` · ${pr.subject}` : ''}
+                    </div>
+                  </div>
+                  <StatusBadge status={pr.status} />
+                  <ChevronRight size={15} className="text-slate-600 shrink-0 group-hover:text-slate-300 group-hover:translate-x-0.5 transition-all" />
+                </button>
+              )
+            })}
+          </div>
+        )}
+      </Panel>
+    ),
+    sockPuppets: (
+      <Panel
+        title="Sock Puppets"
+        className="h-80"
+        action={
+          <button className="btn-primary !py-1 !px-2 text-xs" onClick={() => nav('/sock-puppets')}>
+            <Plus size={14} /> New
+          </button>
+        }
+        bodyClassName="overflow-y-auto"
+      >
+        {personas.length === 0 ? (
+          <EmptyRow text="No personas yet" cta="Create one" onClick={() => nav('/sock-puppets')} />
+        ) : (
+          <div className="divide-y divide-ink-800">
+            {personas.slice(0, 7).map((p) => (
+              <button
+                key={p.id}
+                onClick={() => openInBrowser(['https://duckduckgo.com/'], p.id)}
+                className="group w-full flex items-center gap-3 px-4 py-2.5 text-left border-l-2 border-transparent hover:border-brand/60 hover:bg-ink-800/80 transition-colors"
+              >
+                {p.avatarPath ? (
+                  <img src={p.avatarPath} alt="" className="w-9 h-9 rounded-lg object-cover shrink-0 transition-transform group-hover:scale-110" style={{ border: `1px solid ${personaColor(p.id)}55` }} />
+                ) : (
+                  <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0 transition-transform group-hover:scale-110" style={{ background: `${personaColor(p.id)}22`, border: `1px solid ${personaColor(p.id)}55` }}>
+                    <Fingerprint size={17} style={{ color: personaColor(p.id) }} />
+                  </div>
+                )}
                 <div className="min-w-0 flex-1">
-                  <div className="text-sm font-medium text-slate-200 truncate group-hover:text-white transition-colors">{t.name}</div>
-                  <div className="text-xs text-slate-500 truncate">{t.category}</div>
+                  <div className="text-sm font-medium text-slate-200 truncate">{p.name}</div>
+                  <div className="text-xs text-slate-500 truncate">@{p.handle}</div>
                 </div>
-                <ArrowUpRight size={14} className="text-slate-700 group-hover:text-slate-300 transition-colors shrink-0" />
+                <StatusBadge status={p.status} />
               </button>
             ))}
           </div>
-        </Panel>
+        )}
+      </Panel>
+    ),
+    recentNotes: (
+      <Panel
+        title="Recent Notes"
+        className="h-80"
+        action={
+          <button className="text-xs text-brand-glow hover:underline" onClick={() => nav('/notes')}>
+            View all
+          </button>
+        }
+        bodyClassName="overflow-y-auto"
+      >
+        {notes.length === 0 ? (
+          <EmptyRow text="No notes yet" cta="Create one" onClick={() => nav('/notes')} />
+        ) : (
+          <div className="divide-y divide-ink-800">
+            {notes.slice(0, 7).map((n) => (
+              <button key={n.id} onClick={() => nav('/notes')} className="group w-full flex items-center gap-3 px-4 py-2.5 text-left border-l-2 border-transparent hover:border-brand/60 hover:bg-ink-800/80 transition-colors">
+                <div className="w-8 h-8 rounded-lg bg-ink-800 border border-ink-700 flex items-center justify-center shrink-0 transition-transform group-hover:scale-110">
+                  <NotebookPen size={15} className="text-slate-400" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="text-sm font-medium text-slate-200 truncate">{n.title}</div>
+                  <div className="text-xs text-slate-500 truncate">
+                    {n.folder} · {fmtDate(n.updatedAt)}
+                  </div>
+                </div>
+              </button>
+            ))}
+          </div>
+        )}
+      </Panel>
+    ),
+    quickTools: (
+      <Panel
+        title="Quick Tools"
+        action={
+          <button className="text-xs text-brand-glow hover:underline" onClick={() => nav('/tools')}>
+            All tools
+          </button>
+        }
+      >
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 p-4">
+          {featuredTools.map((t) => (
+            <button
+              key={t.id}
+              onClick={() => launchTool(t)}
+              className="group card-interactive flex items-center gap-3 p-3 text-left overflow-hidden"
+            >
+              <span className="sheen" />
+              <div className="w-9 h-9 rounded-lg bg-ink-850 border border-ink-700 flex items-center justify-center shrink-0 text-brand-glow transition-all duration-200 group-hover:scale-110 group-hover:border-brand/40">
+                <Icon name={CATEGORY_ICON[t.category] ?? 'Wrench'} size={17} />
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="text-sm font-medium text-slate-200 truncate group-hover:text-white transition-colors">{t.name}</div>
+                <div className="text-xs text-slate-500 truncate">{t.category}</div>
+              </div>
+              <ArrowUpRight size={14} className="text-slate-700 group-hover:text-slate-300 transition-colors shrink-0" />
+            </button>
+          ))}
+        </div>
+      </Panel>
+    ),
+    quickCapture: <QuickCapture onFull={() => nav('/notes')} />
+  }
 
-        {/* Quick capture */}
-        <QuickCapture onFull={() => nav('/notes')} />
+  const visible = layout.filter((w) => w.visible && nodes[w.id])
+
+  return (
+    <div className="h-full overflow-y-auto">
+      <div className="p-6 max-w-[1500px] mx-auto">
+        <div className="flex justify-end mb-3">
+          <button
+            onClick={() => setCustomizing(true)}
+            className="text-xs text-slate-500 hover:text-brand-glow flex items-center gap-1.5 px-2 py-1"
+            title="Customize dashboard"
+          >
+            <Settings2 size={14} /> Customize
+          </button>
+        </div>
+
+        {visible.length === 0 ? (
+          <div className="card p-10 text-center text-sm text-slate-500">
+            No widgets shown.{' '}
+            <button className="text-brand-glow hover:underline" onClick={() => setCustomizing(true)}>
+              Add some
+            </button>
+            .
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+            {visible.map((w) => (
+              <div key={w.id} className={SIZE_SPAN[w.size]}>
+                {nodes[w.id]}
+              </div>
+            ))}
+          </div>
+        )}
       </div>
+
+      <DashboardCustomizer
+        open={customizing}
+        onClose={() => setCustomizing(false)}
+        meta={BASIC_WIDGETS}
+        layout={layout}
+        onChange={(next) => update({ dashboardLayout: { ...settings.dashboardLayout, basic: next } })}
+      />
     </div>
   )
 }

@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { Routes, Route, useLocation, useNavigate } from 'react-router-dom'
 import { api } from './lib/api'
 import { setBrowserNavigator, openInAppBrowser } from './lib/browserBus'
@@ -37,6 +37,7 @@ import { WhatsNew } from './pages/WhatsNew'
 import { Guide } from './pages/Guide'
 import { Settings } from './pages/Settings'
 import { ParticleBackground } from './components/ParticleBackground'
+import { WelcomeModal } from './components/WelcomeModal'
 import { useSettings } from './lib/settings'
 
 /** Registers the in-app browser as the sink for every link-open request, so
@@ -57,8 +58,19 @@ function BrowserRouting(): null {
 export default function App(): JSX.Element {
   const loc = useLocation()
   const onBrowser = loc.pathname === '/browser'
-  const { settings } = useSettings()
+  const { settings, update, loaded } = useSettings()
   const ghostMode = settings.ghostMode === true
+
+  // Welcome/appearance popup — shown on first launch and once after each update
+  // (we record the version it was acknowledged for so it won't nag).
+  const [version, setVersion] = useState('')
+  const [welcomeDismissed, setWelcomeDismissed] = useState(false)
+  useEffect(() => {
+    api.app.version().then(setVersion)
+  }, [])
+  const showWelcome =
+    loaded && !!version && !welcomeDismissed && settings.seenWelcomeVersion !== version
+  const isUpdate = !!settings.seenWelcomeVersion
 
   return (
     <PersonaDockProvider>
@@ -116,6 +128,16 @@ export default function App(): JSX.Element {
       <InvestigationDock />
       <CommandPalette />
     </div>
+    {showWelcome && (
+      <WelcomeModal
+        version={version}
+        isUpdate={isUpdate}
+        onDone={() => {
+          setWelcomeDismissed(true)
+          update({ seenWelcomeVersion: version })
+        }}
+      />
+    )}
     </PersonaDockProvider>
   )
 }

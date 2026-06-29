@@ -7,6 +7,14 @@ export interface ChangelogEntry {
 /** In-app patch notes. Newest first. Keep in sync with CHANGELOG.md. */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.1.117',
+    date: '2026-06-29',
+    notes: [
+      'Welcome popup: on first launch and once after each update, GhostWire asks your appearance preference (Standard vs GhostWire mode + color theme).',
+      'Customizable dashboard: a new "Customize" button lets you show/hide widgets, drag to reorder them, and resize them (Small/Medium/Wide) — saved separately for each appearance mode.'
+    ]
+  },
+  {
     version: '0.1.116',
     date: '2026-06-29',
     notes: ['GhostWire mode: macOS-dock-style sidebar — nav items magnify and glide out as your cursor passes over them, with neighbours riding along.']
