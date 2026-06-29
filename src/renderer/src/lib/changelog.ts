@@ -7,6 +7,14 @@ export interface ChangelogEntry {
 /** In-app patch notes. Newest first. Keep in sync with CHANGELOG.md. */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.1.112',
+    date: '2026-06-29',
+    notes: [
+      'Top bar matches GhostWire mode — no divider line, transparent over the backdrop, and centered.',
+      'Fixed the dashboard “Appearance” shortcut so it opens Settings → Appearance.'
+    ]
+  },
+  {
     version: '0.1.111',
     date: '2026-06-29',
     notes: ['GhostWire-mode sidebar restyled to match the command-center look — transparent over the backdrop, uppercase line-icon items, and a glowing cyan active state.']

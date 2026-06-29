@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.1.112
+- GhostWire-mode Topbar: drops the bottom divider line, goes transparent over the backdrop, and the header row is centered (max-width, mx-auto). Basic mode keeps the bordered bar.
+- Fixed the GhostDashboard "Appearance" footer shortcut — it's now a button that navigates to Settings (which opens on the Appearance section).
+
 ## v0.1.111
 - GhostWire-mode sidebar restyled to match the command-center mockup: transparent over the backdrop (left gradient fade instead of a solid panel), uppercase letter-spaced line-icon items, group headings hidden for a flat list, and a glowing cyan active item (`.gw-nav-active`). Basic mode sidebar is unchanged.
 

@@ -37,8 +37,15 @@ export function Topbar(): JSX.Element {
     setQ('')
   }
 
+  const ghost = settings.ghostMode === true
+
   return (
-    <header className="h-16 shrink-0 flex items-center gap-4 px-5 border-b border-ink-700 bg-ink-900/60 backdrop-blur">
+    <header
+      className={`h-16 shrink-0 flex items-center px-5 ${
+        ghost ? 'bg-transparent' : 'border-b border-ink-700 bg-ink-900/60 backdrop-blur'
+      }`}
+    >
+      <div className="w-full max-w-[1200px] mx-auto flex items-center gap-4">
       <form onSubmit={submit} className="flex-1 max-w-xl relative">
         <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
         <input
@@ -79,6 +86,7 @@ export function Topbar(): JSX.Element {
             </option>
           ))}
         </select>
+      </div>
       </div>
     </header>
   )

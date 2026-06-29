@@ -313,9 +313,9 @@ export function GhostDashboard(): JSX.Element {
             <Workflow size={12} /> Link analysis
           </button>
           <span>·</span>
-          <span className="flex items-center gap-1">
-            Basic UI in Settings → Appearance <ChevronRight size={11} />
-          </span>
+          <button className="hover:text-accent-glow flex items-center gap-1" onClick={() => nav('/settings')}>
+            Appearance <ChevronRight size={11} />
+          </button>
         </div>
       </div>
 
