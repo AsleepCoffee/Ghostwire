@@ -93,6 +93,16 @@
   .gw-nav-active svg {
     filter: drop-shadow(0 0 6px rgb(var(--accent) / 0.6));
   }
+  /* GhostWire mode: make every card a glassy, accent-tinted HUD panel so pages
+     match the command-center dashboard. Covers .card, Panel and modals. */
+  .ghost-mode .card {
+    background-color: rgb(var(--ink-900) / 0.55);
+    backdrop-filter: blur(7px);
+    border-color: rgb(var(--accent) / 0.18);
+  }
+  .ghost-mode .card-interactive:hover {
+    border-color: rgb(var(--accent) / 0.45);
+  }
   /* Animated particle network drawn over the backdrop, behind the UI. */
   .app-particles {
     position: fixed;

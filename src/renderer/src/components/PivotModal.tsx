@@ -49,10 +49,14 @@ export function PivotModal({
     return [...apiTools, ...base]
   }, [subj, val, settings.apiKeys])
 
-  // Select all by default whenever the query set changes.
+  // Select all by default only when the actual set of queries changes — keyed on
+  // the URLs (a stable string), not the array identity, which is recreated on
+  // every parent re-render (e.g. the dashboard's 1-second clock) and would
+  // otherwise keep resetting the selection so you couldn't un-tick anything.
+  const queryKey = useMemo(() => queries.map((q) => q.url).join('\n'), [queries])
   useEffect(() => {
-    setSelected(new Set(queries.map((q) => q.url)))
-  }, [queries])
+    setSelected(new Set(queryKey ? queryKey.split('\n') : []))
+  }, [queryKey])
 
   const groups = useMemo(() => {
     const m = new Map<string, typeof queries>()

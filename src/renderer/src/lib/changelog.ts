@@ -7,6 +7,14 @@ export interface ChangelogEntry {
 /** In-app patch notes. Newest first. Keep in sync with CHANGELOG.md. */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.1.114',
+    date: '2026-06-29',
+    notes: [
+      'Fixed: when pivoting, you can now un-tick lookups — the selection no longer resets itself.',
+      'GhostWire mode: panels across every page now use the glassy command-center HUD style, and the sidebar’s small GhostWire header is hidden for a cleaner look.'
+    ]
+  },
+  {
     version: '0.1.113',
     date: '2026-06-29',
     notes: [

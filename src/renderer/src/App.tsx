@@ -65,7 +65,7 @@ export default function App(): JSX.Element {
     <BrowserRouting />
     <div className="app-backdrop" />
     {ghostMode && <ParticleBackground />}
-    <div className="relative z-10 flex flex-col h-full w-full overflow-hidden">
+    <div className={`relative z-10 flex flex-col h-full w-full overflow-hidden${ghostMode ? ' ghost-mode' : ''}`}>
       <TitleBar />
       <div className="flex flex-1 min-h-0 w-full overflow-hidden">
         <UpdateNotice />

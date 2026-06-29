@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.1.114
+- Fixed PivotModal: the "select all by default" effect was keyed on the `queries` array identity, which is recreated on every parent re-render (e.g. the dashboard's 1s clock), so it kept resetting the selection and you couldn't un-tick lookups. Now keyed on a stable string of the query URLs — selection only resets when the actual query set changes.
+- GhostWire mode: `.card`/Panel/modal surfaces across all pages get the glassy accent-tinted HUD treatment (`.ghost-mode .card`), matching the dashboard. Sidebar's small GhostWire/OSINT-Workbench header is hidden in GhostWire mode (h-16 spacer kept for alignment).
+
 ## v0.1.113
 - GhostWire mode: the custom window title strip (`TitleBar`) is hidden and the window controls (minimize/maximize/close) move into the Topbar's top-right, so the top reads as one seamless glass pane (no divider, no duplicate GhostWire brand). The Topbar becomes the drag region (interactive controls marked no-drag).
 - GhostWire mode: the active-investigation marker (Projects grid + ProjectDetail "Set active") uses a crosshair (`Target`) in theme accent instead of the amber star. Basic mode unchanged.
