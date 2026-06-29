@@ -18,7 +18,6 @@ import {
   Radar,
   PlayCircle,
   Clock,
-  Settings2,
   X
 } from 'lucide-react'
 import { api, type Persona, type Note, type ToolLink, type Project } from '../lib/api'
@@ -31,8 +30,8 @@ import { TIMEZONES, timeInZone, dateInZone } from '../lib/timezones'
 import { PivotModal } from '../components/PivotModal'
 import { TimezonePicker } from '../components/TimezonePicker'
 import { GhostDashboard } from '../components/GhostDashboard'
-import { DashboardCustomizer } from '../components/DashboardCustomizer'
-import { type WidgetMeta, SIZE_SPAN, resolveLayout } from '../lib/dashboard'
+import { DashboardGrid } from '../components/DashboardGrid'
+import { type WidgetMeta, resolveLayout } from '../lib/dashboard'
 import { SUBJECT_LABELS, type PivotSubject } from '../lib/pivot'
 
 /** The Standard-mode dashboard widget catalogue (default order + sizes). */
@@ -71,7 +70,6 @@ function BasicDashboard(): JSX.Element {
   const [notes, setNotes] = useState<Note[]>([])
   const [tools, setTools] = useState<ToolLink[]>([])
   const [projects, setProjects] = useState<Project[]>([])
-  const [customizing, setCustomizing] = useState(false)
   const openInBrowser = useOpenInBrowser()
   const { settings, update } = useSettings()
 
@@ -289,47 +287,16 @@ function BasicDashboard(): JSX.Element {
     quickCapture: <QuickCapture onFull={() => nav('/notes')} />
   }
 
-  const visible = layout.filter((w) => w.visible && nodes[w.id])
-
   return (
     <div className="h-full overflow-y-auto">
       <div className="p-6 max-w-[1500px] mx-auto">
-        <div className="flex justify-end mb-3">
-          <button
-            onClick={() => setCustomizing(true)}
-            className="text-xs text-slate-500 hover:text-brand-glow flex items-center gap-1.5 px-2 py-1"
-            title="Customize dashboard"
-          >
-            <Settings2 size={14} /> Customize
-          </button>
-        </div>
-
-        {visible.length === 0 ? (
-          <div className="card p-10 text-center text-sm text-slate-500">
-            No widgets shown.{' '}
-            <button className="text-brand-glow hover:underline" onClick={() => setCustomizing(true)}>
-              Add some
-            </button>
-            .
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
-            {visible.map((w) => (
-              <div key={w.id} className={SIZE_SPAN[w.size]}>
-                {nodes[w.id]}
-              </div>
-            ))}
-          </div>
-        )}
+        <DashboardGrid
+          meta={BASIC_WIDGETS}
+          layout={layout}
+          nodes={nodes}
+          onChange={(next) => update({ dashboardLayout: { ...settings.dashboardLayout, basic: next } })}
+        />
       </div>
-
-      <DashboardCustomizer
-        open={customizing}
-        onClose={() => setCustomizing(false)}
-        meta={BASIC_WIDGETS}
-        layout={layout}
-        onChange={(next) => update({ dashboardLayout: { ...settings.dashboardLayout, basic: next } })}
-      />
     </div>
   )
 }

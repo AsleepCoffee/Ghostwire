@@ -1,8 +1,8 @@
 # Changelog
 
-## v0.1.117
+## v0.1.119
 - Welcome popup: shown on first launch and once after each update — pick your appearance mode (Standard vs GhostWire) and color theme up front.
-- Customizable dashboard: new "Customize" button to show/hide widgets, drag to reorder, and resize them (Small / Medium / Wide). Layout is saved per appearance mode, for both Standard and GhostWire dashboards.
+- Customizable dashboard: an "Edit layout" toggle turns on in-place editing — drag the actual widgets to reorder them, resize each (Small / Medium / Wide), remove them, and use "+ Add widget" to add any of the available widgets. Layout is saved per appearance mode, for both Standard and GhostWire dashboards.
 
 ## v0.1.116
 - GhostWire mode: the sidebar now has a macOS-dock-style proximity effect — nav items magnify and slide out as the cursor moves over them, with nearby items riding along.

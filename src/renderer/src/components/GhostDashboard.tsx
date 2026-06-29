@@ -1,13 +1,13 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Crosshair, ChevronRight, Plus, Workflow, ShieldCheck, Settings2 } from 'lucide-react'
+import { Crosshair, ChevronRight, Plus, Workflow, ShieldCheck } from 'lucide-react'
 import { api, type Project, type Activity } from '../lib/api'
 import { Icon } from './ui'
 import { useOpenInBrowser } from '../lib/browserBus'
 import { useSettings } from '../lib/settings'
 import { PivotModal } from './PivotModal'
-import { DashboardCustomizer } from './DashboardCustomizer'
-import { type WidgetMeta, SIZE_SPAN, resolveLayout } from '../lib/dashboard'
+import { DashboardGrid } from './DashboardGrid'
+import { type WidgetMeta, resolveLayout } from '../lib/dashboard'
 import { SUBJECT_LABELS, type PivotSubject } from '../lib/pivot'
 import icon from '../assets/icon.png'
 
@@ -72,7 +72,6 @@ export function GhostDashboard(): JSX.Element {
   const [pivot, setPivot] = useState('')
   const [subject, setSubject] = useState<PivotSubject>('generic')
   const [pivotOpen, setPivotOpen] = useState(false)
-  const [customizing, setCustomizing] = useState(false)
 
   useEffect(() => {
     const t = setInterval(() => setNow(new Date()), 1000)
@@ -316,38 +315,15 @@ export function GhostDashboard(): JSX.Element {
     )
   }
 
-  const visible = layout.filter((w) => w.visible && nodes[w.id])
-
   return (
     <div className="h-full overflow-y-auto">
       <div className="max-w-[1600px] mx-auto p-6">
-        <div className="flex justify-end mb-3">
-          <button
-            onClick={() => setCustomizing(true)}
-            className="hud-label hover:!text-accent-glow flex items-center gap-1.5 px-2 py-1"
-            title="Customize dashboard"
-          >
-            <Settings2 size={13} /> Customize
-          </button>
-        </div>
-
-        {visible.length === 0 ? (
-          <div className="hud p-10 text-center text-sm text-slate-500">
-            No widgets shown.{' '}
-            <button className="text-accent-glow hover:underline" onClick={() => setCustomizing(true)}>
-              Add some
-            </button>
-            .
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
-            {visible.map((w) => (
-              <div key={w.id} className={SIZE_SPAN[w.size]}>
-                {nodes[w.id]}
-              </div>
-            ))}
-          </div>
-        )}
+        <DashboardGrid
+          meta={GHOST_WIDGETS}
+          layout={layout}
+          nodes={nodes}
+          onChange={(next) => update({ dashboardLayout: { ...settings.dashboardLayout, ghost: next } })}
+        />
 
         <div className="flex items-center justify-center gap-2 pt-5 text-[11px] text-slate-600">
           <button className="hover:text-accent-glow flex items-center gap-1" onClick={() => nav('/projects')}>
@@ -365,13 +341,6 @@ export function GhostDashboard(): JSX.Element {
       </div>
 
       <PivotModal open={pivotOpen} onClose={() => setPivotOpen(false)} subject={subject} value={pivot} />
-      <DashboardCustomizer
-        open={customizing}
-        onClose={() => setCustomizing(false)}
-        meta={GHOST_WIDGETS}
-        layout={layout}
-        onChange={(next) => update({ dashboardLayout: { ...settings.dashboardLayout, ghost: next } })}
-      />
     </div>
   )
 }
