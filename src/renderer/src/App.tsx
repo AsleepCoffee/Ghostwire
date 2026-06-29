@@ -25,6 +25,7 @@ import { CoLocate } from './pages/CoLocate'
 import { FbId } from './pages/FbId'
 import { Wireless } from './pages/Wireless'
 import { Reddit } from './pages/Reddit'
+import { XPost } from './pages/XPost'
 import { Enumerate } from './pages/Enumerate'
 import { Timeline } from './pages/Timeline'
 import { ExamPrep } from './pages/ExamPrep'
@@ -103,6 +104,7 @@ export default function App(): JSX.Element {
               <Route path="/fb-id" element={<FbId />} />
               <Route path="/wireless" element={<Wireless />} />
               <Route path="/reddit" element={<Reddit />} />
+              <Route path="/xpost" element={<XPost />} />
               <Route path="/enumerate" element={<Enumerate />} />
               <Route path="/timeline" element={<Timeline />} />
               <Route path="/exam-prep" element={<ExamPrep />} />

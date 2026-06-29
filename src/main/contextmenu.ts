@@ -53,6 +53,18 @@ export function attachContextMenu(contents: WebContents): void {
     if (params.linkURL) {
       menu.append(new MenuItem({ label: 'Copy link', click: () => clipboard.writeText(params.linkURL) }))
       menu.append(new MenuItem({ label: 'Open link in new tab', click: () => openInAppTabs([params.linkURL]) }))
+      // X / Twitter links — offer no-login alternative viewers inline.
+      if (/^https?:\/\/(www\.)?(x\.com|twitter\.com)\//i.test(params.linkURL)) {
+        const xUrl = params.linkURL
+        const alt = xUrl.replace(/^https?:\/\/(www\.)?(x\.com|twitter\.com)\//i, 'https://fxtwitter.com/')
+        const nitter = xUrl.replace(/^https?:\/\/(www\.)?(x\.com|twitter\.com)\//i, 'https://xcancel.com/')
+        const sub = new Menu()
+        sub.append(new MenuItem({ label: 'FxTwitter (embeds + no login)', click: () => openInAppTabs([alt]) }))
+        sub.append(new MenuItem({ label: 'XCancel / Nitter (no login)', click: () => openInAppTabs([nitter]) }))
+        sub.append(new MenuItem({ label: 'Wayback Machine', click: () => openInAppTabs([`https://web.archive.org/web/*/${xUrl}`]) }))
+        sub.append(new MenuItem({ label: 'Archive.ph', click: () => openInAppTabs([`https://archive.ph/${xUrl}`]) }))
+        menu.append(new MenuItem({ label: 'View without login', submenu: sub }))
+      }
       menu.append(new MenuItem({ type: 'separator' }))
     }
 

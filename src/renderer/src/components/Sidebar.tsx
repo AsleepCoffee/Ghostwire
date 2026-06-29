@@ -50,6 +50,7 @@ const GROUPS: { heading?: string; items: NavItem[]; toggle?: 'courseNotes' }[] =
       { to: '/fb-id', label: 'Profile ID', icon: 'Fingerprint' },
       { to: '/wireless', label: 'Wireless (WiGLE)', icon: 'Wifi' },
       { to: '/reddit', label: 'Reddit archive', icon: 'MessageSquare' },
+      { to: '/xpost', label: 'X post lookup', icon: 'Twitter' },
       { to: '/dork', label: 'Dork & Pivot', icon: 'Binoculars' },
       { to: '/tools', label: 'Tools & Resources', icon: 'Wrench' }
     ]

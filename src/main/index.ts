@@ -114,8 +114,22 @@ app.whenReady().then(async () => {
       })
     } else {
       // Any other embedded page: open popups / target=_blank as a new in-app tab,
-      // never an external window.
+      // never an external window — EXCEPT Google OAuth/SSO popups, which need
+      // window.opener intact to postMessage auth tokens back to the opener page.
+      // Denying and re-routing to a tab severs window.opener and leaves Google's
+      // GSI flow (used by X, Reddit, and others) stuck on a white screen.
       contents.setWindowOpenHandler(({ url }) => {
+        if (/^https?:\/\/accounts\.google\.com\//i.test(url)) {
+          return {
+            action: 'allow',
+            overrideBrowserWindowOptions: {
+              width: 500,
+              height: 640,
+              autoHideMenuBar: true,
+              webPreferences: { sandbox: true, contextIsolation: true, nodeIntegration: false }
+            }
+          }
+        }
         openInAppTabs([url])
         return { action: 'deny' }
       })

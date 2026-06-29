@@ -7,6 +7,15 @@ export interface ChangelogEntry {
 /** In-app patch notes. Newest first. Keep in sync with CHANGELOG.md. */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.1.123',
+    date: '2026-06-29',
+    notes: [
+      'X post lookup: new tool under Intel that fetches any X / Twitter post by URL or tweet ID without needing to be logged in — powered by the fxtwitter public API. Shows full text, author identity, media, engagement counts, and quoted tweets.',
+      'Right-click any x.com or twitter.com link in the in-app browser to get "View without login" — sub-menu opens the post in FxTwitter, XCancel/Nitter, Wayback Machine, or Archive.ph.',
+      'Google SSO (Sign in with Google) now works in the in-app browser — Google\'s auth popup is allowed to open as a real window so window.opener stays intact for the OAuth postMessage handshake. Previously the page would stay white after completing the Google login flow.'
+    ]
+  },
+  {
     version: '0.1.122',
     date: '2026-06-29',
     notes: [

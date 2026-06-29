@@ -1887,6 +1887,84 @@ export function registerHandlers(): void {
     }
   })
 
+  // X / Twitter post lookup via fxtwitter's public API — no auth or key needed.
+  // Accepts any x.com / twitter.com post URL or a bare tweet ID.
+  ipcMain.handle('intel:xpost', async (_e, inputRaw: string) => {
+    const raw = String(inputRaw ?? '').trim()
+    if (!raw) return { ok: false, error: 'Enter an X / Twitter post URL or tweet ID.' }
+
+    // Extract tweet ID from various URL forms or treat bare digits as the ID.
+    let tweetId = ''
+    let mc: RegExpMatchArray | null
+    if ((mc = raw.match(/(?:x\.com|twitter\.com)\/[^/]+\/status\/(\d+)/i))) {
+      tweetId = mc[1]
+    } else if (/^\d+$/.test(raw)) {
+      tweetId = raw
+    } else {
+      return { ok: false, error: 'Could not find a tweet ID in that input. Paste the full post URL or bare numeric ID.' }
+    }
+
+    try {
+      const res = await net.fetch(`https://api.fxtwitter.com/status/${tweetId}`, {
+        headers: { Accept: 'application/json', 'User-Agent': 'GhostWire/1 (OSINT research tool)' }
+      })
+      if (res.status === 404) return { ok: false, error: 'Tweet not found — it may have been deleted or the ID is wrong.' }
+      if (!res.ok) return { ok: false, error: `fxtwitter returned ${res.status}.` }
+
+      const body = (await res.json()) as { tweet?: Record<string, unknown>; status?: number; message?: string }
+      if (body.status === 404) return { ok: false, error: 'Tweet not found — it may have been deleted or the ID is wrong.' }
+      const t = body.tweet as Record<string, unknown> | undefined
+      if (!t) return { ok: false, error: 'Unexpected response from fxtwitter.' }
+
+      const author = (t.author as Record<string, unknown>) ?? {}
+      const mediaItems = ((t.media as Record<string, unknown>)?.all as Record<string, unknown>[]) ?? []
+      const mediaUrls = mediaItems.map((m) => String(m.url ?? m.thumbnail_url ?? '')).filter(Boolean)
+
+      const mapTweet = (x: Record<string, unknown>): import('../shared/types').XPostTweet => {
+        const a = (x.author as Record<string, unknown>) ?? {}
+        const mi = ((x.media as Record<string, unknown>)?.all as Record<string, unknown>[]) ?? []
+        return {
+          id: String(x.id ?? ''),
+          text: String(x.text ?? ''),
+          author: String(a.screen_name ?? a.login ?? ''),
+          authorName: String(a.name ?? ''),
+          authorId: String(a.id ?? ''),
+          authorUrl: `https://x.com/${String(a.screen_name ?? '')}`,
+          created: String(x.created_at ?? ''),
+          lang: x.lang ? String(x.lang) : undefined,
+          likes: Number(x.likes ?? 0),
+          retweets: Number(x.retweets ?? 0),
+          replies: Number(x.replies ?? 0),
+          views: x.views ? Number(x.views) : undefined,
+          mediaUrls: mi.map((m) => String(m.url ?? m.thumbnail_url ?? '')).filter(Boolean),
+          permalinkUrl: String(x.url ?? `https://x.com/${String(a.screen_name ?? '')}/status/${String(x.id ?? '')}`)
+        }
+      }
+
+      const tweet: import('../shared/types').XPostTweet = {
+        id: tweetId,
+        text: String(t.text ?? ''),
+        author: String((author as Record<string, unknown>).screen_name ?? (author as Record<string, unknown>).login ?? ''),
+        authorName: String((author as Record<string, unknown>).name ?? ''),
+        authorId: String((author as Record<string, unknown>).id ?? ''),
+        authorUrl: `https://x.com/${String((author as Record<string, unknown>).screen_name ?? '')}`,
+        created: String(t.created_at ?? ''),
+        lang: t.lang ? String(t.lang) : undefined,
+        likes: Number(t.likes ?? 0),
+        retweets: Number(t.retweets ?? 0),
+        replies: Number(t.replies ?? 0),
+        views: t.views ? Number(t.views) : undefined,
+        mediaUrls,
+        quotedTweet: t.quote ? mapTweet(t.quote as Record<string, unknown>) : undefined,
+        permalinkUrl: String(t.url ?? `https://x.com/${String((author as Record<string, unknown>).screen_name ?? '')}/status/${tweetId}`)
+      }
+
+      return { ok: true, tweet }
+    } catch (e) {
+      return { ok: false, error: String((e as Error)?.message ?? e) }
+    }
+  })
+
   // Automated passive domain recon — runs the equivalent of subfinder +
   // assetfinder + amass (passive) + httprobe together: pull subdomains from
   // several free certificate-transparency / passive-DNS sources, fold in DNS +

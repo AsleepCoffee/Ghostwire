@@ -399,6 +399,33 @@ export interface RedditResult {
   source?: string
 }
 
+/** A single tweet fetched via the fxtwitter public API (no auth required). */
+export interface XPostTweet {
+  id: string
+  text: string
+  author: string
+  authorName: string
+  authorId: string
+  /** Display name and profile URL info */
+  authorUrl: string
+  created: string
+  /** UTC ISO string */
+  lang?: string
+  likes: number
+  retweets: number
+  replies: number
+  views?: number
+  mediaUrls: string[]
+  quotedTweet?: XPostTweet
+  permalinkUrl: string
+}
+
+export interface XPostResult {
+  ok: boolean
+  error?: string
+  tweet?: XPostTweet
+}
+
 export interface ShodanService {
   port: number
   transport: string
@@ -752,6 +779,9 @@ export interface OsintApi {
      *  activity from PullPush / Arctic Shift (no key). Input is a URL, post id,
      *  or username; mode hints how to treat a bare token. */
     reddit(input: string, mode: 'thread' | 'user'): Promise<RedditResult>
+    /** X / Twitter post lookup via the fxtwitter public API — no login or key needed.
+     *  Input is any x.com / twitter.com post URL or a bare tweet ID. */
+    xpost(input: string): Promise<XPostResult>
     /** Automated passive domain recon — multi-source subdomain enumeration + DNS
      *  + WHOIS + HTTP liveness, all at once. No key needed. */
     reconDomain(domain: string): Promise<ReconResult>

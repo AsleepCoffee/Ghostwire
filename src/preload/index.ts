@@ -122,6 +122,7 @@ const api: OsintApi = {
     shodan: (target, key) => ipcRenderer.invoke('intel:shodan', target, key),
     wigle: (query, kind, key) => ipcRenderer.invoke('intel:wigle', query, kind, key),
     reddit: (input, mode) => ipcRenderer.invoke('intel:reddit', input, mode),
+    xpost: (input) => ipcRenderer.invoke('intel:xpost', input),
     reconDomain: (domain) => ipcRenderer.invoke('intel:reconDomain', domain),
     sherlockSites: () => ipcRenderer.invoke('intel:sherlockSites'),
     sherlockCheck: (name, username) => ipcRenderer.invoke('intel:sherlockCheck', name, username)
