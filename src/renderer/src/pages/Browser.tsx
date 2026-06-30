@@ -226,6 +226,9 @@ export function Browser(): JSX.Element {
   const [toast, setToast] = useState('')
   const [pasteImg, setPasteImg] = useState<PasteImage | null>(getPasteImage())
   const [copied, setCopied] = useState(false)
+  const [pastePos, setPastePos] = useState<{ top: number; left: number } | null>(null)
+  const pasteDragRef = useRef<{ mx: number; my: number; bx: number; by: number } | null>(null)
+  const pasteBoxRef = useRef<HTMLDivElement | null>(null)
   // Post-capture annotation panel: a screenshot is always filed first (id), then
   // the user can add a caption + notes before it disappears.
   const [annotate, setAnnotate] = useState<{ id: string; title: string; note: string; thumb: string } | null>(null)
@@ -395,6 +398,8 @@ export function Browser(): JSX.Element {
       }
     })
   }, [activeId])
+  useEffect(() => { setPastePos(null) }, [pasteImg])
+
   const copyPaste = async (): Promise<void> => {
     if (!pasteImg) return
     await api.clipboard.writeImage(pasteImg.dataUrl)
@@ -1014,12 +1019,39 @@ export function Browser(): JSX.Element {
         </div>
       )}
 
-      {/* Reverse-image paste helper — the staged image, ready to drop into the engine. */}
+      {/* Reverse-image paste helper — the staged image, ready to drop into the engine. Draggable by the title bar. */}
       {pasteImg && (
-        <div className="absolute top-4 right-4 z-50 w-44 card p-2.5 shadow-2xl border-accent/30">
-          <div className="flex items-center justify-between mb-1.5">
+        <div
+          ref={pasteBoxRef}
+          className="fixed z-50 w-44 card p-2.5 shadow-2xl border-accent/30 select-none"
+          style={pastePos ? { top: pastePos.top, left: pastePos.left } : { top: 16, right: 16 }}
+        >
+          <div
+            className="flex items-center justify-between mb-1.5 cursor-grab active:cursor-grabbing"
+            onMouseDown={(e) => {
+              e.preventDefault()
+              const box = pasteBoxRef.current
+              if (!box) return
+              const br = box.getBoundingClientRect()
+              pasteDragRef.current = { mx: e.clientX, my: e.clientY, bx: br.left, by: br.top }
+              const onMove = (ev: MouseEvent): void => {
+                if (!pasteDragRef.current) return
+                setPastePos({
+                  left: Math.max(0, pasteDragRef.current.bx + ev.clientX - pasteDragRef.current.mx),
+                  top: Math.max(0, pasteDragRef.current.by + ev.clientY - pasteDragRef.current.my)
+                })
+              }
+              const onUp = (): void => {
+                pasteDragRef.current = null
+                window.removeEventListener('mousemove', onMove)
+                window.removeEventListener('mouseup', onUp)
+              }
+              window.addEventListener('mousemove', onMove)
+              window.addEventListener('mouseup', onUp)
+            }}
+          >
             <span className="text-[11px] font-semibold text-slate-200">Image to paste</span>
-            <button className="btn-ghost !p-1" onClick={() => setPasteImage(null)} title="Dismiss">
+            <button className="btn-ghost !p-1" onClick={() => { setPasteImage(null); setPastePos(null) }} title="Dismiss">
               <X size={13} />
             </button>
           </div>

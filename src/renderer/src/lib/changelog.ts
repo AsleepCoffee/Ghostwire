@@ -7,6 +7,13 @@ export interface ChangelogEntry {
 /** In-app patch notes. Newest first. Keep in sync with CHANGELOG.md. */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.1.126',
+    date: '2026-06-30',
+    notes: [
+      'The reverse-image paste helper (the "Image to paste" box) is now draggable — grab the title bar and move it anywhere on screen so it doesn\'t cover the engine\'s upload button.'
+    ]
+  },
+  {
     version: '0.1.125',
     date: '2026-06-30',
     notes: [
