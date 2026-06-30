@@ -237,6 +237,10 @@ export function Browser(): JSX.Element {
   const selKey = settings.activeProjectId ?? '_global'
   const selectors = settings.selectorsByProject?.[selKey] ?? []
   const highlightOn = settings.highlightSelectors !== false
+  // Long-press + button to pick a persona for the new tab.
+  const [personaPicker, setPersonaPicker] = useState(false)
+  const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const pickerWrapRef = useRef<HTMLDivElement | null>(null)
   const [selOpen, setSelOpen] = useState(false)
   const [newSel, setNewSel] = useState('')
   const [pulling, setPulling] = useState(false)
@@ -440,6 +444,16 @@ export function Browser(): JSX.Element {
     return () => window.removeEventListener('keydown', onKey)
   }, [regionMode])
 
+  // Close the persona picker when clicking anywhere outside its wrapper.
+  useEffect(() => {
+    if (!personaPicker) return
+    const handler = (e: MouseEvent): void => {
+      if (!pickerWrapRef.current?.contains(e.target as Node)) setPersonaPicker(false)
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [personaPicker])
+
   const reloadPersonas = (): void => {
     api.personas.list().then(setPersonas)
   }
@@ -594,13 +608,58 @@ export function Browser(): JSX.Element {
             </div>
           )
         })}
-        <button
-          onClick={newTab}
-          className="ml-1 mb-1 p-1.5 rounded-lg text-slate-400 hover:bg-ink-800 shrink-0"
-          title="New tab"
-        >
-          <Plus size={16} />
-        </button>
+        <div ref={pickerWrapRef} className="relative ml-1 mb-1 shrink-0">
+          <button
+            className="p-1.5 rounded-lg text-slate-400 hover:bg-ink-800"
+            title="New tab — hold for persona"
+            onMouseDown={() => {
+              longPressTimer.current = setTimeout(() => {
+                longPressTimer.current = null
+                setPersonaPicker(true)
+              }, 450)
+            }}
+            onMouseUp={() => {
+              if (longPressTimer.current) {
+                clearTimeout(longPressTimer.current)
+                longPressTimer.current = null
+                newTab()
+              }
+            }}
+            onMouseLeave={() => {
+              if (longPressTimer.current) {
+                clearTimeout(longPressTimer.current)
+                longPressTimer.current = null
+              }
+            }}
+          >
+            <Plus size={16} />
+          </button>
+          {personaPicker && (
+            <div className="absolute bottom-full right-0 mb-1 z-50 w-56 card p-1 shadow-2xl border-ink-600">
+              <div className="text-[10px] uppercase tracking-widest text-slate-500 px-2 py-1 border-b border-ink-700 mb-1">
+                Open tab as persona
+              </div>
+              {personas.filter((p) => p.status === 'active').length === 0 && (
+                <div className="text-xs text-slate-500 px-2 py-2">No active personas</div>
+              )}
+              {personas
+                .filter((p) => p.status === 'active')
+                .map((p) => (
+                  <button
+                    key={p.id}
+                    className="w-full text-left px-2 py-1.5 text-sm rounded hover:bg-ink-800 flex items-center gap-2"
+                    onClick={() => {
+                      openTabs({ tabs: [{ url: NEWTAB, personaId: p.id }] })
+                      setPersonaPicker(false)
+                    }}
+                  >
+                    <Fingerprint size={13} style={{ color: personaColor(p.id) }} className="shrink-0" />
+                    <span className="truncate">{p.name}</span>
+                  </button>
+                ))}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Toolbar */}
@@ -1070,6 +1129,12 @@ function BrowserView({
 
   return (
     <div className="absolute inset-0" style={{ display: active ? 'block' : 'none' }}>
+      {tab.url === NEWTAB && (
+        <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-ink-950 select-none pointer-events-none">
+          <Globe size={28} className="text-slate-700 mb-2" />
+          <div className="text-slate-600 text-sm">Type an address or search in the bar above</div>
+        </div>
+      )}
       {tab.failed && active && (
         <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-ink-950 text-center p-6">
           <AlertTriangle size={36} className="text-warn mb-3" />

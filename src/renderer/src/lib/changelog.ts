@@ -7,6 +7,15 @@ export interface ChangelogEntry {
 /** In-app patch notes. Newest first. Keep in sync with CHANGELOG.md. */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.1.124',
+    date: '2026-06-29',
+    notes: [
+      'Fixed browser language — sites were showing content in Bengali/Bangladesh because Electron was falling back to the OS locale. All webview sessions now send "en-US,en;q=0.9" as the Accept-Language header regardless of the system locale.',
+      'Dark new-tab background — opening a new browser tab now shows a dark GhostWire-themed page instead of a white blank page.',
+      'Long-press the + new-tab button (hold ~½ second) to open a persona picker and start the tab as a specific sock puppet identity.'
+    ]
+  },
+  {
     version: '0.1.123',
     date: '2026-06-29',
     notes: [

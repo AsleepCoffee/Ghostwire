@@ -78,7 +78,19 @@ app.whenReady().then(async () => {
   app.on('web-contents-created', (_e, contents) => {
     if (contents.getType() !== 'webview') return
 
+    // Force English Accept-Language for every webview session so Electron doesn't
+    // fall back to the OS locale. On some Windows installs this ends up as
+    // bn-BD (Bengali/Bangladesh), making every site serve content in Bengali.
+    try {
+      const ses = contents.session
+      ses.setUserAgent(ses.getUserAgent(), 'en-US,en;q=0.9')
+    } catch {
+      /* ignore */
+    }
+
     // Per-persona browser fingerprint hardening (UA + canvas/WebGL/navigator spoof).
+    // This may override the UA for persona sessions but preserves the acceptLanguages
+    // set above (fingerprint.ts also passes 'en-US,en;q=0.9' explicitly).
     hardenWebContents(contents)
 
     // Right-click menu: add images to evidence, reverse search, copy/paste.

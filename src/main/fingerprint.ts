@@ -100,7 +100,9 @@ export function hardenWebContents(contents: WebContents): void {
   if (!persona) return // default sessions use the clean app.userAgentFallback
   const seed = seedFrom(persona.id)
   try {
-    contents.session.setUserAgent(personaUA(seed))
+    // Include acceptLanguages so Electron doesn't fall back to the OS locale,
+    // which can be Bengali/Bangladesh on some Windows installs.
+    contents.session.setUserAgent(personaUA(seed), 'en-US,en;q=0.9')
   } catch {
     /* ignore */
   }
