@@ -486,19 +486,57 @@ function EvidenceDetail({
   const [renaming, setRenaming] = useState(false)
   const [renameVal, setRenameVal] = useState('')
   const [lightbox, setLightbox] = useState(false)
-  const [zoom, setZoom] = useState(false)
+  const [lbScale, setLbScale] = useState(1)
+  const [lbPan, setLbPan] = useState({ x: 0, y: 0 })
+  const lbDrag = useRef<{ sx: number; sy: number; px: number; py: number } | null>(null)
+  const lbContainerRef = useRef<HTMLDivElement | null>(null)
   const [viewer, setViewer] = useState<{ url: string; name: string } | null>(null)
+
+  const closeLightbox = (): void => {
+    setLightbox(false)
+    setLbScale(1)
+    setLbPan({ x: 0, y: 0 })
+    lbDrag.current = null
+  }
+
+  const lbZoom = (factor: number, cx = 0, cy = 0): void => {
+    setLbScale((prev) => {
+      const next = Math.min(10, Math.max(0.25, prev * factor))
+      setLbPan((p) => ({ x: cx + (p.x - cx) * (next / prev), y: cy + (p.y - cy) * (next / prev) }))
+      return next
+    })
+  }
+
+  const lbFit = (): void => { setLbScale(1); setLbPan({ x: 0, y: 0 }) }
+
+  const onLbWheel = (e: React.WheelEvent<HTMLDivElement>): void => {
+    e.preventDefault()
+    const r = lbContainerRef.current?.getBoundingClientRect()
+    if (!r) return
+    lbZoom(e.deltaY < 0 ? 1.15 : 1 / 1.15, e.clientX - r.left - r.width / 2, e.clientY - r.top - r.height / 2)
+  }
+
+  const onLbMouseDown = (e: React.MouseEvent): void => {
+    e.preventDefault()
+    lbDrag.current = { sx: e.clientX, sy: e.clientY, px: lbPan.x, py: lbPan.y }
+  }
+
+  const onLbMouseMove = (e: React.MouseEvent): void => {
+    if (!lbDrag.current) return
+    setLbPan({ x: lbDrag.current.px + e.clientX - lbDrag.current.sx, y: lbDrag.current.py + e.clientY - lbDrag.current.sy })
+  }
 
   useEffect(() => {
     if (!lightbox) return
     const onKey = (e: KeyboardEvent): void => {
-      if (e.key === 'Escape') {
-        setLightbox(false)
-        setZoom(false)
-      }
+      if (e.key === 'Escape') closeLightbox()
+      else if (e.key === '+' || e.key === '=') lbZoom(1.25)
+      else if (e.key === '-') lbZoom(1 / 1.25)
+      else if (e.key === '0') lbFit()
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lightbox])
 
   useEffect(() => {
@@ -659,39 +697,55 @@ function EvidenceDetail({
         {lightbox && ev.kind !== 'file' && (
           <div
             className="fixed inset-0 z-[120] bg-black/95 flex flex-col"
-            onClick={() => {
-              setLightbox(false)
-              setZoom(false)
-            }}
+            onClick={closeLightbox}
           >
-            <div className="flex items-center justify-between px-4 py-2.5 shrink-0" onClick={(e) => e.stopPropagation()}>
-              <span className="text-sm text-slate-300 truncate">{ev.title || ev.sourceUrl || 'Evidence'}</span>
-              <div className="flex items-center gap-1.5">
-                <button className="btn-ghost !p-1.5 text-slate-200" onClick={() => setZoom((z) => !z)} title={zoom ? 'Fit to screen' : 'Actual size'}>
-                  {zoom ? <ZoomOut size={18} /> : <ZoomIn size={18} />}
+            {/* Toolbar */}
+            <div className="flex items-center justify-between px-4 py-2 shrink-0" onClick={(e) => e.stopPropagation()}>
+              <span className="text-sm text-slate-300 truncate max-w-xs">{ev.title || ev.sourceUrl || 'Evidence'}</span>
+              <div className="flex items-center gap-0.5">
+                <button className="btn-ghost !p-1.5 text-slate-300 text-xs font-mono w-14 justify-center" onClick={lbFit} title="Fit to screen (0)">
+                  {Math.round(lbScale * 100)}%
                 </button>
-                <button
-                  className="btn-ghost !p-1.5 text-slate-200"
-                  onClick={() => {
-                    setLightbox(false)
-                    setZoom(false)
-                  }}
-                  title="Close (Esc)"
-                >
+                <button className="btn-ghost !p-1.5 text-slate-300" onClick={() => lbZoom(1 / 1.25)} title="Zoom out (−)">
+                  <ZoomOut size={17} />
+                </button>
+                <button className="btn-ghost !p-1.5 text-slate-300" onClick={() => lbZoom(1.25)} title="Zoom in (+)">
+                  <ZoomIn size={17} />
+                </button>
+                <button className="btn-ghost !p-1.5 text-slate-300 ml-1" onClick={closeLightbox} title="Close (Esc)">
                   <X size={18} />
                 </button>
               </div>
             </div>
-            <div className="flex-1 min-h-0 overflow-auto flex items-center justify-center p-4">
+            {/* Image canvas — scroll wheel zooms, drag pans */}
+            <div
+              ref={lbContainerRef}
+              className="flex-1 min-h-0 overflow-hidden flex items-center justify-center"
+              onClick={(e) => e.stopPropagation()}
+              onWheel={onLbWheel}
+              onMouseDown={onLbMouseDown}
+              onMouseMove={onLbMouseMove}
+              onMouseUp={() => { lbDrag.current = null }}
+              onMouseLeave={() => { lbDrag.current = null }}
+              style={{ cursor: lbDrag.current ? 'grabbing' : lbScale > 1.01 ? 'grab' : 'zoom-in' }}
+            >
               <img
                 src={ev.path}
                 alt=""
-                onClick={(e) => {
-                  e.stopPropagation()
-                  setZoom((z) => !z)
+                draggable={false}
+                style={{
+                  transform: `translate(${lbPan.x}px, ${lbPan.y}px) scale(${lbScale})`,
+                  transformOrigin: 'center',
+                  transition: lbDrag.current ? 'none' : 'transform 0.05s ease-out',
+                  maxWidth: '100%',
+                  maxHeight: '100%',
+                  objectFit: 'contain',
+                  userSelect: 'none'
                 }}
-                className={zoom ? 'max-w-none cursor-zoom-out' : 'max-h-full max-w-full object-contain cursor-zoom-in'}
               />
+            </div>
+            <div className="text-center text-[11px] text-slate-600 py-1.5 shrink-0">
+              Scroll to zoom · drag to pan · press 0 to fit
             </div>
           </div>
         )}

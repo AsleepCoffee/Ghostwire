@@ -7,6 +7,13 @@ export interface ChangelogEntry {
 /** In-app patch notes. Newest first. Keep in sync with CHANGELOG.md. */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.1.125',
+    date: '2026-06-30',
+    notes: [
+      'Evidence lightbox: scroll wheel to zoom in/out at the cursor position, drag to pan around the image. Zoom level shown as a % in the toolbar — click it to fit back to screen. Keyboard shortcuts: +/= zoom in, − zoom out, 0 fit, Esc close.'
+    ]
+  },
+  {
     version: '0.1.124',
     date: '2026-06-29',
     notes: [
