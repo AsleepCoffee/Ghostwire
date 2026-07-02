@@ -1,12 +1,16 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Mail, ExternalLink, RotateCw, Lock, CheckCircle2, Eye, EyeOff, KeyRound } from 'lucide-react'
+import { Mail, ExternalLink, RotateCw, Lock, CheckCircle2, Eye, EyeOff, KeyRound, ChevronLeft, ChevronRight } from 'lucide-react'
 import { api } from '../lib/api'
 import { useSettings } from '../lib/settings'
 import { Icon } from '../components/ui'
 
 interface WebviewEl extends HTMLElement {
   reload(): void
+  goBack(): void
+  goForward(): void
+  canGoBack(): boolean
+  canGoForward(): boolean
   getURL(): string
   executeJavaScript(code: string): Promise<unknown>
   addEventListener(type: string, listener: (e: Event) => void): void
@@ -279,6 +283,12 @@ export function Mailbox(): JSX.Element {
           </span>
         </div>
         <div className="ml-auto flex gap-1.5">
+          <button className="btn-ghost !px-2" onClick={() => ref.current?.goBack()} title="Back">
+            <ChevronLeft size={16} />
+          </button>
+          <button className="btn-ghost !px-2" onClick={() => ref.current?.goForward()} title="Forward">
+            <ChevronRight size={16} />
+          </button>
           {hasCreds && (
             <button className="btn-ghost !px-2 text-accent" onClick={fillLogin} title="Fill the stored email & password into the login form">
               <KeyRound size={16} />

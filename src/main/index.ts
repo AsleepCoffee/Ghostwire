@@ -116,13 +116,31 @@ app.whenReady().then(async () => {
         .catch(() => {})
     })
 
-    // The Mailbox webview signs into webmail (e.g. Gmail), which tries to open its
-    // login in a popup window. Keep it inline: navigate the webview itself instead
-    // of spawning a separate window.
+    // The Mailbox webview signs into webmail (e.g. Gmail). Keep popups inline and
+    // redirect external link clicks to the in-app browser so the webmail is never
+    // replaced by an unrelated site the user can't navigate back from.
     if (contents.session === session.fromPartition('persist:gw-mailbox')) {
+      // Trusted base domains — navigation within these stays in the mailbox webview.
+      const WEBMAIL_BASES = [
+        'google.com', 'live.com', 'microsoft.com',
+        'proton.me', 'proton.ch',
+        'yahoo.com', 'icloud.com', 'apple.com', 'zoho.com'
+      ]
+      // Popup / target=_blank → in-app browser tab, not a new OS window.
       contents.setWindowOpenHandler(({ url }) => {
-        if (url && /^https?:\/\//i.test(url)) contents.loadURL(url).catch(() => {})
+        if (url && /^https?:\/\//i.test(url)) openInAppTabs([url])
         return { action: 'deny' }
+      })
+      // Regular link clicks that would navigate the webview away → redirect external
+      // URLs to the in-app browser so the mailbox is never clobbered.
+      contents.on('will-navigate', (e, url) => {
+        if (!/^https?:\/\//i.test(url)) return
+        try {
+          const { hostname } = new URL(url)
+          if (WEBMAIL_BASES.some((b) => hostname === b || hostname.endsWith(`.${b}`))) return
+        } catch {}
+        e.preventDefault()
+        openInAppTabs([url])
       })
     } else {
       // Any other embedded page: open popups / target=_blank as a new in-app tab,

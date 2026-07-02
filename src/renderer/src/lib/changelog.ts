@@ -7,6 +7,14 @@ export interface ChangelogEntry {
 /** In-app patch notes. Newest first. Keep in sync with CHANGELOG.md. */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.1.129',
+    date: '2026-07-02',
+    notes: [
+      'Clicking a link inside the Mailbox tab now opens it in the Browser tab instead of replacing the webmail. The mailbox always stays on your inbox — external links never clobber it.',
+      'Back and Forward buttons added to the Mailbox toolbar so you can navigate within webmail (or recover if something does redirect) without restarting the app.'
+    ]
+  },
+  {
     version: '0.1.128',
     date: '2026-07-02',
     notes: [
