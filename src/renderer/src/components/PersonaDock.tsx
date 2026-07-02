@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Fingerprint, X, ChevronRight, Copy, Check, Globe, ExternalLink } from 'lucide-react'
 import { usePersonaDock } from '../lib/dock'
@@ -11,6 +11,10 @@ import { Icon } from './ui'
 import { api, type Project } from '../lib/api'
 
 type PanelState = { top: number; left: number; width: number; height: number }
+
+// Prevent Electron's -webkit-app-region:drag from swallowing events when the
+// panel overlaps the title bar / topbar drag region.
+const NO_DRAG = { WebkitAppRegion: 'no-drag' } as unknown as CSSProperties
 
 /** Drag + resize behaviour shared by both dock panels. */
 function useDockPanel(): {
@@ -40,7 +44,7 @@ function useDockPanel(): {
           ? {
               ...prev,
               left: Math.max(0, dragRef.current!.bx + ev.clientX - dragRef.current!.mx),
-              top: Math.max(0, dragRef.current!.by + ev.clientY - dragRef.current!.my)
+              top: Math.max(4, dragRef.current!.by + ev.clientY - dragRef.current!.my)
             }
           : prev
       )
@@ -159,7 +163,7 @@ export function PersonaDock(): JSX.Element | null {
     <aside
       ref={panelRef as React.Ref<HTMLElement>}
       className={`${posClass} flex flex-col card !bg-ink-850 shadow-2xl border-ink-600 animate-fade-up`}
-      style={panelStyle}
+      style={{ ...NO_DRAG, ...panelStyle }}
     >
       {/* Left resize handle */}
       <div
@@ -284,7 +288,7 @@ export function InvestigationDock(): JSX.Element | null {
     <aside
       ref={panelRef as React.Ref<HTMLElement>}
       className={`${posClass} flex flex-col card !bg-ink-850 shadow-2xl border-ink-600 animate-fade-up`}
-      style={panelStyle}
+      style={{ ...NO_DRAG, ...panelStyle }}
     >
       {/* Left resize handle */}
       <div

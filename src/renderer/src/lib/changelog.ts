@@ -7,6 +7,13 @@ export interface ChangelogEntry {
 /** In-app patch notes. Newest first. Keep in sync with CHANGELOG.md. */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.1.133',
+    date: '2026-07-02',
+    notes: [
+      'Fix: Investigation and Sock Puppet panels now respond to mouse clicks even when overlapping the title bar — added WebkitAppRegion:no-drag so Electron no longer routes those events to the OS window drag instead.'
+    ]
+  },
+  {
     version: '0.1.132',
     date: '2026-07-02',
     notes: [
