@@ -1282,7 +1282,21 @@ export function registerHandlers(): void {
     const res = await net.fetch(url, {
       headers: { 'User-Agent': 'GhostWire-OSINT', Accept: 'application/json', ...(headers ?? {}) }
     })
-    if (!res.ok) throw new Error(`HTTP ${res.status}`)
+    if (!res.ok) {
+      let detail = ''
+      try {
+        const body = (await res.json()) as Record<string, unknown>
+        const errs = body?.errors
+        if (Array.isArray(errs) && errs.length > 0) {
+          const e0 = errs[0] as Record<string, unknown>
+          detail = String(e0?.details ?? e0?.message ?? '')
+        } else {
+          detail = String(body?.error ?? body?.message ?? body?.detail ?? '')
+        }
+        if (detail === 'undefined') detail = ''
+      } catch { /* not JSON */ }
+      throw new Error(`HTTP ${res.status}${detail ? ` — ${detail}` : ''}`)
+    }
     return res.json()
   })
   ipcMain.handle('net:httpStatus', async (_e, url: string) => {

@@ -7,6 +7,14 @@ export interface ChangelogEntry {
 /** In-app patch notes. Newest first. Keep in sync with CHANGELOG.md. */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.1.128',
+    date: '2026-07-02',
+    notes: [
+      'Transform errors now show the actual reason (e.g. "HTTP 401 — Invalid API key") instead of the truncated IPC error wrapper. The API\'s own error message is included when available.',
+      'New Diagnostics section in Settings: see a timestamped log of all transform errors so you can troubleshoot API keys, rate limits, and connectivity without guessing.'
+    ]
+  },
+  {
     version: '0.1.127',
     date: '2026-07-02',
     notes: [

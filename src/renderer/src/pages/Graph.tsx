@@ -34,6 +34,7 @@ import { transformsFor, type Transform, type TransformOutput } from '../lib/tran
 import { useOpenInBrowser } from '../lib/browserBus'
 import { useSettings } from '../lib/settings'
 import { useConfirm } from '../lib/confirm'
+import { addLog } from '../lib/debugLog'
 
 type RFNode = Node<{ entity: EntityNode }>
 
@@ -536,7 +537,12 @@ function GraphInner(): JSX.Element {
       }
       return added
     } catch (e) {
-      patchRun(runId, { status: 'error', error: String((e as Error)?.message ?? e) })
+      // Strip the Electron IPC wrapper ("Error invoking remote method '...': Error: ")
+      // so the transform log shows just the meaningful part, e.g. "HTTP 401 — Invalid key".
+      const raw = String((e as Error)?.message ?? e)
+      const msg = raw.replace(/^Error invoking remote method '[^']+': (Error: )?/, '')
+      patchRun(runId, { status: 'error', error: msg })
+      addLog('error', t.label, `${entity.label}: ${msg}`)
       return 0
     }
   }
@@ -852,7 +858,7 @@ function GraphInner(): JSX.Element {
                             <span style={{ color: cfg.color }}>{cfg.label}</span> · {r.target || '—'}
                           </div>
                           {(r.summary || r.error) && (
-                            <div className={`text-[11px] truncate mt-0.5 ${r.status === 'error' ? 'text-danger' : 'text-slate-400'}`}>
+                            <div className={`text-[11px] mt-0.5 break-all leading-snug ${r.status === 'error' ? 'text-danger' : 'text-slate-400'}`}>
                               {r.error ?? r.summary}
                             </div>
                           )}

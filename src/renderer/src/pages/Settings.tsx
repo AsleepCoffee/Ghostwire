@@ -15,7 +15,8 @@ import {
   AlertTriangle,
   Minus,
   Save,
-  RotateCcw
+  RotateCcw,
+  Trash2
 } from 'lucide-react'
 import { api, type UpdateStatus, type BackupInfo } from '../lib/api'
 import { Icon } from '../components/ui'
@@ -24,8 +25,9 @@ import { useConfirm } from '../lib/confirm'
 import { fmtDateTime } from '../lib/format'
 import { FREE_SERVICES, PAID_SERVICES, type ApiService } from '../lib/apiServices'
 import { VpnManager } from '../components/VpnManager'
+import { getLogs, clearLogs, type LogEntry } from '../lib/debugLog'
 
-type SectionId = 'appearance' | 'features' | 'vpn' | 'email' | 'apikeys' | 'vault' | 'backups' | 'updates' | 'privacy'
+type SectionId = 'appearance' | 'features' | 'vpn' | 'email' | 'apikeys' | 'vault' | 'backups' | 'updates' | 'privacy' | 'diagnostics'
 
 const SECTIONS: { id: SectionId; label: string; icon: string }[] = [
   { id: 'appearance', label: 'Appearance', icon: 'Palette' },
@@ -36,7 +38,8 @@ const SECTIONS: { id: SectionId; label: string; icon: string }[] = [
   { id: 'vault', label: 'Obsidian vault', icon: 'FolderOpen' },
   { id: 'backups', label: 'Backups', icon: 'Archive' },
   { id: 'updates', label: 'Updates', icon: 'RefreshCw' },
-  { id: 'privacy', label: 'Data & privacy', icon: 'ShieldCheck' }
+  { id: 'privacy', label: 'Data & privacy', icon: 'ShieldCheck' },
+  { id: 'diagnostics', label: 'Diagnostics', icon: 'Bug' }
 ]
 
 export function Settings(): JSX.Element {
@@ -52,6 +55,11 @@ export function Settings(): JSX.Element {
   const [tests, setTests] = useState<
     Record<string, { loading?: boolean; status?: 'valid' | 'invalid' | 'error' | 'untestable'; msg?: string }>
   >({})
+  const [diagLogs, setDiagLogs] = useState<LogEntry[]>([])
+
+  useEffect(() => {
+    if (section === 'diagnostics') setDiagLogs(getLogs())
+  }, [section])
 
   const testKey = async (id: string): Promise<void> => {
     const key = (settings.apiKeys ?? {})[id] ?? ''
@@ -404,6 +412,51 @@ export function Settings(): JSX.Element {
                 )}
                 {upd && updateLabel() && <span className="text-sm text-slate-400">{updateLabel()}</span>}
               </div>
+            </section>
+          )}
+
+          {section === 'diagnostics' && (
+            <section className="card p-5">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h2 className="font-semibold text-slate-100 mb-1">Diagnostics &amp; error log</h2>
+                  <p className="text-sm text-slate-400">
+                    Errors from transforms and network calls — useful for troubleshooting API keys,
+                    rate limits, and connectivity issues. Stored locally; cleared on page reload.
+                  </p>
+                </div>
+                <button
+                  className="btn-ghost border border-ink-600 shrink-0 ml-4"
+                  onClick={() => { clearLogs(); setDiagLogs([]) }}
+                  title="Clear all log entries"
+                >
+                  <Trash2 size={14} /> Clear
+                </button>
+              </div>
+              {diagLogs.length === 0 ? (
+                <p className="text-sm text-slate-500 py-6 text-center">
+                  No errors recorded yet. Run some transforms to see activity here.
+                </p>
+              ) : (
+                <div className="space-y-2 max-h-[60vh] overflow-y-auto pr-1">
+                  {[...diagLogs].reverse().map((entry, i) => (
+                    <div key={i} className="rounded-lg border border-ink-700 bg-ink-900 p-3">
+                      <div className="flex items-center gap-2 mb-1 flex-wrap">
+                        <span className={`text-[10px] uppercase font-bold px-1.5 py-0.5 rounded shrink-0 ${
+                          entry.level === 'error' ? 'bg-danger/20 text-danger'
+                          : entry.level === 'warn' ? 'bg-warn/20 text-warn'
+                          : 'bg-ink-700 text-slate-400'
+                        }`}>
+                          {entry.level}
+                        </span>
+                        <span className="text-[11px] text-slate-500 shrink-0">{new Date(entry.at).toLocaleString()}</span>
+                        <span className="text-[11px] text-accent truncate">{entry.source}</span>
+                      </div>
+                      <p className="text-xs text-slate-200 break-all leading-relaxed">{entry.message}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
             </section>
           )}
 
