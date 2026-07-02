@@ -7,6 +7,13 @@ export interface ChangelogEntry {
 /** In-app patch notes. Newest first. Keep in sync with CHANGELOG.md. */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.1.134',
+    date: '2026-07-02',
+    notes: [
+      'Fix: double-clicking the Investigation or Sock Puppet panel header no longer causes a black screen — Electron was routing the double-click to the OS window-maximize handler. Blocked with preventDefault and select-none on the drag header.'
+    ]
+  },
+  {
     version: '0.1.133',
     date: '2026-07-02',
     notes: [

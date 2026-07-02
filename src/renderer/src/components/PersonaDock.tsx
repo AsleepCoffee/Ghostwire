@@ -178,8 +178,9 @@ export function PersonaDock(): JSX.Element | null {
 
       {/* Header — drag handle */}
       <div
-        className="flex items-center gap-2.5 p-3 border-b border-ink-700 cursor-grab active:cursor-grabbing shrink-0"
+        className="flex items-center gap-2.5 p-3 border-b border-ink-700 cursor-grab active:cursor-grabbing shrink-0 select-none"
         onMouseDown={onHeaderMouseDown}
+        onDoubleClick={(e) => e.preventDefault()}
       >
         {persona.avatarPath ? (
           <img src={persona.avatarPath} alt="" className="w-9 h-9 rounded-lg object-cover shrink-0" style={{ border: `1px solid ${personaColor(persona.id)}66` }} />
@@ -303,8 +304,9 @@ export function InvestigationDock(): JSX.Element | null {
 
       {/* Header — drag handle */}
       <div
-        className="flex items-center gap-2.5 p-3 border-b border-ink-700 cursor-grab active:cursor-grabbing shrink-0"
+        className="flex items-center gap-2.5 p-3 border-b border-ink-700 cursor-grab active:cursor-grabbing shrink-0 select-none"
         onMouseDown={onHeaderMouseDown}
+        onDoubleClick={(e) => e.preventDefault()}
       >
         <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0" style={{ background: `${cfg.color}22`, border: `1px solid ${cfg.color}66` }}>
           <Icon name={cfg.icon} size={17} style={{ color: cfg.color }} />
