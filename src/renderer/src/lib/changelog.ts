@@ -7,6 +7,13 @@ export interface ChangelogEntry {
 /** In-app patch notes. Newest first. Keep in sync with CHANGELOG.md. */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.1.130',
+    date: '2026-07-02',
+    notes: [
+      'The "Screenshot saved — add notes" popup is now draggable by its title bar — grab it and move it anywhere so it doesn\'t block what you\'re looking at.'
+    ]
+  },
+  {
     version: '0.1.129',
     date: '2026-07-02',
     notes: [

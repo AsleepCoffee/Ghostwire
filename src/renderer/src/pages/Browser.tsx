@@ -232,6 +232,9 @@ export function Browser(): JSX.Element {
   // Post-capture annotation panel: a screenshot is always filed first (id), then
   // the user can add a caption + notes before it disappears.
   const [annotate, setAnnotate] = useState<{ id: string; title: string; note: string; thumb: string } | null>(null)
+  const [annotatePos, setAnnotatePos] = useState<{ top: number; left: number } | null>(null)
+  const annotateDragRef = useRef<{ mx: number; my: number; bx: number; by: number } | null>(null)
+  const annotateBoxRef = useRef<HTMLDivElement | null>(null)
   const [savingNote, setSavingNote] = useState(false)
   const refs = useRef<Map<string, WebviewEl>>(new Map())
   const { settings, update, loaded } = useSettings()
@@ -321,6 +324,7 @@ export function Browser(): JSX.Element {
         kind: 'screenshot'
       })
       const hitSel = selectors.length ? `Selectors hit: ${active.hits ?? 0}.` : ''
+      setAnnotatePos(null)
       setAnnotate({ id: ev.id, title: ev.title ?? active.title ?? '', note: hitSel, thumb: dataUrl })
     } catch {
       setToast('Could not capture this page')
@@ -1043,9 +1047,39 @@ export function Browser(): JSX.Element {
       {/* Annotate a just-captured screenshot (caption + notes). Already filed —
           this only enriches it, so closing keeps the evidence. */}
       {annotate && (
-        <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/60 p-6" onMouseDown={() => setAnnotate(null)}>
-          <div className="card w-[460px] max-w-full p-4 shadow-2xl" onMouseDown={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between mb-3">
+        <div className="fixed inset-0 z-50 bg-black/60" onMouseDown={() => setAnnotate(null)}>
+          <div
+            ref={annotateBoxRef}
+            className="fixed z-50 card w-[460px] max-w-full p-4 shadow-2xl select-none"
+            style={annotatePos ? { top: annotatePos.top, left: annotatePos.left } : { top: '50%', left: '50%', transform: 'translate(-50%, -50%)' }}
+            onMouseDown={(e) => e.stopPropagation()}
+          >
+            <div
+              className="flex items-center justify-between mb-3 cursor-grab active:cursor-grabbing"
+              onMouseDown={(e) => {
+                e.preventDefault()
+                e.stopPropagation()
+                const box = annotateBoxRef.current
+                if (!box) return
+                const br = box.getBoundingClientRect()
+                setAnnotatePos({ top: br.top, left: br.left })
+                annotateDragRef.current = { mx: e.clientX, my: e.clientY, bx: br.left, by: br.top }
+                const onMove = (ev: MouseEvent): void => {
+                  if (!annotateDragRef.current) return
+                  setAnnotatePos({
+                    left: Math.max(0, annotateDragRef.current.bx + ev.clientX - annotateDragRef.current.mx),
+                    top: Math.max(0, annotateDragRef.current.by + ev.clientY - annotateDragRef.current.my)
+                  })
+                }
+                const onUp = (): void => {
+                  annotateDragRef.current = null
+                  window.removeEventListener('mousemove', onMove)
+                  window.removeEventListener('mouseup', onUp)
+                }
+                window.addEventListener('mousemove', onMove)
+                window.addEventListener('mouseup', onUp)
+              }}
+            >
               <span className="text-sm font-semibold text-slate-200">Screenshot saved — add notes</span>
               <button className="btn-ghost !p-1" onClick={() => setAnnotate(null)} title="Close (keeps it saved)">
                 <X size={15} />
