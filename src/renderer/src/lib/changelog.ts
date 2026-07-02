@@ -7,6 +7,13 @@ export interface ChangelogEntry {
 /** In-app patch notes. Newest first. Keep in sync with CHANGELOG.md. */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.1.131',
+    date: '2026-07-02',
+    notes: [
+      'The Investigation and Sock Puppet sidebar panels are now draggable and resizable — drag the header bar to move them anywhere, drag the left edge to resize width, drag the bottom edge to resize height.'
+    ]
+  },
+  {
     version: '0.1.130',
     date: '2026-07-02',
     notes: [
