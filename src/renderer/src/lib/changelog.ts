@@ -7,6 +7,13 @@ export interface ChangelogEntry {
 /** In-app patch notes. Newest first. Keep in sync with CHANGELOG.md. */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.1.132',
+    date: '2026-07-02',
+    notes: [
+      'Fix: Investigation and Sock Puppet panels appearing at bottom-left and dragging with offset — caused by a CSS class conflict (relative overriding fixed). Panels now open correctly at the right edge again.'
+    ]
+  },
+  {
     version: '0.1.131',
     date: '2026-07-02',
     notes: [

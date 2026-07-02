@@ -158,7 +158,7 @@ export function PersonaDock(): JSX.Element | null {
   return (
     <aside
       ref={panelRef as React.Ref<HTMLElement>}
-      className={`${posClass} flex flex-col card !bg-ink-850 shadow-2xl border-ink-600 animate-fade-up relative overflow-hidden`}
+      className={`${posClass} flex flex-col card !bg-ink-850 shadow-2xl border-ink-600 animate-fade-up`}
       style={panelStyle}
     >
       {/* Left resize handle */}
@@ -283,7 +283,7 @@ export function InvestigationDock(): JSX.Element | null {
   return (
     <aside
       ref={panelRef as React.Ref<HTMLElement>}
-      className={`${posClass} flex flex-col card !bg-ink-850 shadow-2xl border-ink-600 animate-fade-up relative overflow-hidden`}
+      className={`${posClass} flex flex-col card !bg-ink-850 shadow-2xl border-ink-600 animate-fade-up`}
       style={panelStyle}
     >
       {/* Left resize handle */}
