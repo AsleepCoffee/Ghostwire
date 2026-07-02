@@ -141,44 +141,39 @@ function GraphInner(): JSX.Element {
   const { settings } = useSettings()
   const confirm = useConfirm()
 
-  const board = boards.find((b) => b.id === boardId)
+  const [params] = useSearchParams()
+
+  // Boards visible in the dropdown — only those belonging to the active investigation.
+  const activeBoards = boards.filter((b) => b.projectId === (settings.activeProjectId ?? null))
+  const board = activeBoards.find((b) => b.id === boardId)
   const flash = (m: string): void => {
     setToast(m)
     setTimeout(() => setToast(''), 2600)
   }
 
-  const [params] = useSearchParams()
-
-  const loadBoards = async (): Promise<void> => {
-    const list = await api.boards.list()
-    setBoards(list)
-    if (list.length && !params.get('board')) {
-      const activeId = settings.activeProjectId ?? null
-      const preferred = activeId ? list.find((b) => b.projectId === activeId) : null
-      setBoardId((prev) => prev || (preferred ?? list[0]).id)
-    }
-  }
-
+  // Reload boards whenever the active investigation changes. Always pick the
+  // first board for the new investigation (or clear if there are none) so stale
+  // boards from other investigations never bleed through.
   useEffect(() => {
-    loadBoards()
+    let cancelled = false
+    api.boards.list().then((list) => {
+      if (cancelled) return
+      setBoards(list)
+      if (!params.get('board')) {
+        const activeId = settings.activeProjectId ?? null
+        const match = activeId ? list.find((b) => b.projectId === activeId) : null
+        setBoardId(match?.id ?? '')
+      }
+    })
+    return () => { cancelled = true }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [settings.activeProjectId])
 
   // Honor ?board=<id> (e.g. opened from an investigation's "Build link chart").
   useEffect(() => {
     const b = params.get('board')
     if (b) setBoardId(b)
   }, [params])
-
-  // Auto-switch to the active investigation's board when the active project changes.
-  useEffect(() => {
-    if (params.get('board')) return
-    const activeId = settings.activeProjectId ?? null
-    if (!activeId) return
-    const projectBoard = boards.find((b) => b.projectId === activeId)
-    if (projectBoard && projectBoard.id !== boardId) setBoardId(projectBoard.id)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [settings.activeProjectId])
 
   const loadGraph = useCallback(async (id: string): Promise<void> => {
     const { nodes: ents, edges: eds } = await api.boards.graph(id)
@@ -225,7 +220,8 @@ function GraphInner(): JSX.Element {
     if (!name) return
     const b = await api.boards.save({ name, projectId: newBoardProject || null })
     setCreatingBoard(false)
-    await loadBoards()
+    const list = await api.boards.list()
+    setBoards(list)
     setBoardId(b.id)
   }
 
@@ -235,7 +231,7 @@ function GraphInner(): JSX.Element {
     await api.boards.remove(board.id)
     setBoardId('')
     setSelected(null)
-    loadBoards()
+    api.boards.list().then(setBoards)
   }
 
   const addEntity = async (type: EntityType): Promise<void> => {
@@ -662,12 +658,12 @@ function GraphInner(): JSX.Element {
     </Modal>
   )
 
-  if (boards.length === 0) {
+  if (activeBoards.length === 0) {
     return (
       <>
         <EmptyState
           icon="Workflow"
-          title="No investigation boards yet"
+          title="No boards for this investigation"
           subtitle="Create a board to map out entities — people, emails, usernames, domains — and the links between them."
           action={
             <button className="btn-primary" onClick={openCreateBoard}>
@@ -690,7 +686,7 @@ function GraphInner(): JSX.Element {
           value={boardId}
           onChange={(e) => setBoardId(e.target.value)}
         >
-          {boards.map((b) => (
+          {activeBoards.map((b) => (
             <option key={b.id} value={b.id}>
               {b.name}
             </option>

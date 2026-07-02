@@ -237,6 +237,15 @@ export function Browser(): JSX.Element {
   const { settings, update, loaded } = useSettings()
   const restored = useRef(false)
   const [sessionReady, setSessionReady] = useState(false)
+  // Per-investigation tab storage. Refs give switch/persist effects the latest
+  // state without becoming deps (avoids infinite loops).
+  const prevProjectId = useRef<string | null>(null)
+  const tabsRef = useRef<Tab[]>([])
+  const activeIdRef = useRef<string>('')
+  const byProjectRef = useRef<Record<string, { tabs: { url: string; personaId?: string }[]; activeIndex: number }>>({})
+
+  useEffect(() => { tabsRef.current = tabs }, [tabs])
+  useEffect(() => { activeIdRef.current = activeId }, [activeId])
   const selKey = settings.activeProjectId ?? '_global'
   const selectors = settings.selectorsByProject?.[selKey] ?? []
   const highlightOn = settings.highlightSelectors !== false
@@ -497,7 +506,14 @@ export function Browser(): JSX.Element {
   useEffect(() => {
     if (!loaded || restored.current) return
     restored.current = true
-    const saved = settings.browserTabs ?? []
+    // Seed the in-memory by-project cache from persisted settings.
+    byProjectRef.current = settings.browserTabsByProject ?? {}
+    const projectId = settings.activeProjectId ?? null
+    prevProjectId.current = projectId
+    // Per-project tabs take priority; fall back to legacy global tabs for upgrades.
+    const byProject = projectId ? byProjectRef.current[projectId] : undefined
+    const saved = byProject?.tabs ?? settings.browserTabs ?? []
+    const savedIndex = byProject?.activeIndex ?? settings.browserActiveIndex ?? 0
     if (saved.length) {
       const created: Tab[] = saved.map((t) => ({
         id: newId(),
@@ -509,7 +525,7 @@ export function Browser(): JSX.Element {
         personaId: t.personaId
       }))
       setTabs(created)
-      const idx = Math.min(Math.max(settings.browserActiveIndex ?? 0, 0), created.length - 1)
+      const idx = Math.min(Math.max(savedIndex, 0), created.length - 1)
       setActiveId(created[idx].id)
     }
     const pending = consumePending()
@@ -520,15 +536,59 @@ export function Browser(): JSX.Element {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loaded])
 
+  // When the user switches investigations, save the current tabs under the old
+  // project and restore (or start fresh) for the new one.
+  useEffect(() => {
+    if (!sessionReady) return
+    const newProjectId = settings.activeProjectId ?? null
+    if (newProjectId === prevProjectId.current) return
+    const oldId = prevProjectId.current
+    prevProjectId.current = newProjectId
+    // Save current tabs under the old investigation.
+    if (oldId) {
+      const snapshot = tabsRef.current.map((t) => ({ url: t.url, personaId: t.personaId }))
+      const activeIndex = Math.max(0, tabsRef.current.findIndex((t) => t.id === activeIdRef.current))
+      byProjectRef.current = { ...byProjectRef.current, [oldId]: { tabs: snapshot, activeIndex } }
+      update({ browserTabsByProject: byProjectRef.current })
+    }
+    // Restore the new investigation's tabs (or start with an empty browser).
+    const newData = newProjectId ? byProjectRef.current[newProjectId] : undefined
+    const saved = newData?.tabs ?? []
+    const savedIndex = newData?.activeIndex ?? 0
+    if (saved.length) {
+      const created: Tab[] = saved.map((t) => ({
+        id: newId(),
+        url: toUrl(t.url),
+        initialUrl: toUrl(t.url),
+        title: 'Loading…',
+        loading: true,
+        failed: false,
+        personaId: t.personaId
+      }))
+      setTabs(created)
+      setActiveId(created[Math.min(Math.max(savedIndex, 0), created.length - 1)].id)
+    } else {
+      setTabs([])
+      setActiveId('')
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [settings.activeProjectId, sessionReady])
+
   // Subscribe for new open-requests from elsewhere in the app.
   useEffect(() => subscribeOpen(openTabs), [openTabs])
 
   // Persist the open tabs (url + persona) so the session survives a restart.
   useEffect(() => {
     if (!sessionReady) return
+    const projectId = settings.activeProjectId ?? null
     const snapshot = tabs.map((t) => ({ url: t.url, personaId: t.personaId }))
     const activeIndex = Math.max(0, tabs.findIndex((t) => t.id === activeId))
-    update({ browserTabs: snapshot, browserActiveIndex: activeIndex })
+    if (projectId) {
+      byProjectRef.current = { ...byProjectRef.current, [projectId]: { tabs: snapshot, activeIndex } }
+      update({ browserTabsByProject: byProjectRef.current, browserTabs: snapshot, browserActiveIndex: activeIndex })
+    } else {
+      update({ browserTabs: snapshot, browserActiveIndex: activeIndex })
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tabs, activeId, sessionReady])
 

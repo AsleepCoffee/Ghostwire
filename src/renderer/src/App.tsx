@@ -39,6 +39,7 @@ import { Guide } from './pages/Guide'
 import { Settings } from './pages/Settings'
 import { ParticleBackground } from './components/ParticleBackground'
 import { WelcomeModal } from './components/WelcomeModal'
+import { RequireCase } from './components/RequireCase'
 import { useSettings } from './lib/settings'
 
 /** Registers the in-app browser as the sink for every link-open request, so
@@ -112,7 +113,7 @@ export default function App(): JSX.Element {
               <Route path="/intel" element={<Intel />} />
               <Route path="/infra" element={<InfraIntel />} />
               <Route path="/recon" element={<Recon />} />
-              <Route path="/graph" element={<Graph />} />
+              <Route path="/graph" element={<RequireCase feature="Link charts"><Graph /></RequireCase>} />
               <Route path="/vpn" element={<Vpn />} />
               <Route path="/whats-new" element={<WhatsNew />} />
               <Route path="/guide" element={<Guide />} />

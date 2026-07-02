@@ -7,6 +7,16 @@ export interface ChangelogEntry {
 /** In-app patch notes. Newest first. Keep in sync with CHANGELOG.md. */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.1.127',
+    date: '2026-07-02',
+    notes: [
+      'Link charts now require an active investigation — the Graph page shows the same "No active case" gate as Evidence and Timeline, so boards from other investigations can\'t bleed through.',
+      'Board dropdown now shows only boards that belong to the active investigation. Switching investigations auto-selects the correct board (or shows the empty state if none exist yet).',
+      'Browser tabs are now scoped per investigation — switching cases swaps to that case\'s tabs (saved under the old case). Brand-new investigations start with an empty browser.',
+      'Transforms on URL-format domain entities (e.g. https://example.com/) now correctly strip the protocol and path before calling crt.sh, VirusTotal, Hunter, and DNS APIs. Previously they returned HTTP errors because the full URL was sent instead of the bare hostname.'
+    ]
+  },
+  {
     version: '0.1.126',
     date: '2026-06-30',
     notes: [

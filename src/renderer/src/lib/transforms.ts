@@ -32,6 +32,16 @@ export interface Transform {
   ) => Promise<TransformOutput>
 }
 
+/** Strip protocol/path from a label so domain transforms always get a bare hostname.
+ *  Handles the case where a "domain" entity's label is actually a full URL. */
+function toHostname(label: string): string {
+  try {
+    return new URL(/^https?:\/\//i.test(label) ? label : `https://${label}`).hostname
+  } catch {
+    return label
+  }
+}
+
 /** crt.sh subdomain enumeration — free, no key. */
 const crtshSubdomains: Transform = {
   id: 'crtsh',
@@ -39,17 +49,18 @@ const crtshSubdomains: Transform = {
   description: 'Pulls subdomains from Certificate Transparency logs and adds them as domain entities. Free, no key.',
   network: true,
   run: async (label) => {
+    const host = toHostname(label)
     const data = (await api.net.fetchJson(
-      `https://crt.sh/?q=${encodeURIComponent('%.' + label)}&output=json`
+      `https://crt.sh/?q=${encodeURIComponent('%.' + host)}&output=json`
     )) as Array<{ name_value?: string }>
     const set = new Set<string>()
     for (const row of data ?? []) {
       for (const raw of String(row.name_value ?? '').split('\n')) {
         const n = raw.trim().toLowerCase()
-        if (n && !n.startsWith('*') && n.endsWith(label)) set.add(n)
+        if (n && !n.startsWith('*') && n.endsWith(host)) set.add(n)
       }
     }
-    set.delete(label)
+    set.delete(host)
     const subs = Array.from(set).slice(0, 30)
     return {
       entities: subs.map((s) => ({ type: 'domain' as EntityType, label: s })),
@@ -71,7 +82,7 @@ const vtDomainSubdomains: Transform = {
   network: true,
   run: async (label, _p, { apiKeys }) => {
     const data = (await api.net.fetchJson(
-      `https://www.virustotal.com/api/v3/domains/${enc(label)}/subdomains?limit=40`,
+      `https://www.virustotal.com/api/v3/domains/${enc(toHostname(label))}/subdomains?limit=40`,
       { 'x-apikey': apiKeys.virustotal }
     )) as { data?: { id?: string }[] }
     const subs = arr(data.data)
@@ -90,7 +101,7 @@ const vtDomainResolutions: Transform = {
   network: true,
   run: async (label, _p, { apiKeys }) => {
     const data = (await api.net.fetchJson(
-      `https://www.virustotal.com/api/v3/domains/${enc(label)}/resolutions?limit=40`,
+      `https://www.virustotal.com/api/v3/domains/${enc(toHostname(label))}/resolutions?limit=40`,
       { 'x-apikey': apiKeys.virustotal }
     )) as { data?: { attributes?: { ip_address?: string } }[] }
     const ips = Array.from(
@@ -108,7 +119,7 @@ const hunterEmails: Transform = {
   network: true,
   run: async (label, _p, { apiKeys }) => {
     const data = (await api.net.fetchJson(
-      `https://api.hunter.io/v2/domain-search?domain=${enc(label)}&limit=25&api_key=${enc(apiKeys.hunter)}`
+      `https://api.hunter.io/v2/domain-search?domain=${enc(toHostname(label))}&limit=25&api_key=${enc(apiKeys.hunter)}`
     )) as { data?: { emails?: { value?: string }[] } }
     const emails = arr(data.data?.emails)
       .map((e) => String((e as { value?: string }).value ?? ''))
@@ -195,7 +206,7 @@ const dnsResolve: Transform = {
   description: 'Resolve this domain to IPs via Google DNS-over-HTTPS (free). Adds IP entities.',
   network: true,
   run: async (label) => {
-    const d = (await api.net.fetchJson(`https://dns.google/resolve?name=${enc(label)}&type=A`)) as {
+    const d = (await api.net.fetchJson(`https://dns.google/resolve?name=${enc(toHostname(label))}&type=A`)) as {
       Answer?: { type?: number; data?: string }[]
     }
     const ips = Array.from(

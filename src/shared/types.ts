@@ -257,6 +257,8 @@ export interface AppSettings {
   browserTabs?: { url: string; personaId?: string }[]
   /** Index of the active tab among browserTabs, restored on next launch. */
   browserActiveIndex?: number
+  /** Tabs saved per investigation (keyed by project id, for scoped session restore). */
+  browserTabsByProject?: Record<string, { tabs: { url: string; personaId?: string }[]; activeIndex: number }>
 }
 
 /** Dashboard widget sizing preset (column span in a 12-col grid). */
