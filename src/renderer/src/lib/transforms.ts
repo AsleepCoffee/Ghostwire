@@ -289,8 +289,46 @@ const exifExtract: Transform = {
   }
 }
 
+/** Extract an 11-char YouTube video ID from any common URL format or bare ID. */
+function youtubeVideoId(label: string): string | null {
+  const pats = [
+    /youtu\.be\/([A-Za-z0-9_-]{11})/,
+    /[?&]v=([A-Za-z0-9_-]{11})/,
+    /youtube\.com\/(?:shorts|embed|v)\/([A-Za-z0-9_-]{11})/
+  ]
+  for (const re of pats) {
+    const m = label.match(re)
+    if (m) return m[1]
+  }
+  if (/^[A-Za-z0-9_-]{11}$/.test(label.trim())) return label.trim()
+  return null
+}
+
+/** Open the highest-res YouTube thumbnail in the browser. Falls back through
+ *  quality tiers so there is always something visible (maxres → hq → sd). */
+const ytThumbnail: Transform = {
+  id: 'yt-thumbnail',
+  label: 'Open YouTube thumbnail',
+  description: 'Opens the highest-resolution thumbnail for this YouTube video in the browser tab (no API key needed).',
+  run: async (label) => {
+    const id = youtubeVideoId(label)
+    if (!id) throw new Error('Could not extract a YouTube video ID — paste the full video URL or a bare 11-char ID.')
+    return {
+      entities: [],
+      // Open maxres, hq, and sd in three browser tabs so the user can pick the
+      // best available one (maxres is often missing for older or unlisted videos).
+      urls: [
+        `https://img.youtube.com/vi/${id}/maxresdefault.jpg`,
+        `https://img.youtube.com/vi/${id}/hqdefault.jpg`
+      ],
+      note: `Thumbnail opened for video ${id}`
+    }
+  }
+}
+
 const TRANSFORMS: Partial<Record<EntityType, Transform[]>> = {
   image: [exifExtract],
+  social: [ytThumbnail],
   domain: [
     crtshSubdomains,
     dnsResolve,

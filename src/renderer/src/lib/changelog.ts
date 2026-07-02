@@ -7,6 +7,13 @@ export interface ChangelogEntry {
 /** In-app patch notes. Newest first. Keep in sync with CHANGELOG.md. */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.1.135',
+    date: '2026-07-02',
+    notes: [
+      'New transform on Social entities: "Open YouTube thumbnail" — paste a YouTube video URL (or youtu.be short link) as a Social entity, run the transform, and the maxres + HQ thumbnails open in the Browser tab. No API key needed.'
+    ]
+  },
+  {
     version: '0.1.134',
     date: '2026-07-02',
     notes: [
