@@ -7,6 +7,13 @@ export interface ChangelogEntry {
 /** In-app patch notes. Newest first. Keep in sync with CHANGELOG.md. */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.1.136',
+    date: '2026-07-05',
+    notes: [
+      'Fix: double-clicking the Investigation or Sock Puppet panel no longer causes a black screen — the main process now immediately reverts any maximize that wasn\'t triggered by the topbar button (Electron was routing double-clicks on drag regions to the OS WM_NCLBUTTONDBLCLK handler). Added client-side guard that also skips the drag on the second click of a double-click.'
+    ]
+  },
+  {
     version: '0.1.135',
     date: '2026-07-02',
     notes: [

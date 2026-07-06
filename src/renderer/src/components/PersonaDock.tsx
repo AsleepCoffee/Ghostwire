@@ -28,9 +28,19 @@ function useDockPanel(): {
   const [panelState, setPanelState] = useState<PanelState | null>(null)
   const dragRef = useRef<{ mx: number; my: number; bx: number; by: number } | null>(null)
   const resizeRef = useRef<{ mx: number; my: number; br: DOMRect } | null>(null)
+  // Track the timestamp of the previous header mousedown so we can detect a
+  // double-click and skip the drag setup entirely (the main process also reverts
+  // any accidental OS-level WM_NCLBUTTONDBLCLK maximize).
+  const lastHeaderDown = useRef(0)
 
   const onHeaderMouseDown = (e: React.MouseEvent): void => {
     e.preventDefault()
+    const now = Date.now()
+    const gap = now - lastHeaderDown.current
+    lastHeaderDown.current = now
+    // If this looks like the second click of a double-click, bail out so we
+    // don't start a second overlapping drag, and let onDoubleClick handle it.
+    if (gap < 500) return
     const box = panelRef.current
     if (!box) return
     const br = box.getBoundingClientRect()
@@ -164,6 +174,7 @@ export function PersonaDock(): JSX.Element | null {
       ref={panelRef as React.Ref<HTMLElement>}
       className={`${posClass} flex flex-col card !bg-ink-850 shadow-2xl border-ink-600 animate-fade-up`}
       style={{ ...NO_DRAG, ...panelStyle }}
+      onDoubleClick={(e) => e.preventDefault()}
     >
       {/* Left resize handle */}
       <div
@@ -290,6 +301,7 @@ export function InvestigationDock(): JSX.Element | null {
       ref={panelRef as React.Ref<HTMLElement>}
       className={`${posClass} flex flex-col card !bg-ink-850 shadow-2xl border-ink-600 animate-fade-up`}
       style={{ ...NO_DRAG, ...panelStyle }}
+      onDoubleClick={(e) => e.preventDefault()}
     >
       {/* Left resize handle */}
       <div

@@ -1,4 +1,5 @@
 import { ipcMain, dialog, BrowserWindow, clipboard, nativeImage, app, net, webContents } from 'electron'
+import { setIntentionalMaximize } from './win-state'
 import { randomUUID, createHash } from 'crypto'
 import { existsSync, mkdirSync, writeFileSync, copyFileSync, unlinkSync, readFileSync } from 'fs'
 import { join, dirname, basename } from 'path'
@@ -1269,7 +1270,12 @@ export function registerHandlers(): void {
   ipcMain.on('win:toggleMaximize', (e) => {
     const w = BrowserWindow.fromWebContents(e.sender)
     if (!w) return
-    w.isMaximized() ? w.unmaximize() : w.maximize()
+    if (w.isMaximized()) {
+      w.unmaximize()
+    } else {
+      setIntentionalMaximize()
+      w.maximize()
+    }
   })
   ipcMain.on('win:close', (e) => BrowserWindow.fromWebContents(e.sender)?.close())
   ipcMain.handle('win:isMaximized', (e) => BrowserWindow.fromWebContents(e.sender)?.isMaximized() ?? false)
