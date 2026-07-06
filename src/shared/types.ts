@@ -251,6 +251,8 @@ export interface AppSettings {
   ghostMode?: boolean
   /** App version the welcome/appearance popup was last shown for. Shown again on first run and after each update. */
   seenWelcomeVersion?: string
+  /** True once the user has finished or skipped the guided tutorial. Prevents auto-showing it again. */
+  tutorialCompleted?: boolean
   /** Per-mode dashboard widget layout (which widgets show, their order and size). */
   dashboardLayout?: DashboardLayout
   /** Open in-app browser tabs, restored on next launch so the session persists. */

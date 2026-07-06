@@ -7,10 +7,11 @@ export interface ChangelogEntry {
 /** In-app patch notes. Newest first. Keep in sync with CHANGELOG.md. */
 export const CHANGELOG: ChangelogEntry[] = [
   {
-    version: '0.1.143',
+    version: '1.0.0',
     date: '2026-07-06',
     notes: [
-      'GitHub releases now publish correctly as the latest stable release instead of remaining as a draft/prerelease.'
+      'Guided tutorial: a step-by-step walkthrough launches automatically on first install and covers every section of GhostWire — Investigations, Evidence Board, Graph Workspace, Case Timeline, Sock Puppets, Browser, Mailbox, Research Tools, VPN, and Settings. Relaunch from Settings → Appearance → "Restart tutorial".',
+      'GitHub CI: releases now publish correctly as the latest stable release.'
     ]
   },
   {

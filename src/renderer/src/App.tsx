@@ -39,8 +39,10 @@ import { Guide } from './pages/Guide'
 import { Settings } from './pages/Settings'
 import { ParticleBackground } from './components/ParticleBackground'
 import { WelcomeModal } from './components/WelcomeModal'
+import { TutorialOverlay } from './components/TutorialOverlay'
 import { RequireCase } from './components/RequireCase'
 import { useSettings } from './lib/settings'
+import { TutorialContext } from './lib/tutorial'
 
 /** Registers the in-app browser as the sink for every link-open request, so
  *  nothing is ever handed to the system browser. */
@@ -74,7 +76,19 @@ export default function App(): JSX.Element {
     loaded && !!version && !welcomeDismissed && settings.seenWelcomeVersion !== version
   const isUpdate = !!settings.seenWelcomeVersion
 
+  // Tutorial overlay — auto-starts after the welcome modal on first launch.
+  // tutorialFired prevents re-triggering within the same session when settings change.
+  const [tutorialOpen, setTutorialOpen] = useState(false)
+  const [tutorialFired, setTutorialFired] = useState(false)
+  useEffect(() => {
+    if (loaded && !showWelcome && !settings.tutorialCompleted && !tutorialFired) {
+      setTutorialFired(true)
+      setTutorialOpen(true)
+    }
+  }, [loaded, showWelcome, settings.tutorialCompleted, tutorialFired])
+
   return (
+    <TutorialContext.Provider value={{ openTutorial: () => setTutorialOpen(true) }}>
     <PersonaDockProvider>
     <BrowserRouting />
     <div className="app-backdrop" />
@@ -141,6 +155,8 @@ export default function App(): JSX.Element {
         }}
       />
     )}
+    {tutorialOpen && <TutorialOverlay onClose={() => setTutorialOpen(false)} />}
     </PersonaDockProvider>
+    </TutorialContext.Provider>
   )
 }

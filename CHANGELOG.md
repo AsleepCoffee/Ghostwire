@@ -1,5 +1,9 @@
 # Changelog
 
+## v1.0.0
+- **Guided tutorial**: A step-by-step walkthrough launches automatically on first install and walks through every section of GhostWire — Investigations, Evidence Board, Graph Workspace, Case Timeline, Sock Puppets, Browser, Mailbox, Research Tools, VPN, and Settings. Relaunch it any time from Settings → Appearance → "Restart tutorial".
+- GitHub releases now correctly publish as the latest release. CI promotion step updated to use the GitHub REST API directly for reliability.
+
 ## v0.1.143
 - GitHub releases are now correctly published as the latest release instead of remaining as a draft/prerelease. The CI promotion step now uses the GitHub REST API directly for reliability.
 

@@ -21,6 +21,7 @@ import {
 import { api, type UpdateStatus, type BackupInfo } from '../lib/api'
 import { Icon } from '../components/ui'
 import { useSettings, THEMES } from '../lib/settings'
+import { useTutorial } from '../lib/tutorial'
 import { useConfirm } from '../lib/confirm'
 import { fmtDateTime } from '../lib/format'
 import { FREE_SERVICES, PAID_SERVICES, type ApiService } from '../lib/apiServices'
@@ -44,6 +45,7 @@ const SECTIONS: { id: SectionId; label: string; icon: string }[] = [
 
 export function Settings(): JSX.Element {
   const { settings, update } = useSettings()
+  const { openTutorial } = useTutorial()
   const [section, setSection] = useState<SectionId>('appearance')
   const [vaultPath, setVaultPath] = useState<string | undefined>(undefined)
   const [msg, setMsg] = useState('')
@@ -248,6 +250,19 @@ export function Settings(): JSX.Element {
                 </div>
                 <Toggle on={settings.ghostMode === true} onChange={(v) => update({ ghostMode: v })} />
               </label>
+
+              <div className="flex items-center justify-between py-3 border-t border-ink-700">
+                <div className="pr-4">
+                  <div className="text-sm text-slate-200 font-medium">Guided tutorial</div>
+                  <div className="text-xs text-slate-500">Walk through every section of GhostWire with a step-by-step tour.</div>
+                </div>
+                <button
+                  className="btn-ghost border border-ink-600 text-sm shrink-0"
+                  onClick={openTutorial}
+                >
+                  Restart tutorial
+                </button>
+              </div>
             </section>
           )}
 
