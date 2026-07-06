@@ -8,7 +8,7 @@ import { identityFields, identityText } from '../lib/identity'
 import { personaColor, PROJECT_TYPES } from '../lib/constants'
 import { CopyField } from './CopyField'
 import { Icon } from './ui'
-import { api, type Project } from '../lib/api'
+import { api, type Project, type Evidence } from '../lib/api'
 
 type PanelState = { top: number; left: number; width: number; height: number }
 
@@ -58,15 +58,12 @@ function useDockPanel(): {
     const endDrag = beginDrag()
     const onMove = (ev: MouseEvent): void => {
       if (!dragRef.current) return
-      setPanelState((prev) =>
-        prev
-          ? {
-              ...prev,
-              left: Math.max(0, dragRef.current!.bx + ev.clientX - dragRef.current!.mx),
-              top: Math.max(minTopRef.current, dragRef.current!.by + ev.clientY - dragRef.current!.my)
-            }
-          : prev
-      )
+      setPanelState((prev) => {
+        if (!prev) return prev
+        const newLeft = Math.max(0, Math.min(window.innerWidth - 60, dragRef.current!.bx + ev.clientX - dragRef.current!.mx))
+        const newTop = Math.max(minTopRef.current, Math.min(window.innerHeight - 60, dragRef.current!.by + ev.clientY - dragRef.current!.my))
+        return { ...prev, left: newLeft, top: newTop }
+      })
     }
     const onUp = (): void => {
       dragRef.current = null
@@ -281,13 +278,16 @@ export function InvestigationDock(): JSX.Element | null {
   const [project, setProject] = useState<Project | null>(null)
   const { panelRef, panelState, onHeaderMouseDown, onLeftResizeMouseDown, onBottomResizeMouseDown } = useDockPanel()
 
+  const [evidence, setEvidence] = useState<Evidence[]>([])
   const activeId = settings.activeProjectId ?? null
   useEffect(() => {
     if (!activeId) {
       setProject(null)
+      setEvidence([])
       return
     }
     api.projects.get(activeId).then(setProject)
+    api.evidence.list(activeId).then(setEvidence)
   }, [activeId, projectOpen])
 
   if (!project) return null
@@ -379,6 +379,25 @@ export function InvestigationDock(): JSX.Element | null {
             </div>
           )}
         </div>
+        {evidence.length > 0 && (
+          <div>
+            <div className="text-[10px] font-semibold uppercase tracking-widest text-slate-500 mb-1.5">
+              Evidence <span className="text-slate-600">({evidence.length})</span>
+            </div>
+            <div className="space-y-1.5">
+              {evidence.slice(0, 25).map((ev) => (
+                <CopyField
+                  key={ev.id}
+                  label={ev.title ? ev.title.slice(0, 32) : ev.kind}
+                  value={ev.sourceUrl || ev.title || ev.path}
+                />
+              ))}
+              {evidence.length > 25 && (
+                <p className="text-[10px] text-slate-600">+{evidence.length - 25} more — open investigation to see all.</p>
+              )}
+            </div>
+          </div>
+        )}
         {project.objectives && (
           <div>
             <div className="text-[10px] font-semibold uppercase tracking-widest text-slate-500 mb-1.5">Objectives</div>
