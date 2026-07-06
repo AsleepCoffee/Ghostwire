@@ -165,4 +165,11 @@ jobs:
             gh release upload "$TAG" "$work/SHA256SUMS.txt" --clobber
           fi
           # Flip prerelease -> full release and mark it latest.
-          gh release edit "$TAG" --prerelease=false --latest
+          # Use the REST API directly — gh release edit's --prerelease=false flag
+          # behaves inconsistently across gh CLI versions on GitHub Actions runners.
+          RID=$(gh api "repos/${GITHUB_REPOSITORY}/releases/tags/${TAG}" --jq '.id')
+          echo "Promoting release ID $RID ($TAG) to latest…"
+          gh api -X PATCH "repos/${GITHUB_REPOSITORY}/releases/${RID}" \
+            -F prerelease=false \
+            -F make_latest=true
+          echo "✓ $TAG is now the latest release."

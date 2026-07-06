@@ -1,5 +1,8 @@
 # Changelog
 
+## v0.1.143
+- GitHub releases are now correctly published as the latest release instead of remaining as a draft/prerelease. The CI promotion step now uses the GitHub REST API directly for reliability.
+
 ## v0.1.122
 - Fixed DOCX export — Word can now open exported .docx files (invalid margin attributes in the generated XML were causing Word to reject the file).
 - DOCX export no longer embeds large screenshots inline; all text content, metadata, hashes, and chain of custody remain fully included. Use PDF or HTML for image-embedded reports.
