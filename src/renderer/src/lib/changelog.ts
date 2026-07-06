@@ -7,6 +7,14 @@ export interface ChangelogEntry {
 /** In-app patch notes. Newest first. Keep in sync with CHANGELOG.md. */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.1.137',
+    date: '2026-07-05',
+    notes: [
+      'HTML report: interactive evidence board — filter by type (Screenshots / Images / Files) and sort by date or name. Lightbox now has ← → prev/next buttons and keyboard arrow navigation.',
+      'HTML report: SHA-256 hashes, full EXIF metadata tables and forensic sidecar artifacts moved to a new "Appendix: Technical evidence details" section — evidence cards stay clean with a "Technical details ↓" link. Appendix is also in the sidebar TOC.'
+    ]
+  },
+  {
     version: '0.1.136',
     date: '2026-07-05',
     notes: [

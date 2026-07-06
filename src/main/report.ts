@@ -250,6 +250,7 @@ function tocSections(d: ReportData): Section[] {
   if (d.activity.length) out.push({ id: 'timeline', title: 'Activity timeline', count: d.activity.length })
   out.push({ id: 'custody', title: 'Chain of custody', count: d.evidence.length })
   out.push({ id: 'disclaimer', title: 'Limitations & disclaimer' })
+  if (d.evidence.length) out.push({ id: 'appendix', title: 'Appendix: Technical details', count: d.evidence.length })
   return out
 }
 
@@ -288,13 +289,27 @@ export function buildHtmlReport(d: ReportData): string {
   const branded = d.branded !== false
   const classification = (d.classification || 'CONFIDENTIAL').toUpperCase()
 
+  // Build per-kind counts for the filter bar.
+  const kindCounts = d.evidence.reduce((m, e) => { m[e.kind] = (m[e.kind] || 0) + 1; return m }, {} as Record<string, number>)
+  const filterBar = d.evidence.length > 1 ? `<div class="ev-toolbar">
+    <div class="ev-filters">
+      <button class="ev-filter active" data-kind="">All (${d.evidence.length})</button>
+      ${Object.entries(kindCounts).map(([k, n]) => `<button class="ev-filter" data-kind="${esc(k)}">${esc(kindLabel[k] ?? k)}s (${n})</button>`).join('')}
+    </div>
+    <select class="ev-sort" id="evSort" title="Sort exhibits">
+      <option value="date-desc">Newest first</option>
+      <option value="date-asc">Oldest first</option>
+      <option value="title">Name A–Z</option>
+    </select>
+  </div>` : ''
+
   const evidenceHtml = d.evidence.length
-    ? `<div class="evgrid">${d.evidence
+    ? filterBar + `<div class="evgrid" id="evGrid">${d.evidence
         .map(
-          (e, i) => `<figure class="evcard searchable">
+          (e, i) => `<figure class="evcard searchable" id="ev-card-${i + 1}" data-kind="${esc(e.kind)}" data-date="${e.capturedAt}" data-title="${esc((e.title || '').toLowerCase())}">
             ${
               e.dataUri
-                ? `<button class="evthumb" data-full="${e.dataUri}" data-cap="${esc(`Exhibit ${i + 1} — ${e.title || e.sourceUrl || ''}`)}" aria-label="Enlarge"><img src="${e.dataUri}" alt=""/></button>`
+                ? `<button class="evthumb" data-idx="${i}" data-full="${e.dataUri}" data-cap="${esc(`Exhibit ${i + 1} — ${e.title || e.sourceUrl || ''}`)}" aria-label="Enlarge"><img src="${e.dataUri}" alt=""/></button>`
                 : '<div class="evfile">FILE</div>'
             }
             <figcaption>
@@ -305,19 +320,8 @@ export function buildHtmlReport(d: ReportData): string {
               ${evidenceLocation(e)}
               ${e.note ? `<div class="evnote">${esc(e.note)}</div>` : ''}
               ${e.ocr ? `<details class="ocr"><summary>Extracted text (OCR)</summary><pre>${esc(e.ocr)}</pre></details>` : ''}
-              ${
-                e.exif?.all && Object.keys(e.exif.all).length
-                  ? `<details class="ocr"><summary>All metadata (${Object.keys(e.exif.all).length})</summary><table class="metatbl">${Object.entries(e.exif.all)
-                      .map(([k, v]) => `<tr><td>${esc(k)}</td><td>${esc(v)}</td></tr>`)
-                      .join('')}</table></details>`
-                  : ''
-              }
-              ${
-                e.sha256
-                  ? `<div class="hashrow"><span class="hbadge" title="Integrity hash recorded at capture">✓ SHA-256</span><code class="mono" data-hash="${esc(e.sha256)}">${esc(e.sha256.slice(0, 16))}…</code><button class="cphash" data-hash="${esc(e.sha256)}">copy</button></div>`
-                  : ''
-              }
-              ${evidenceArtifacts(e)}
+              ${e.sha256 ? `<div class="hashrow"><span class="hbadge" title="Integrity hash recorded at capture">✓ SHA-256</span></div>` : ''}
+              <a href="#appx-${i + 1}" class="techlink">Technical details ↓</a>
             </figcaption>
           </figure>`
         )
@@ -348,6 +352,26 @@ export function buildHtmlReport(d: ReportData): string {
         .map((pa) => `<li class="searchable"><b>${esc(pa.name)}</b> <span class="muted">@${esc(pa.handle)} · ${esc(pa.status)}</span></li>`)
         .join('')}</ul>`
     : '<p class="muted">No personas linked.</p>'
+
+  // Appendix: full technical details (hashes, EXIF, artifacts) moved out of evidence cards.
+  const appendixHtml = d.evidence.length ? d.evidence.map((e, i) => {
+    const hasExif = e.exif?.all && Object.keys(e.exif.all).length > 0
+    const hasArts = (e.artifacts ?? []).length > 0
+    const hasTech = e.sha256 || hasExif || hasArts
+    if (!hasTech) return `<div class="appx-item" id="appx-${i + 1}"><div class="appx-head"><span class="exno">Exhibit ${i + 1}</span><span class="appx-title">${esc(e.title || e.sourceUrl || 'Untitled')}</span><a href="#ev-card-${i + 1}" class="techlink">↑ Back</a></div><p class="muted" style="font-size:12px">No hash, EXIF or forensic artifacts recorded for this exhibit.</p></div>`
+    return `<div class="appx-item" id="appx-${i + 1}">
+      <div class="appx-head">
+        <span class="exno">Exhibit ${i + 1}</span>
+        <span class="appx-title">${esc(e.title || e.sourceUrl || 'Untitled')}</span>
+        <a href="#ev-card-${i + 1}" class="techlink">↑ Back to exhibit</a>
+      </div>
+      ${e.sourceUrl ? `<div class="muted" style="font-size:12px;word-break:break-all;margin-bottom:6px">Source: <a href="${esc(e.sourceUrl)}" target="_blank" rel="noreferrer">${esc(e.sourceUrl)}</a></div>` : ''}
+      ${e.sha256 ? `<div class="appx-sha"><span class="hbadge">✓ SHA-256</span><code>${esc(e.sha256)}</code><button class="cphash" data-hash="${esc(e.sha256)}">copy</button></div>` : ''}
+      ${(e.artifacts ?? []).map((x) => `<div class="appx-sha"><span class="hbadge" style="background:color-mix(in srgb,var(--accent2) 14%,transparent);color:var(--accent2)">${esc(x.name)}</span><code>${esc(x.sha256)}</code><button class="cphash" data-hash="${esc(x.sha256)}">copy</button></div>`).join('')}
+      ${hasExif ? `<details class="ocr" style="margin-top:8px"><summary>All EXIF / metadata (${Object.keys(e.exif!.all!).length} fields)</summary><table class="metatbl">${Object.entries(e.exif!.all!).map(([k, v]) => `<tr><td>${esc(k)}</td><td>${esc(v)}</td></tr>`).join('')}</table></details>` : ''}
+      ${hasArts ? `<div class="arts" style="margin-top:8px"><div class="artlabel">Forensic sidecar files</div>${e.artifacts!.map((x) => `<div class="art"><span>${esc(x.name)}</span> <span class="muted">${(x.bytes / 1024).toFixed(1)} KB · ${esc(x.kind)}</span><br><code class="mono">${esc(x.sha256)}</code></div>`).join('')}</div>` : ''}
+    </div>`
+  }).join('') : ''
 
   const stats = [
     { n: d.evidence.length, l: 'Exhibits' },
@@ -398,7 +422,10 @@ export function buildHtmlReport(d: ReportData): string {
     section('custody', 'Chain of custody', d.evidence.length, `
       <p class="muted">Each exhibit's SHA-256 was recorded when it was captured. Re-hashing a file and matching this value proves it has not been altered since.</p>
       ${custodyTable(d)}`),
-    section('disclaimer', 'Limitations & disclaimer', undefined, `<p class="prose">${esc(DISCLAIMER_TEXT)}</p>`)
+    section('disclaimer', 'Limitations & disclaimer', undefined, `<p class="prose">${esc(DISCLAIMER_TEXT)}</p>`),
+    d.evidence.length ? section('appendix', 'Appendix: Technical evidence details', d.evidence.length, `
+      <p class="muted">SHA-256 integrity hashes, EXIF / metadata and forensic sidecar artifacts for each exhibit. These details have been moved here to keep the main Evidence section clean and readable.</p>
+      ${appendixHtml}`) : ''
   ].join('\n')
 
   return `<!doctype html><html lang="en" data-theme="dark"><head><meta charset="utf-8"/>
@@ -497,19 +524,40 @@ ${geoPoints.length ? '<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9
   .timeline .when{ color:var(--muted); margin-right:10px; font-variant-numeric:tabular-nums; }
   .tag{ display:inline-block; background:color-mix(in srgb,var(--accent) 14%,transparent); color:var(--accent); border-radius:5px; padding:0 6px; margin-right:8px; font-size:11px; text-transform:uppercase; }
   .plist{ list-style:none; padding:0; margin:0; } .plist li{ padding:4px 0; }
+  /* Evidence filter toolbar */
+  .ev-toolbar{ display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:12px; flex-wrap:wrap; }
+  .ev-filters{ display:flex; gap:6px; flex-wrap:wrap; }
+  .ev-filter{ cursor:pointer; border:1px solid var(--line); background:var(--bg); color:var(--muted); border-radius:20px; padding:4px 13px; font-size:12px; font-weight:500; transition:.15s; }
+  .ev-filter:hover{ color:var(--ink); border-color:var(--accent); }
+  .ev-filter.active{ background:var(--accent); color:#fff; border-color:var(--accent); }
+  .ev-sort{ background:var(--bg); border:1px solid var(--line); color:var(--ink); border-radius:8px; padding:5px 10px; font-size:12px; outline:none; cursor:pointer; }
+  .ev-sort:focus{ border-color:var(--accent); }
+  .techlink{ display:inline-flex; align-items:center; gap:4px; font-size:11px; color:var(--accent); text-decoration:none; margin-top:8px; }
+  .techlink:hover{ text-decoration:underline; }
+  /* Appendix */
+  .appx-item{ border:1px solid var(--line); border-radius:10px; padding:14px 16px; margin:12px 0; scroll-margin-top:18px; }
+  .appx-head{ display:flex; align-items:center; gap:10px; margin-bottom:10px; flex-wrap:wrap; }
+  .appx-title{ font-weight:600; font-size:13px; flex:1; min-width:0; word-break:break-word; }
+  .appx-sha{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; background:var(--bg); border:1px solid var(--line); border-radius:8px; padding:6px 10px; margin:4px 0; }
+  .appx-sha code{ flex:1; font:11px ui-monospace,SFMono-Regular,Menlo,monospace; word-break:break-all; color:var(--muted); }
   /* Lightbox */
-  .lb{ position:fixed; inset:0; background:rgba(2,6,23,.92); display:none; align-items:center; justify-content:center; flex-direction:column; z-index:99; padding:30px; }
+  .lb{ position:fixed; inset:0; background:rgba(2,6,23,.93); display:none; align-items:center; justify-content:center; flex-direction:column; z-index:99; padding:30px; }
   .lb.open{ display:flex; }
-  .lb img{ max-width:94vw; max-height:84vh; border-radius:8px; box-shadow:0 20px 60px rgba(0,0,0,.6); }
-  .lb .cap{ color:#cbd5e1; margin-top:14px; font-size:13px; }
-  .lb .x{ position:absolute; top:18px; right:24px; color:#fff; font-size:30px; cursor:pointer; line-height:1; }
+  .lb img{ max-width:88vw; max-height:80vh; border-radius:8px; box-shadow:0 20px 60px rgba(0,0,0,.6); }
+  .lb .cap{ color:#cbd5e1; margin-top:12px; font-size:13px; text-align:center; }
+  .lb-count{ color:#64748b; font-size:12px; margin-top:4px; }
+  .lb .x{ position:absolute; top:18px; right:24px; color:#fff; font-size:30px; cursor:pointer; line-height:1; background:none; border:0; padding:0; }
+  .lb-nav{ position:absolute; top:50%; transform:translateY(-50%); background:rgba(255,255,255,.12); border:0; color:#fff; font-size:22px; width:44px; height:44px; border-radius:50%; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:.15s; }
+  .lb-nav:hover{ background:rgba(255,255,255,.28); }
+  #lbprev{ left:18px; }
+  #lbnext{ right:18px; }
   footer{ color:var(--muted); font-size:12px; margin-top:20px; }
   @media (max-width:820px){ .layout{ grid-template-columns:1fr; } aside{ position:static; height:auto; border-right:0; border-bottom:1px solid var(--line); } }
   @media print{
-    aside,.toolbtns,.cphash,.lb{ display:none !important; }
+    aside,.toolbtns,.cphash,.lb,.ev-toolbar,.techlink{ display:none !important; }
     .layout{ grid-template-columns:1fr; max-width:none; }
     body{ background:#fff; } section{ box-shadow:none; break-inside:avoid; }
-    .evcard,.note{ break-inside:avoid; }
+    .evcard,.note,.appx-item{ break-inside:avoid; }
   }
 </style></head>
 <body>
@@ -551,50 +599,146 @@ ${geoPoints.length ? '<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9
       }Evidence hashes are SHA-256 of the stored file at capture time. Images and data are embedded in this file; the location map needs an internet connection to load tiles. Classification: ${esc(classification)}.</footer>
     </main>
   </div>
-  <div class="lb" id="lb"><span class="x" id="lbx">&times;</span><img id="lbimg" alt=""/><div class="cap" id="lbcap"></div></div>
+  <div class="lb" id="lb">
+    <button class="x" id="lbx" aria-label="Close">&times;</button>
+    <button class="lb-nav" id="lbprev" aria-label="Previous">&#8249;</button>
+    <img id="lbimg" alt=""/>
+    <button class="lb-nav" id="lbnext" aria-label="Next">&#8250;</button>
+    <div class="cap" id="lbcap"></div>
+    <div class="lb-count" id="lbcount"></div>
+  </div>
 <script>
 (function(){
-  // Scrollspy: highlight the nav link of the section in view.
+  // ── Scrollspy: highlight the nav link of the section currently in view ──
   var links = [].slice.call(document.querySelectorAll('nav a'));
-  var map = {}; links.forEach(function(a){ map[a.dataset.target] = a; });
+  var navMap = {}; links.forEach(function(a){ navMap[a.dataset.target] = a; });
   var obs = new IntersectionObserver(function(entries){
     entries.forEach(function(en){
-      if(en.isIntersecting){ links.forEach(function(l){ l.classList.remove('active'); }); var a = map[en.target.id]; if(a) a.classList.add('active'); }
+      if(en.isIntersecting){
+        links.forEach(function(l){ l.classList.remove('active'); });
+        var a = navMap[en.target.id]; if(a) a.classList.add('active');
+      }
     });
   }, { rootMargin:'-10% 0px -80% 0px' });
   document.querySelectorAll('section[id]').forEach(function(s){ obs.observe(s); });
-  // Smooth scroll
-  links.forEach(function(a){ a.addEventListener('click', function(e){ e.preventDefault(); var t=document.getElementById(a.dataset.target); if(t) t.scrollIntoView({behavior:'smooth'}); }); });
-  // Lightbox
-  var lb=document.getElementById('lb'), lbi=document.getElementById('lbimg'), lbc=document.getElementById('lbcap');
-  document.querySelectorAll('.evthumb').forEach(function(b){ b.addEventListener('click', function(){ lbi.src=b.dataset.full; lbc.textContent=b.dataset.cap||''; lb.classList.add('open'); }); });
-  function close(){ lb.classList.remove('open'); lbi.src=''; }
-  document.getElementById('lbx').addEventListener('click', close);
-  lb.addEventListener('click', function(e){ if(e.target===lb) close(); });
-  document.addEventListener('keydown', function(e){ if(e.key==='Escape') close(); });
-  // Copy hash
-  document.querySelectorAll('.cphash').forEach(function(b){ b.addEventListener('click', function(){ navigator.clipboard && navigator.clipboard.writeText(b.dataset.hash); var t=b.textContent; b.textContent='copied'; setTimeout(function(){ b.textContent=t; }, 1200); }); });
-  // Live search — filter every .searchable item by text content.
+  // Smooth-scroll nav links; also handle .techlink anchors inside the page.
+  links.forEach(function(a){
+    a.addEventListener('click', function(e){
+      e.preventDefault();
+      var t = document.getElementById(a.dataset.target); if(t) t.scrollIntoView({behavior:'smooth'});
+    });
+  });
+  document.querySelectorAll('.techlink[href^="#"]').forEach(function(a){
+    a.addEventListener('click', function(e){
+      e.preventDefault();
+      var t = document.getElementById(a.getAttribute('href').slice(1)); if(t) t.scrollIntoView({behavior:'smooth'});
+    });
+  });
+
+  // ── Lightbox with prev / next navigation ──
+  var lb = document.getElementById('lb');
+  var lbi = document.getElementById('lbimg');
+  var lbc = document.getElementById('lbcap');
+  var lbcount = document.getElementById('lbcount');
+  var exhibits = [].slice.call(document.querySelectorAll('.evthumb'));
+  var curIdx = 0;
+  function openLb(idx){
+    if (!exhibits.length) return;
+    curIdx = ((idx % exhibits.length) + exhibits.length) % exhibits.length;
+    var b = exhibits[curIdx];
+    lbi.src = b.dataset.full;
+    lbc.textContent = b.dataset.cap || '';
+    if (lbcount) lbcount.textContent = (curIdx + 1) + ' / ' + exhibits.length;
+    lb.classList.add('open');
+  }
+  function closeLb(){ lb.classList.remove('open'); lbi.src = ''; }
+  exhibits.forEach(function(b, i){ b.addEventListener('click', function(){ openLb(i); }); });
+  document.getElementById('lbprev').addEventListener('click', function(){ openLb(curIdx - 1); });
+  document.getElementById('lbnext').addEventListener('click', function(){ openLb(curIdx + 1); });
+  document.getElementById('lbx').addEventListener('click', closeLb);
+  lb.addEventListener('click', function(e){ if(e.target === lb) closeLb(); });
+  document.addEventListener('keydown', function(e){
+    if (!lb.classList.contains('open')) return;
+    if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') { e.preventDefault(); openLb(curIdx - 1); }
+    else if (e.key === 'ArrowRight' || e.key === 'ArrowDown') { e.preventDefault(); openLb(curIdx + 1); }
+    else if (e.key === 'Escape') closeLb();
+  });
+
+  // ── Evidence filter buttons ──
+  var evGrid = document.getElementById('evGrid');
+  var activeKind = '';
+  var filterBtns = [].slice.call(document.querySelectorAll('.ev-filter'));
+  function applyKindFilter(){
+    if (!evGrid) return;
+    [].slice.call(evGrid.querySelectorAll('.evcard')).forEach(function(c){
+      c.dataset.kindhidden = (activeKind && c.dataset.kind !== activeKind) ? '1' : '';
+      if (!c.dataset.searchhidden || c.dataset.searchhidden === '') {
+        c.style.display = (activeKind && c.dataset.kind !== activeKind) ? 'none' : '';
+      }
+    });
+  }
+  filterBtns.forEach(function(btn){
+    btn.addEventListener('click', function(){
+      filterBtns.forEach(function(b){ b.classList.remove('active'); });
+      btn.classList.add('active');
+      activeKind = btn.dataset.kind || '';
+      applyKindFilter();
+    });
+  });
+
+  // ── Evidence sort ──
+  var evSort = document.getElementById('evSort');
+  if (evSort && evGrid) {
+    evSort.addEventListener('change', function(){
+      var cards = [].slice.call(evGrid.querySelectorAll('.evcard'));
+      var val = evSort.value;
+      cards.sort(function(a, b){
+        if (val === 'date-asc')  return Number(a.dataset.date||0) - Number(b.dataset.date||0);
+        if (val === 'date-desc') return Number(b.dataset.date||0) - Number(a.dataset.date||0);
+        return (a.dataset.title||'').localeCompare(b.dataset.title||'');
+      });
+      cards.forEach(function(c){ evGrid.appendChild(c); });
+    });
+  }
+
+  // ── Copy hash / SHA-256 buttons ──
+  document.querySelectorAll('.cphash').forEach(function(b){
+    b.addEventListener('click', function(){
+      navigator.clipboard && navigator.clipboard.writeText(b.dataset.hash);
+      var t = b.textContent; b.textContent = 'copied';
+      setTimeout(function(){ b.textContent = t; }, 1200);
+    });
+  });
+
+  // ── Live search (respects kind filter) ──
   var sb = document.getElementById('search'), sc = document.getElementById('searchcount');
   if (sb) sb.addEventListener('input', function(){
-    var q = sb.value.trim().toLowerCase(), items = document.querySelectorAll('.searchable'), shown = 0;
+    var q = sb.value.trim().toLowerCase();
+    var items = document.querySelectorAll('.searchable');
+    var shown = 0;
     items.forEach(function(el){
+      // Don't un-hide items that are kind-filtered out.
+      if (el.dataset.kindhidden === '1') { el.style.display = 'none'; el.dataset.searchhidden = ''; return; }
       var ok = !q || (el.textContent||'').toLowerCase().indexOf(q) >= 0;
       el.style.display = ok ? '' : 'none';
+      el.dataset.searchhidden = ok ? '' : '1';
       if (ok) shown++;
     });
     if (sc) sc.textContent = q ? (shown + ' match' + (shown===1?'':'es')) : '';
-    // Hide a section whose searchable children are all filtered out.
     document.querySelectorAll('section[id]').forEach(function(s){
       var sa = s.querySelectorAll('.searchable');
       if (!q || sa.length === 0) { s.style.display=''; return; }
-      var any = false; sa.forEach(function(el){ if (el.style.display !== 'none') any = true; });
+      var any = false; sa.forEach(function(el){ if(el.style.display !== 'none') any = true; });
       s.style.display = any ? '' : 'none';
     });
   });
-  // Theme toggle
-  document.getElementById('themeBtn').addEventListener('click', function(){ var h=document.documentElement; h.dataset.theme = h.dataset.theme==='dark'?'':'dark'; });
-  // Print
+
+  // ── Theme toggle ──
+  document.getElementById('themeBtn').addEventListener('click', function(){
+    var h = document.documentElement;
+    h.dataset.theme = h.dataset.theme === 'dark' ? '' : 'dark';
+  });
+  // ── Print ──
   document.getElementById('printBtn').addEventListener('click', function(){ window.print(); });
 })();
 </script>
