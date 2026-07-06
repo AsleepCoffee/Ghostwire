@@ -253,6 +253,8 @@ export interface AppSettings {
   seenWelcomeVersion?: string
   /** True once the user has finished or skipped the guided tutorial. Prevents auto-showing it again. */
   tutorialCompleted?: boolean
+  /** Self-reported OSINT experience level, set during the tutorial. Controls how much context the tutorial shows. */
+  osintSkillLevel?: 'beginner' | 'intermediate' | 'advanced'
   /** Per-mode dashboard widget layout (which widgets show, their order and size). */
   dashboardLayout?: DashboardLayout
   /** Open in-app browser tabs, restored on next launch so the session persists. */
