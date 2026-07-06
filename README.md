@@ -53,7 +53,7 @@ GhostWire is fully open source — if you'd rather not trust a prebuilt binary, 
 ```bash
 git clone https://github.com/AsleepCoffee/Ghostwire.git
 cd Ghostwire
-git checkout v0.1.101        # optional: build a specific release tag instead of main
+git checkout v1.0.1          # optional: build a specific release tag instead of main
 ```
 
 **3. Install exact dependencies**
@@ -114,7 +114,7 @@ GhostWire is for **authorized, lawful OSINT** — security research, investigati
 
 ## 🛠️ Development
 
-Requires Node.js 20+.
+Requires Node.js 22+.
 
 ```bash
 npm install        # install dependencies
@@ -144,8 +144,8 @@ Releases are built and published automatically by GitHub Actions when a version 
 
 ```bash
 # bump "version" in package.json, then:
-git tag -a v0.2.0 -m "GhostWire v0.2.0"
-git push origin v0.2.0
+git tag v1.0.1
+git push origin main --tags
 ```
 
 The workflow builds the Windows installer and attaches it (plus `latest.yml` for auto-update) to a GitHub Release, with notes pulled from [`CHANGELOG.md`](CHANGELOG.md).
