@@ -32,16 +32,6 @@ function useDockPanel(): {
   const lastHeaderDown = useRef(0)
   const minTopRef = useRef(36)
 
-  // While any drag or resize is active, place a transparent full-window overlay
-  // with -webkit-app-region:no-drag so the OS can't see the TitleBar/Topbar drag
-  // zone regardless of where the cursor travels during the gesture.
-  function beginDrag(): () => void {
-    const el = document.createElement('div')
-    el.style.cssText = 'position:fixed;inset:0;z-index:9998;-webkit-app-region:no-drag'
-    document.body.appendChild(el)
-    return () => el.remove()
-  }
-
   const onHeaderMouseDown = (e: React.MouseEvent): void => {
     e.preventDefault()
     const now = Date.now()
@@ -55,7 +45,6 @@ function useDockPanel(): {
     const pinned = { top: br.top, left: br.left, width: br.width, height: br.height }
     setPanelState(pinned)
     dragRef.current = { mx: e.clientX, my: e.clientY, bx: pinned.left, by: pinned.top }
-    const endDrag = beginDrag()
     const onMove = (ev: MouseEvent): void => {
       if (!dragRef.current) return
       setPanelState((prev) => {
@@ -67,7 +56,6 @@ function useDockPanel(): {
     }
     const onUp = (): void => {
       dragRef.current = null
-      endDrag()
       window.removeEventListener('mousemove', onMove)
       window.removeEventListener('mouseup', onUp)
     }
@@ -83,7 +71,6 @@ function useDockPanel(): {
     const br = box.getBoundingClientRect()
     setPanelState({ top: br.top, left: br.left, width: br.width, height: br.height })
     resizeRef.current = { mx: e.clientX, my: e.clientY, br }
-    const endDrag = beginDrag()
     const onMove = (ev: MouseEvent): void => {
       if (!resizeRef.current) return
       const { br } = resizeRef.current
@@ -92,7 +79,6 @@ function useDockPanel(): {
     }
     const onUp = (): void => {
       resizeRef.current = null
-      endDrag()
       window.removeEventListener('mousemove', onMove)
       window.removeEventListener('mouseup', onUp)
     }
@@ -108,7 +94,6 @@ function useDockPanel(): {
     const br = box.getBoundingClientRect()
     setPanelState({ top: br.top, left: br.left, width: br.width, height: br.height })
     resizeRef.current = { mx: e.clientX, my: e.clientY, br }
-    const endDrag = beginDrag()
     const onMove = (ev: MouseEvent): void => {
       if (!resizeRef.current) return
       const { br } = resizeRef.current
@@ -116,7 +101,6 @@ function useDockPanel(): {
     }
     const onUp = (): void => {
       resizeRef.current = null
-      endDrag()
       window.removeEventListener('mousemove', onMove)
       window.removeEventListener('mouseup', onUp)
     }
@@ -379,6 +363,18 @@ export function InvestigationDock(): JSX.Element | null {
             </div>
           )}
         </div>
+        {project.objectives && (
+          <div>
+            <div className="text-[10px] font-semibold uppercase tracking-widest text-slate-500 mb-1.5">Objectives</div>
+            <p className="text-xs text-slate-300 whitespace-pre-wrap">{project.objectives}</p>
+          </div>
+        )}
+        {project.known && (
+          <div>
+            <div className="text-[10px] font-semibold uppercase tracking-widest text-slate-500 mb-1.5">Background</div>
+            <p className="text-xs text-slate-300 whitespace-pre-wrap">{project.known}</p>
+          </div>
+        )}
         {evidence.length > 0 && (
           <div>
             <div className="text-[10px] font-semibold uppercase tracking-widest text-slate-500 mb-1.5">
@@ -396,18 +392,6 @@ export function InvestigationDock(): JSX.Element | null {
                 <p className="text-[10px] text-slate-600">+{evidence.length - 25} more — open investigation to see all.</p>
               )}
             </div>
-          </div>
-        )}
-        {project.objectives && (
-          <div>
-            <div className="text-[10px] font-semibold uppercase tracking-widest text-slate-500 mb-1.5">Objectives</div>
-            <p className="text-xs text-slate-300 whitespace-pre-wrap">{project.objectives}</p>
-          </div>
-        )}
-        {project.known && (
-          <div>
-            <div className="text-[10px] font-semibold uppercase tracking-widest text-slate-500 mb-1.5">Background</div>
-            <p className="text-xs text-slate-300 whitespace-pre-wrap">{project.known}</p>
           </div>
         )}
       </div>
