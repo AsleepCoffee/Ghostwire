@@ -8,7 +8,6 @@ import { initUpdater } from './updater'
 import { initVpn, shutdownVpn } from './vpn'
 import { registerBackupHandlers, maybeAutoBackup } from './backup'
 import { hardenWebContents } from './fingerprint'
-import { consumeIntentionalMaximize } from './win-state'
 import { attachContextMenu } from './contextmenu'
 
 // Must run before app is ready.
@@ -39,15 +38,7 @@ function createWindow(): void {
   win.on('ready-to-show', () => win.show())
 
   // Keep the renderer's maximize/restore button in sync.
-  // If the maximize was NOT triggered by the in-app topbar button (e.g. the OS
-  // fired WM_NCLBUTTONDBLCLK from a double-click on an Electron drag region),
-  // immediately revert it so the window doesn't go black.
-  win.on('maximize', () => {
-    win.webContents.send('win:maximized', true)
-    if (!consumeIntentionalMaximize()) {
-      setImmediate(() => { if (!win.isDestroyed()) win.unmaximize() })
-    }
-  })
+  win.on('maximize', () => win.webContents.send('win:maximized', true))
   win.on('unmaximize', () => win.webContents.send('win:maximized', false))
 
   // Open target=_blank / window.open links as in-app browser tabs — never the OS browser.
