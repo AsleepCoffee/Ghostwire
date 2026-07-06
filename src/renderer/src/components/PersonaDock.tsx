@@ -30,11 +30,17 @@ function useDockPanel(): {
   const dragRef = useRef<{ mx: number; my: number; bx: number; by: number } | null>(null)
   const resizeRef = useRef<{ mx: number; my: number; br: DOMRect } | null>(null)
   const lastHeaderDown = useRef(0)
-  // Minimum top offset computed at drag-start so the panel can never slide into
-  // the -webkit-app-region:drag zone and trigger an OS window-move or maximize.
-  // TitleBar is h-8 (32 px) in normal mode; in ghost mode it is hidden and the
-  // Topbar (h-16 = 64 px) becomes the drag zone instead.
   const minTopRef = useRef(36)
+
+  // While any drag or resize is active, place a transparent full-window overlay
+  // with -webkit-app-region:no-drag so the OS can't see the TitleBar/Topbar drag
+  // zone regardless of where the cursor travels during the gesture.
+  function beginDrag(): () => void {
+    const el = document.createElement('div')
+    el.style.cssText = 'position:fixed;inset:0;z-index:9998;-webkit-app-region:no-drag'
+    document.body.appendChild(el)
+    return () => el.remove()
+  }
 
   const onHeaderMouseDown = (e: React.MouseEvent): void => {
     e.preventDefault()
@@ -49,6 +55,7 @@ function useDockPanel(): {
     const pinned = { top: br.top, left: br.left, width: br.width, height: br.height }
     setPanelState(pinned)
     dragRef.current = { mx: e.clientX, my: e.clientY, bx: pinned.left, by: pinned.top }
+    const endDrag = beginDrag()
     const onMove = (ev: MouseEvent): void => {
       if (!dragRef.current) return
       setPanelState((prev) =>
@@ -63,6 +70,7 @@ function useDockPanel(): {
     }
     const onUp = (): void => {
       dragRef.current = null
+      endDrag()
       window.removeEventListener('mousemove', onMove)
       window.removeEventListener('mouseup', onUp)
     }
@@ -78,6 +86,7 @@ function useDockPanel(): {
     const br = box.getBoundingClientRect()
     setPanelState({ top: br.top, left: br.left, width: br.width, height: br.height })
     resizeRef.current = { mx: e.clientX, my: e.clientY, br }
+    const endDrag = beginDrag()
     const onMove = (ev: MouseEvent): void => {
       if (!resizeRef.current) return
       const { br } = resizeRef.current
@@ -86,6 +95,7 @@ function useDockPanel(): {
     }
     const onUp = (): void => {
       resizeRef.current = null
+      endDrag()
       window.removeEventListener('mousemove', onMove)
       window.removeEventListener('mouseup', onUp)
     }
@@ -101,6 +111,7 @@ function useDockPanel(): {
     const br = box.getBoundingClientRect()
     setPanelState({ top: br.top, left: br.left, width: br.width, height: br.height })
     resizeRef.current = { mx: e.clientX, my: e.clientY, br }
+    const endDrag = beginDrag()
     const onMove = (ev: MouseEvent): void => {
       if (!resizeRef.current) return
       const { br } = resizeRef.current
@@ -108,6 +119,7 @@ function useDockPanel(): {
     }
     const onUp = (): void => {
       resizeRef.current = null
+      endDrag()
       window.removeEventListener('mousemove', onMove)
       window.removeEventListener('mouseup', onUp)
     }
