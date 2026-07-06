@@ -7,6 +7,15 @@ export interface ChangelogEntry {
 /** In-app patch notes. Newest first. Keep in sync with CHANGELOG.md. */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '1.0.1',
+    date: '2026-07-06',
+    notes: [
+      'Tutorial: sidebar highlights the active section with a ring and pulsing dot while the tour is open — no more blurred backdrop blocking the page.',
+      'Tutorial: skill level picker on step 1 — choose New to OSINT, Some experience, or Experienced. Beginners see an OSINT context box on each step explaining the investigative why behind every feature.',
+      'Tutorial: "We noticed it\'s your first time here" greeting on first install.'
+    ]
+  },
+  {
     version: '1.0.0',
     date: '2026-07-06',
     notes: [

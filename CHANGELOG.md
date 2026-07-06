@@ -1,5 +1,10 @@
 # Changelog
 
+## v1.0.1
+- Tutorial: sidebar now highlights the active section with a ring and pulsing dot — no more blurred backdrop blocking the view.
+- Tutorial: skill level picker on step 1 (New to OSINT / Some experience / Experienced). Beginners see an OSINT context box on each step explaining the investigative why behind every feature.
+- Tutorial: "We noticed it's your first time here" greeting on first install.
+
 ## v1.0.0
 - **Guided tutorial**: A step-by-step walkthrough launches automatically on first install and walks through every section of GhostWire — Investigations, Evidence Board, Graph Workspace, Case Timeline, Sock Puppets, Browser, Mailbox, Research Tools, VPN, and Settings. Relaunch it any time from Settings → Appearance → "Restart tutorial".
 - GitHub releases now correctly publish as the latest release. CI promotion step updated to use the GitHub REST API directly for reliability.
