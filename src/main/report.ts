@@ -162,7 +162,7 @@ const colorOf = (t: string): string => COLORS[t] ?? '#cbd5e1'
 /** Render a board as a static SVG link chart using stored node positions.
  *  Styled to match the in-app graph: dark rounded cards, type-coloured border,
  *  and the node's thumbnail (when present, already inlined as a data URI). */
-function graphSvg(entities: EntityNode[], edges: EntityEdge[]): string {
+function graphSvg(entities: EntityNode[], edges: EntityEdge[], idx?: number): string {
   if (entities.length === 0) return '<p class="muted">No entities on this chart.</p>'
   const NW = 210
   const NH = 60
@@ -189,7 +189,7 @@ function graphSvg(entities: EntityNode[], edges: EntityEdge[]): string {
     .join('')
 
   const clips = entities
-    .map((e, i) => (e.props?.image ? `<clipPath id="gc${i}"><rect x="${pos.get(e.id)!.x + 12}" y="${pos.get(e.id)!.y + 12}" width="36" height="36" rx="9"/></clipPath>` : ''))
+    .map((e, i) => (e.props?.image ? `<clipPath id="gc${idx ?? ''}${i}"><rect x="${pos.get(e.id)!.x + 12}" y="${pos.get(e.id)!.y + 12}" width="36" height="36" rx="9"/></clipPath>` : ''))
     .join('')
 
   const boxes = entities
@@ -202,22 +202,38 @@ function graphSvg(entities: EntityNode[], edges: EntityEdge[]): string {
       const label = e.label.length > maxChars ? e.label.slice(0, maxChars - 1) + '…' : e.label
       return `<g>
         <rect x="${pt.x}" y="${pt.y}" width="${NW}" height="${NH}" rx="14" fill="#0e1729" stroke="${c}" stroke-width="2"/>
-        ${img ? `<image href="${img}" x="${pt.x + 12}" y="${pt.y + 12}" width="36" height="36" preserveAspectRatio="xMidYMid slice" clip-path="url(#gc${i})"/>` : ''}
+        ${img ? `<image href="${img}" x="${pt.x + 12}" y="${pt.y + 12}" width="36" height="36" preserveAspectRatio="xMidYMid slice" clip-path="url(#gc${idx ?? ''}${i})"/>` : ''}
         <text x="${tx}" y="${pt.y + 25}" class="ntype" fill="${c}">${esc(e.type.toUpperCase())}</text>
         <text x="${tx}" y="${pt.y + 43}" class="nlbl">${esc(label)}</text>
       </g>`
     })
     .join('')
 
-  return `<svg viewBox="0 0 ${W} ${H}" class="chart" preserveAspectRatio="xMidYMid meet" style="width:100%;max-width:${Math.max(W, 420)}px;display:block;margin:0 auto">
-    <defs>${clips}</defs>
-    <style>
+  const svgStyle = `
       .edgelbl{ font:600 10px ui-sans-serif,system-ui,sans-serif; fill:#cbd5e1; text-anchor:middle; }
       .ntype{ font:bold 9px ui-sans-serif,system-ui,sans-serif; letter-spacing:.6px; }
-      .nlbl{ font:600 13px ui-sans-serif,system-ui,sans-serif; fill:#e6edf6; }
-    </style>
+      .nlbl{ font:600 13px ui-sans-serif,system-ui,sans-serif; fill:#e6edf6; }`
+
+  if (idx === undefined) {
+    return `<svg viewBox="0 0 ${W} ${H}" class="chart" preserveAspectRatio="xMidYMid meet" style="width:100%;max-width:${Math.max(W, 420)}px;display:block;margin:0 auto">
+    <defs>${clips}</defs>
+    <style>${svgStyle}</style>
     ${lines}${boxes}
   </svg>`
+  }
+
+  return `<div class="graphwrap" id="gw${idx}" data-cw="${W}" data-ch="${H}">
+  <div class="graph-ctrls">
+    <button class="gc-btn" onclick="graphZoom('gw${idx}',1.25)" title="Zoom in">+</button>
+    <button class="gc-btn" onclick="graphZoom('gw${idx}',0.8)" title="Zoom out">−</button>
+    <button class="gc-btn" onclick="graphReset('gw${idx}')" title="Fit to view">⊡</button>
+  </div>
+  <svg class="chart" width="100%" height="520" xmlns="http://www.w3.org/2000/svg">
+    <defs>${clips}</defs>
+    <style>${svgStyle}</style>
+    <g class="gvp">${lines}${boxes}</g>
+  </svg>
+</div>`
 }
 
 // ============================================================================
@@ -331,8 +347,8 @@ export function buildHtmlReport(d: ReportData): string {
   const graphsHtml = d.graphs.length
     ? d.graphs
         .map(
-          (g) => `<h3>${esc(g.board.name)} <span class="muted">· ${g.entities.length} entities, ${g.edges.length} links</span></h3>
-            <div class="chartwrap">${graphSvg(g.entities, g.edges)}</div>`
+          (g, gi) => `<h3>${esc(g.board.name)} <span class="muted">· ${g.entities.length} entities, ${g.edges.length} links</span></h3>
+            <div class="chartwrap">${graphSvg(g.entities, g.edges, gi)}</div>`
         )
         .join('')
     : '<p class="muted">No link charts in this investigation.</p>'
@@ -494,8 +510,12 @@ ${geoPoints.length ? '<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9
   .meta{ display:grid; grid-template-columns:repeat(2,1fr); gap:6px 24px; }
   .meta div{ font-size:13px; }
   .meta b{ color:var(--muted); font-weight:600; margin-right:8px; }
-  .chartwrap{ border:1px solid var(--line); border-radius:10px; padding:8px; background:var(--bg); overflow:auto; }
-  svg.chart{ width:100%; height:auto; max-height:560px; }
+  .chartwrap{ border:1px solid var(--line); border-radius:10px; overflow:hidden; }
+  .graphwrap{ position:relative; background:var(--bg); user-select:none; }
+  .graph-ctrls{ position:absolute; top:8px; right:8px; z-index:5; display:flex; gap:4px; }
+  .gc-btn{ width:28px; height:28px; display:grid; place-items:center; background:var(--panel); border:1px solid var(--line); border-radius:6px; cursor:pointer; font-size:15px; font-weight:700; color:var(--ink); }
+  .gc-btn:hover{ border-color:var(--accent); color:var(--accent); }
+  svg.chart{ display:block; cursor:grab; }
   /* Evidence */
   .evgrid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(230px,1fr)); gap:14px; }
   .evcard{ margin:0; border:1px solid var(--line); border-radius:12px; overflow:hidden; background:var(--bg); display:flex; flex-direction:column; }
@@ -740,6 +760,64 @@ ${geoPoints.length ? '<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9
   });
   // ── Print ──
   document.getElementById('printBtn').addEventListener('click', function(){ window.print(); });
+
+  // ── Graph pan / zoom ──
+  (function(){
+    var gws = [].slice.call(document.querySelectorAll('.graphwrap'));
+    gws.forEach(function(wrap){
+      var svg = wrap.querySelector('svg.chart');
+      var gvp = wrap.querySelector('.gvp');
+      if (!svg || !gvp) return;
+      var cw = parseFloat(wrap.dataset.cw), ch = parseFloat(wrap.dataset.ch);
+      var tx = 0, ty = 0, sc = 1;
+      function apply(){ gvp.setAttribute('transform','translate('+tx.toFixed(1)+','+ty.toFixed(1)+') scale('+sc.toFixed(4)+')'); }
+      function fitView(){
+        var sw = svg.clientWidth || 800, sh = svg.clientHeight || 520;
+        if (!sw || !cw || !ch) return;
+        var s = Math.min(sw / cw, sh / ch) * 0.94;
+        tx = (sw - cw * s) / 2; ty = (sh - ch * s) / 2; sc = s;
+        apply();
+      }
+      fitView();
+      // Retry if layout hasn't painted yet (e.g. section hidden on load)
+      if (!svg.clientWidth) {
+        var ri = setInterval(function(){ if (svg.clientWidth){ clearInterval(ri); fitView(); } }, 60);
+      }
+      // Pan via mouse drag
+      var drag = null;
+      svg.addEventListener('mousedown', function(e){
+        if (e.button) return; e.preventDefault();
+        drag = { sx: e.clientX, sy: e.clientY, tx0: tx, ty0: ty };
+        svg.style.cursor = 'grabbing';
+      });
+      window.addEventListener('mousemove', function(e){
+        if (!drag) return;
+        tx = drag.tx0 + (e.clientX - drag.sx);
+        ty = drag.ty0 + (e.clientY - drag.sy);
+        apply();
+      });
+      window.addEventListener('mouseup', function(){ drag = null; svg.style.cursor = ''; });
+      // Zoom via scroll wheel, centred on cursor
+      svg.addEventListener('wheel', function(e){
+        e.preventDefault();
+        var f = e.deltaY < 0 ? 1.12 : 1 / 1.12;
+        var r = svg.getBoundingClientRect();
+        var mx = e.clientX - r.left, my = e.clientY - r.top;
+        tx = mx + (tx - mx) * f; ty = my + (ty - my) * f;
+        sc = Math.max(0.05, Math.min(8, sc * f));
+        apply();
+      }, { passive: false });
+      // Expose fit/zoom on the wrapper for button onclick handlers
+      wrap._fit = fitView;
+      wrap._zoom = function(f){
+        var cx = svg.clientWidth / 2, cy = svg.clientHeight / 2;
+        tx = cx + (tx - cx) * f; ty = cy + (ty - cy) * f;
+        sc = Math.max(0.05, Math.min(8, sc * f)); apply();
+      };
+    });
+    window.graphZoom = function(id, f){ var w = document.getElementById(id); if (w && w._zoom) w._zoom(f); };
+    window.graphReset = function(id){ var w = document.getElementById(id); if (w && w._fit) w._fit(); };
+  })();
 })();
 </script>
 ${

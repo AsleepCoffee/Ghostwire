@@ -24,23 +24,25 @@ function useDockPanel(): {
   onLeftResizeMouseDown: (e: React.MouseEvent) => void
   onBottomResizeMouseDown: (e: React.MouseEvent) => void
 } {
+  const { settings } = useSettings()
   const panelRef = useRef<HTMLElement | null>(null)
   const [panelState, setPanelState] = useState<PanelState | null>(null)
   const dragRef = useRef<{ mx: number; my: number; bx: number; by: number } | null>(null)
   const resizeRef = useRef<{ mx: number; my: number; br: DOMRect } | null>(null)
-  // Track the timestamp of the previous header mousedown so we can detect a
-  // double-click and skip the drag setup entirely (the main process also reverts
-  // any accidental OS-level WM_NCLBUTTONDBLCLK maximize).
   const lastHeaderDown = useRef(0)
+  // Minimum top offset computed at drag-start so the panel can never slide into
+  // the -webkit-app-region:drag zone and trigger an OS window-move or maximize.
+  // TitleBar is h-8 (32 px) in normal mode; in ghost mode it is hidden and the
+  // Topbar (h-16 = 64 px) becomes the drag zone instead.
+  const minTopRef = useRef(36)
 
   const onHeaderMouseDown = (e: React.MouseEvent): void => {
     e.preventDefault()
     const now = Date.now()
     const gap = now - lastHeaderDown.current
     lastHeaderDown.current = now
-    // If this looks like the second click of a double-click, bail out so we
-    // don't start a second overlapping drag, and let onDoubleClick handle it.
     if (gap < 500) return
+    minTopRef.current = settings.ghostMode ? 68 : 36
     const box = panelRef.current
     if (!box) return
     const br = box.getBoundingClientRect()
@@ -54,7 +56,7 @@ function useDockPanel(): {
           ? {
               ...prev,
               left: Math.max(0, dragRef.current!.bx + ev.clientX - dragRef.current!.mx),
-              top: Math.max(4, dragRef.current!.by + ev.clientY - dragRef.current!.my)
+              top: Math.max(minTopRef.current, dragRef.current!.by + ev.clientY - dragRef.current!.my)
             }
           : prev
       )
