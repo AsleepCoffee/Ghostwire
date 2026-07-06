@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { NavLink } from 'react-router-dom'
 import { Icon } from './ui'
 import { useSettings } from '../lib/settings'
+import { useTutorial } from '../lib/tutorial'
 import { api } from '../lib/api'
 import iconUrl from '../assets/icon.png'
 
@@ -74,6 +75,7 @@ const GROUPS: { heading?: string; items: NavItem[]; toggle?: 'courseNotes' }[] =
 
 export function Sidebar(): JSX.Element {
   const { settings } = useSettings()
+  const { tutorialActive } = useTutorial()
   const [version, setVersion] = useState('')
   useEffect(() => {
     api.app.version().then(setVersion)
@@ -169,15 +171,26 @@ export function Sidebar(): JSX.Element {
                   className={({ isActive }) =>
                     ghost
                       ? `flex items-center gap-3 px-3 py-2 text-xs uppercase tracking-[0.14em] transition-colors ${
-                          isActive ? 'text-accent-glow font-semibold gw-nav-active' : 'text-slate-400 hover:text-accent-glow'
+                          isActive
+                            ? `text-accent-glow font-semibold gw-nav-active${tutorialActive ? ' ring-1 ring-accent-glow/50 rounded-lg' : ''}`
+                            : 'text-slate-400 hover:text-accent-glow'
                         }`
                       : `flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
-                          isActive ? 'bg-brand/15 text-brand-glow font-medium' : 'text-slate-400 hover:text-slate-200 hover:bg-ink-800'
+                          isActive
+                            ? `bg-brand/15 text-brand-glow font-medium${tutorialActive ? ' ring-1 ring-brand-glow/60 shadow-[0_0_12px_rgba(var(--brand),0.25)]' : ''}`
+                            : 'text-slate-400 hover:text-slate-200 hover:bg-ink-800'
                         }`
                   }
                 >
-                  <Icon name={item.icon} size={ghost ? 17 : 18} className={ghost ? 'shrink-0' : ''} />
-                  {item.label}
+                  {({ isActive }) => (
+                    <>
+                      <Icon name={item.icon} size={ghost ? 17 : 18} className={ghost ? 'shrink-0' : ''} />
+                      {item.label}
+                      {tutorialActive && isActive && (
+                        <span className="ml-auto w-1.5 h-1.5 rounded-full bg-brand-glow animate-pulse shrink-0" />
+                      )}
+                    </>
+                  )}
                 </NavLink>
               ))}
             </div>

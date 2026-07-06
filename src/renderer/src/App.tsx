@@ -88,7 +88,7 @@ export default function App(): JSX.Element {
   }, [loaded, showWelcome, settings.tutorialCompleted, tutorialFired])
 
   return (
-    <TutorialContext.Provider value={{ openTutorial: () => setTutorialOpen(true) }}>
+    <TutorialContext.Provider value={{ openTutorial: () => setTutorialOpen(true), tutorialActive: tutorialOpen }}>
     <PersonaDockProvider>
     <BrowserRouting />
     <div className="app-backdrop" />
