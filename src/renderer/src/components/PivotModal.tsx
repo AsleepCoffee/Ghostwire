@@ -1,12 +1,27 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Crosshair, ExternalLink, LayoutGrid, CheckSquare, Square } from 'lucide-react'
+import { Crosshair, ExternalLink, LayoutGrid, CheckSquare, Square, KeyRound, Loader2, Check, X } from 'lucide-react'
 import { Modal } from './ui'
-import { api, type Persona } from '../lib/api'
+import { api, type Persona, type DehashedResult } from '../lib/api'
 import { generatePivots, SUBJECT_LABELS, type PivotSubject } from '../lib/pivot'
 import { integrationQueriesFor } from '../lib/apiServices'
 import { useOpenInBrowser } from '../lib/browserBus'
 import { useSettings } from '../lib/settings'
 import { personaColor } from '../lib/constants'
+import { useConfirm } from '../lib/confirm'
+
+/** Map pivot subject type to the DeHashed field name for a targeted query. */
+function dehashedQuery(subj: PivotSubject, val: string): string {
+  const fieldMap: Partial<Record<PivotSubject, string>> = {
+    email: 'email',
+    username: 'username',
+    name: 'name',
+    phone: 'phone',
+    ip: 'ip_address',
+    domain: 'domain'
+  }
+  const field = fieldMap[subj]
+  return field ? `${field}:"${val}"` : val
+}
 
 export function PivotModal({
   open,
@@ -24,13 +39,41 @@ export function PivotModal({
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [personaId, setPersonaId] = useState('')
   const [personas, setPersonas] = useState<Persona[]>([])
+  const [dehashedResult, setDehashedResult] = useState<DehashedResult | null>(null)
+  const [dehashedLoading, setDehashedLoading] = useState(false)
   const openInBrowser = useOpenInBrowser()
   const { settings } = useSettings()
+  const confirm = useConfirm()
 
   useEffect(() => {
     setSubj(subject)
     setVal(value)
+    setDehashedResult(null)
   }, [subject, value, open])
+
+  const searchDehashed = async (): Promise<void> => {
+    const key = settings.apiKeys?.dehashed
+    if (!key) return
+    const balance = await api.intel.dehashedBalance().catch(() => null)
+    const balanceText =
+      balance != null
+        ? `You have ${balance} credit${balance === 1 ? '' : 's'} remaining.`
+        : 'Your current balance is unknown (it will update after the search).'
+    const go = await confirm({
+      title: 'Search DeHashed? (costs 1 credit)',
+      message: `${balanceText} This will cost 1 credit.`,
+      confirmText: 'Search (use 1 credit)',
+      cancelText: 'Skip'
+    })
+    if (!go) return
+    setDehashedLoading(true)
+    try {
+      const result = await api.intel.dehashed(dehashedQuery(subj, val), key)
+      setDehashedResult(result)
+    } finally {
+      setDehashedLoading(false)
+    }
+  }
 
   // Load personas and default to the sock puppet assigned to the active
   // investigation — so pivots browse as that persona (and through its VPN exit).
@@ -151,6 +194,79 @@ export function PivotModal({
             </div>
           ))}
         </div>
+
+        {/* DeHashed API — inline search if key is configured */}
+        {settings.apiKeys?.dehashed && (
+          <div className="border border-ink-700 rounded-lg">
+            <div className="flex items-center justify-between px-3 py-2">
+              <div className="flex items-center gap-1.5 text-xs text-slate-400">
+                <KeyRound size={12} className="text-slate-500" />
+                DeHashed credential search
+              </div>
+              {!dehashedResult && (
+                <button
+                  className="btn-ghost text-xs border border-ink-600"
+                  disabled={dehashedLoading}
+                  onClick={searchDehashed}
+                >
+                  {dehashedLoading ? (
+                    <><Loader2 size={12} className="animate-spin" /> Searching…</>
+                  ) : (
+                    'Search API (1 credit)'
+                  )}
+                </button>
+              )}
+              {dehashedResult && (
+                <button className="btn-ghost text-xs" onClick={() => setDehashedResult(null)}>
+                  Clear
+                </button>
+              )}
+            </div>
+            {dehashedResult && (
+              <div className="border-t border-ink-800 px-3 py-2">
+                {!dehashedResult.ok ? (
+                  <div className="text-xs text-warn">{dehashedResult.error}</div>
+                ) : (dehashedResult.total ?? 0) === 0 ? (
+                  <div className="text-xs text-ok flex items-center gap-1"><Check size={12} /> No records found.</div>
+                ) : (
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <div className="text-xs text-danger flex items-center gap-1">
+                        <X size={12} /> {dehashedResult.total?.toLocaleString()} record{dehashedResult.total === 1 ? '' : 's'} found
+                      </div>
+                      {dehashedResult.balance != null && (
+                        <span className="text-[10px] text-slate-500">{dehashedResult.balance} credits remaining</span>
+                      )}
+                    </div>
+                    <div className="max-h-48 overflow-y-auto divide-y divide-ink-800 border border-ink-800 rounded">
+                      {(dehashedResult.entries ?? []).map((entry, i) => (
+                        <div key={entry.id || i} className="px-2.5 py-1.5 text-[11px]">
+                          {entry.database_name && (
+                            <div className="font-medium text-slate-300 mb-0.5">{entry.database_name}</div>
+                          )}
+                          <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-slate-400">
+                            {entry.email && <span>email: <span className="text-slate-200">{entry.email}</span></span>}
+                            {entry.username && <span>user: <span className="text-slate-200">{entry.username}</span></span>}
+                            {entry.password && <span>pw: <span className="text-danger font-mono">{entry.password}</span></span>}
+                            {entry.hashed_password && !entry.password && <span>hash: <span className="font-mono text-slate-500">{entry.hashed_password.slice(0, 32)}…</span></span>}
+                            {entry.name && <span>name: <span className="text-slate-200">{entry.name}</span></span>}
+                            {entry.ip_address && <span>IP: <span className="text-slate-200">{entry.ip_address}</span></span>}
+                            {entry.phone && <span>phone: <span className="text-slate-200">{entry.phone}</span></span>}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    {(dehashedResult.total ?? 0) > (dehashedResult.entries?.length ?? 0) && (
+                      <p className="text-[10px] text-slate-600">
+                        Showing first {dehashedResult.entries?.length} of {dehashedResult.total?.toLocaleString()}
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
 
         <div className="flex items-center gap-3 pt-3 border-t border-ink-700">
           <div className="relative flex-1 max-w-xs">

@@ -163,7 +163,7 @@ export const API_SERVICES: ApiService[] = [
   {
     id: 'dehashed',
     name: 'DeHashed',
-    description: 'Credential / breach data search. Enter key as email:apikey (e.g. you@example.com:abc123).',
+    description: 'Credential / breach data search.',
     free: 'Paid API & search (subscription). Each search costs 1 credit.',
     tier: 'paid',
     signup: 'https://www.dehashed.com/register',

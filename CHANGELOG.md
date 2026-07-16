@@ -1,7 +1,11 @@
 # Changelog
 
+## v1.0.3
+- DeHashed: fixed authentication — now uses Bearer token (v2 API). API key in Settings is just the raw key, no email prefix needed.
+- DeHashed: Pivot modal now has a "Search API (1 credit)" button with the same credit-confirmation dialog, showing results inline without leaving the modal.
+
 ## v1.0.2
-- DeHashed integration: email analysis now includes a real DeHashed credential search. Before running, GhostWire shows a confirmation dialog with your current credit balance and a clear "costs 1 credit" prompt. Results appear inline — database name, username, plaintext password, hashed password, IP, name, and address. Add your key in Settings → API keys in `email:apikey` format.
+- DeHashed integration: email analysis now includes a real DeHashed credential search. Before running, GhostWire shows a confirmation dialog with your current credit balance and a clear "costs 1 credit" prompt. Results appear inline — database name, username, plaintext password, hashed password, IP, name, and address. Add your key in Settings → API keys.
 
 ## v1.0.1
 - Tutorial: sidebar now highlights the active section with a ring and pulsing dot — no more blurred backdrop blocking the view.

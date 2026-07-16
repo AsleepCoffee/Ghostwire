@@ -1801,29 +1801,28 @@ export function registerHandlers(): void {
     }
   })
 
-  // DeHashed credential search — Basic auth with "email:apikey". Costs 1 credit per call.
+  // DeHashed credential search — Bearer auth with API key only (v2 API).
   // The API returns balance in the response body; we cache it so the confirmation dialog
   // can show the user their remaining credits without spending another credit to check.
   let dehashedBalanceCache: number | null = null
 
   ipcMain.handle('intel:dehashed', async (_e, query: string, key: string) => {
-    if (!key) return { ok: false, error: 'Add your DeHashed API key in Settings → API keys. Format: email:apikey' }
+    if (!key) return { ok: false, error: 'Add your DeHashed API key in Settings → API keys.' }
     const q = String(query ?? '').trim()
     if (!q) return { ok: false, error: 'No query.' }
-    const credentials = Buffer.from(key).toString('base64')
     try {
       const res = await net.fetch(
         `https://api.dehashed.com/search?query=${encodeURIComponent(q)}&size=100`,
         {
           headers: {
             Accept: 'application/json',
-            Authorization: `Basic ${credentials}`
+            Authorization: `Bearer ${key.trim()}`
           }
         }
       )
       if (!res.ok) {
         const text = await res.text().catch(() => '')
-        if (res.status === 401) return { ok: false, error: 'Invalid DeHashed credentials. Format: email:apikey' }
+        if (res.status === 401) return { ok: false, error: 'Invalid DeHashed API key. Check Settings → API keys.' }
         if (res.status === 402) return { ok: false, error: 'DeHashed: insufficient credits.' }
         return { ok: false, error: `DeHashed error ${res.status}: ${text.slice(0, 120)}` }
       }

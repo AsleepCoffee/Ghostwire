@@ -7,10 +7,18 @@ export interface ChangelogEntry {
 /** In-app patch notes. Newest first. Keep in sync with CHANGELOG.md. */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '1.0.3',
+    date: '2026-07-16',
+    notes: [
+      'DeHashed: fixed authentication — now uses Bearer token (v2 API). Paste your raw API key in Settings, no email prefix needed.',
+      'DeHashed: Pivot modal now includes a "Search API (1 credit)" button. The same credit-confirmation dialog appears and results show inline without leaving the modal.'
+    ]
+  },
+  {
     version: '1.0.2',
     date: '2026-07-16',
     notes: [
-      'DeHashed integration: email analysis now includes a real DeHashed credential search. A confirmation dialog shows your current credit balance and a clear "costs 1 credit" prompt before spending. Results appear inline — database, username, password, hash, IP, name, and address. Add your key in Settings → API keys (format: email:apikey).'
+      'DeHashed integration: email analysis now includes a real DeHashed credential search. A confirmation dialog shows your current credit balance and a "costs 1 credit" prompt before spending. Results appear inline — database, username, password, hash, IP, name, and address.'
     ]
   },
   {
