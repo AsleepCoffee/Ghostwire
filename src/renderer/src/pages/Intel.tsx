@@ -75,7 +75,7 @@ export function Intel(): JSX.Element {
     // If the user has a DeHashed key, ask before spending a credit.
     let runDehashed = false
     if (settings.apiKeys?.dehashed) {
-      const balance = await api.intel.dehashedBalance().catch(() => null)
+      const balance = await api.intel.dehashedBalance(settings.apiKeys.dehashed).catch(() => null)
       const balanceText = balance != null ? `You have **${balance} credit${balance === 1 ? '' : 's'}** remaining.` : 'Your current balance is unknown (it will be updated after the search).'
       runDehashed = await confirm({
         title: 'Search DeHashed? (costs 1 credit)',

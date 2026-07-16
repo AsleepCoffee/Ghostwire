@@ -1,5 +1,8 @@
 # Changelog
 
+## v1.0.4
+- DeHashed: fully corrected API integration — now uses POST to `/v2/search` with `Dehashed-Api-Key` header and JSON body (the old GET+Bearer format was wrong). Credit balance is fetched for free via `/v2/info/user` so the confirmation dialog always shows your real balance without spending a credit.
+
 ## v1.0.3
 - DeHashed: fixed authentication — now uses Bearer token (v2 API). API key in Settings is just the raw key, no email prefix needed.
 - DeHashed: Pivot modal now has a "Search API (1 credit)" button with the same credit-confirmation dialog, showing results inline without leaving the modal.

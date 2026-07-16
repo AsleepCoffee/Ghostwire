@@ -127,7 +127,7 @@ const api: OsintApi = {
     sherlockSites: () => ipcRenderer.invoke('intel:sherlockSites'),
     sherlockCheck: (name, username) => ipcRenderer.invoke('intel:sherlockCheck', name, username),
     dehashed: (query, key) => ipcRenderer.invoke('intel:dehashed', query, key),
-    dehashedBalance: () => ipcRenderer.invoke('intel:dehashedBalance')
+    dehashedBalance: (key) => ipcRenderer.invoke('intel:dehashedBalance', key)
   },
   app: {
     version: () => ipcRenderer.invoke('app:version'),

@@ -819,10 +819,10 @@ export interface OsintApi {
     sherlockSites(): Promise<{ name: string; url: string }[]>
     /** Check one Sherlock site for a username. */
     sherlockCheck(name: string, username: string): Promise<{ found: boolean; url: string; status: number; invalid?: boolean }>
-    /** DeHashed credential search — costs 1 credit per call. Key must be "email:apikey". */
+    /** DeHashed credential search — costs 1 credit per call. Key is the raw API key. */
     dehashed(query: string, key: string): Promise<DehashedResult>
-    /** Return the last known DeHashed credit balance (cached from the most recent search). */
-    dehashedBalance(): Promise<number | null>
+    /** Fetch current DeHashed credit balance — free, no search credit spent. */
+    dehashedBalance(key: string): Promise<number | null>
   }
   app: {
     version(): Promise<string>

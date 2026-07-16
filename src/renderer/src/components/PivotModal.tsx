@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+﻿import { useEffect, useMemo, useState } from 'react'
 import { Crosshair, ExternalLink, LayoutGrid, CheckSquare, Square, KeyRound, Loader2, Check, X } from 'lucide-react'
 import { Modal } from './ui'
 import { api, type Persona, type DehashedResult } from '../lib/api'
@@ -54,7 +54,7 @@ export function PivotModal({
   const searchDehashed = async (): Promise<void> => {
     const key = settings.apiKeys?.dehashed
     if (!key) return
-    const balance = await api.intel.dehashedBalance().catch(() => null)
+    const balance = await api.intel.dehashedBalance(key).catch(() => null)
     const balanceText =
       balance != null
         ? `You have ${balance} credit${balance === 1 ? '' : 's'} remaining.`

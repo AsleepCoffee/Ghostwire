@@ -7,6 +7,13 @@ export interface ChangelogEntry {
 /** In-app patch notes. Newest first. Keep in sync with CHANGELOG.md. */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '1.0.4',
+    date: '2026-07-16',
+    notes: [
+      'DeHashed: fixed API integration — now uses POST to /v2/search with Dehashed-Api-Key header (the old GET+Bearer format was wrong and caused 404s). Credit balance is fetched for free via /v2/info/user so the confirmation dialog always shows your real current balance.'
+    ]
+  },
+  {
     version: '1.0.3',
     date: '2026-07-16',
     notes: [

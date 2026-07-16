@@ -1801,29 +1801,26 @@ export function registerHandlers(): void {
     }
   })
 
-  // DeHashed credential search — Bearer auth with API key only (v2 API).
-  // The API returns balance in the response body; we cache it so the confirmation dialog
-  // can show the user their remaining credits without spending another credit to check.
-  let dehashedBalanceCache: number | null = null
-
+  // DeHashed v2 API — POST with Dehashed-Api-Key header, JSON body.
+  // /v2/info/user returns current credits for free (no search credit spent).
   ipcMain.handle('intel:dehashed', async (_e, query: string, key: string) => {
     if (!key) return { ok: false, error: 'Add your DeHashed API key in Settings → API keys.' }
     const q = String(query ?? '').trim()
     if (!q) return { ok: false, error: 'No query.' }
+    const k = key.trim()
     try {
-      const res = await net.fetch(
-        `https://api.dehashed.com/search?query=${encodeURIComponent(q)}&size=100`,
-        {
-          headers: {
-            Accept: 'application/json',
-            Authorization: `Bearer ${key.trim()}`
-          }
-        }
-      )
+      const res = await net.fetch('https://api.dehashed.com/v2/search', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Dehashed-Api-Key': k
+        },
+        body: JSON.stringify({ query: q, page: 1, size: 100, wildcard: false, regex: false, de_dupe: true })
+      })
       if (!res.ok) {
         const text = await res.text().catch(() => '')
         if (res.status === 401) return { ok: false, error: 'Invalid DeHashed API key. Check Settings → API keys.' }
-        if (res.status === 402) return { ok: false, error: 'DeHashed: insufficient credits.' }
+        if (res.status === 403) return { ok: false, error: 'DeHashed: insufficient credits.' }
         return { ok: false, error: `DeHashed error ${res.status}: ${text.slice(0, 120)}` }
       }
       const j = (await res.json()) as {
@@ -1831,23 +1828,32 @@ export function registerHandlers(): void {
         total?: number
         entries?: Record<string, unknown>[]
       }
-      if (j?.balance != null) dehashedBalanceCache = Number(j.balance)
+      const first = (v: unknown): string => {
+        if (Array.isArray(v) && v.length > 0) return String(v[0])
+        if (v != null && !Array.isArray(v)) return String(v)
+        return ''
+      }
+      const all = (v: unknown): string[] => {
+        if (Array.isArray(v)) return v.map(String).filter(Boolean)
+        if (v != null) return [String(v)]
+        return []
+      }
       return {
         ok: true,
         total: Number(j.total ?? 0),
-        balance: dehashedBalanceCache,
+        balance: j.balance != null ? Number(j.balance) : null,
         entries: (j.entries ?? []).slice(0, 100).map((e) => ({
-          id: String(e.id ?? ''),
-          email: String(e.email ?? ''),
-          ip_address: String(e.ip_address ?? ''),
-          username: String(e.username ?? ''),
-          password: String(e.password ?? ''),
-          hashed_password: String(e.hashed_password ?? ''),
-          name: String(e.name ?? ''),
-          vin: String(e.vin ?? ''),
-          address: String(e.address ?? ''),
-          phone: String(e.phone ?? ''),
-          database_name: String(e.database_name ?? '')
+          id: first(e.id),
+          email: first(e.email),
+          ip_address: first(e.ip_address),
+          username: first(e.username),
+          password: first(e.password),
+          hashed_password: all(e.hashed_password).join(' | '),
+          name: first(e.name),
+          vin: first(e.vin),
+          address: first(e.address),
+          phone: first(e.phone),
+          database_name: first(e.database_name)
         }))
       }
     } catch (e) {
@@ -1855,7 +1861,20 @@ export function registerHandlers(): void {
     }
   })
 
-  ipcMain.handle('intel:dehashedBalance', () => dehashedBalanceCache)
+  // Free balance check — /v2/info/user costs no credits.
+  ipcMain.handle('intel:dehashedBalance', async (_e, key: string) => {
+    if (!key) return null
+    try {
+      const res = await net.fetch('https://api.dehashed.com/v2/info/user', {
+        headers: { 'Dehashed-Api-Key': key.trim() }
+      })
+      if (!res.ok) return null
+      const j = (await res.json()) as { search_credits?: number }
+      return j.search_credits != null ? Number(j.search_credits) : null
+    } catch {
+      return null
+    }
+  })
 
   // Reddit archive lookup — recover a deleted post/comment author or a user's
   // activity from PullPush + Arctic Shift. These mirrors keep a copy of the
