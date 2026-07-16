@@ -1801,6 +1801,63 @@ export function registerHandlers(): void {
     }
   })
 
+  // DeHashed credential search — Basic auth with "email:apikey". Costs 1 credit per call.
+  // The API returns balance in the response body; we cache it so the confirmation dialog
+  // can show the user their remaining credits without spending another credit to check.
+  let dehashedBalanceCache: number | null = null
+
+  ipcMain.handle('intel:dehashed', async (_e, query: string, key: string) => {
+    if (!key) return { ok: false, error: 'Add your DeHashed API key in Settings → API keys. Format: email:apikey' }
+    const q = String(query ?? '').trim()
+    if (!q) return { ok: false, error: 'No query.' }
+    const credentials = Buffer.from(key).toString('base64')
+    try {
+      const res = await net.fetch(
+        `https://api.dehashed.com/search?query=${encodeURIComponent(q)}&size=100`,
+        {
+          headers: {
+            Accept: 'application/json',
+            Authorization: `Basic ${credentials}`
+          }
+        }
+      )
+      if (!res.ok) {
+        const text = await res.text().catch(() => '')
+        if (res.status === 401) return { ok: false, error: 'Invalid DeHashed credentials. Format: email:apikey' }
+        if (res.status === 402) return { ok: false, error: 'DeHashed: insufficient credits.' }
+        return { ok: false, error: `DeHashed error ${res.status}: ${text.slice(0, 120)}` }
+      }
+      const j = (await res.json()) as {
+        balance?: number
+        total?: number
+        entries?: Record<string, unknown>[]
+      }
+      if (j?.balance != null) dehashedBalanceCache = Number(j.balance)
+      return {
+        ok: true,
+        total: Number(j.total ?? 0),
+        balance: dehashedBalanceCache,
+        entries: (j.entries ?? []).slice(0, 100).map((e) => ({
+          id: String(e.id ?? ''),
+          email: String(e.email ?? ''),
+          ip_address: String(e.ip_address ?? ''),
+          username: String(e.username ?? ''),
+          password: String(e.password ?? ''),
+          hashed_password: String(e.hashed_password ?? ''),
+          name: String(e.name ?? ''),
+          vin: String(e.vin ?? ''),
+          address: String(e.address ?? ''),
+          phone: String(e.phone ?? ''),
+          database_name: String(e.database_name ?? '')
+        }))
+      }
+    } catch (e) {
+      return { ok: false, error: String((e as Error)?.message ?? e) }
+    }
+  })
+
+  ipcMain.handle('intel:dehashedBalance', () => dehashedBalanceCache)
+
   // Reddit archive lookup — recover a deleted post/comment author or a user's
   // activity from PullPush + Arctic Shift. These mirrors keep a copy of the
   // ORIGINAL author/body captured before deletion, so "[deleted]" content on

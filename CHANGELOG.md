@@ -1,5 +1,8 @@
 # Changelog
 
+## v1.0.2
+- DeHashed integration: email analysis now includes a real DeHashed credential search. Before running, GhostWire shows a confirmation dialog with your current credit balance and a clear "costs 1 credit" prompt. Results appear inline — database name, username, plaintext password, hashed password, IP, name, and address. Add your key in Settings → API keys in `email:apikey` format.
+
 ## v1.0.1
 - Tutorial: sidebar now highlights the active section with a ring and pulsing dot — no more blurred backdrop blocking the view.
 - Tutorial: skill level picker on step 1 (New to OSINT / Some experience / Experienced). Beginners see an OSINT context box on each step explaining the investigative why behind every feature.

@@ -125,7 +125,9 @@ const api: OsintApi = {
     xpost: (input) => ipcRenderer.invoke('intel:xpost', input),
     reconDomain: (domain) => ipcRenderer.invoke('intel:reconDomain', domain),
     sherlockSites: () => ipcRenderer.invoke('intel:sherlockSites'),
-    sherlockCheck: (name, username) => ipcRenderer.invoke('intel:sherlockCheck', name, username)
+    sherlockCheck: (name, username) => ipcRenderer.invoke('intel:sherlockCheck', name, username),
+    dehashed: (query, key) => ipcRenderer.invoke('intel:dehashed', query, key),
+    dehashedBalance: () => ipcRenderer.invoke('intel:dehashedBalance')
   },
   app: {
     version: () => ipcRenderer.invoke('app:version'),

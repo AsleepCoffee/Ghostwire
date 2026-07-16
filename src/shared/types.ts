@@ -616,6 +616,30 @@ export interface UpdateStatus {
   message?: string
 }
 
+/** One record returned by the DeHashed /search API. */
+export interface DehashedEntry {
+  id?: string
+  email?: string
+  ip_address?: string
+  username?: string
+  password?: string
+  hashed_password?: string
+  name?: string
+  vin?: string
+  address?: string
+  phone?: string
+  database_name?: string
+}
+
+export interface DehashedResult {
+  ok: boolean
+  error?: string
+  total?: number
+  /** Credits remaining after this search (cached from the response). */
+  balance?: number
+  entries?: DehashedEntry[]
+}
+
 /** The API surface exposed on `window.api` via the preload bridge. */
 export interface OsintApi {
   projects: {
@@ -795,6 +819,10 @@ export interface OsintApi {
     sherlockSites(): Promise<{ name: string; url: string }[]>
     /** Check one Sherlock site for a username. */
     sherlockCheck(name: string, username: string): Promise<{ found: boolean; url: string; status: number; invalid?: boolean }>
+    /** DeHashed credential search — costs 1 credit per call. Key must be "email:apikey". */
+    dehashed(query: string, key: string): Promise<DehashedResult>
+    /** Return the last known DeHashed credit balance (cached from the most recent search). */
+    dehashedBalance(): Promise<number | null>
   }
   app: {
     version(): Promise<string>

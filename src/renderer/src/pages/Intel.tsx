@@ -1,11 +1,12 @@
-import { useState } from 'react'
+﻿import { useState } from 'react'
 import { parsePhoneNumberFromString } from 'libphonenumber-js'
-import { Mail, Phone, Loader2, ShieldAlert, Check, X, Crosshair, Workflow, ExternalLink, UserSearch, Building2, Copy } from 'lucide-react'
-import { api, type GravatarResult, type HibpBreach, type HunterResult, type EmailVerify, type LeakCheckResult, type HudsonResult } from '../lib/api'
+import { Mail, Phone, Loader2, ShieldAlert, Check, X, Crosshair, Workflow, ExternalLink, UserSearch, Building2, Copy, KeyRound } from 'lucide-react'
+import { api, type GravatarResult, type HibpBreach, type HunterResult, type EmailVerify, type LeakCheckResult, type HudsonResult, type DehashedResult } from '../lib/api'
 import { useSettings } from '../lib/settings'
 import { useOpenInBrowser } from '../lib/browserBus'
 import { autoLink } from '../lib/graphlink'
 import { PivotModal } from '../components/PivotModal'
+import { useConfirm } from '../lib/confirm'
 
 const enc = encodeURIComponent
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -19,6 +20,7 @@ interface EmailReport {
   verify: EmailVerify | null
   leak: LeakCheckResult | null
   hudson: HudsonResult | null
+  dehashed: DehashedResult | null
 }
 
 const VERIFY_STYLE: Record<string, string> = {
@@ -47,6 +49,7 @@ interface PhoneReport {
 export function Intel(): JSX.Element {
   const { settings } = useSettings()
   const openInBrowser = useOpenInBrowser()
+  const confirm = useConfirm()
   const [mode, setMode] = useState<'email' | 'phone' | 'company'>('email')
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
@@ -65,14 +68,28 @@ export function Intel(): JSX.Element {
   const analyzeEmail = async (): Promise<void> => {
     const e = input.trim().toLowerCase()
     if (!EMAIL_RE.test(e)) {
-      flash('That doesn’t look like an email address.')
+      flash("That doesn't look like an email address.")
       return
     }
+
+    // If the user has a DeHashed key, ask before spending a credit.
+    let runDehashed = false
+    if (settings.apiKeys?.dehashed) {
+      const balance = await api.intel.dehashedBalance().catch(() => null)
+      const balanceText = balance != null ? `You have **${balance} credit${balance === 1 ? '' : 's'}** remaining.` : 'Your current balance is unknown (it will be updated after the search).'
+      runDehashed = await confirm({
+        title: 'Search DeHashed? (costs 1 credit)',
+        message: `${balanceText} This search will cost 1 credit. Include DeHashed credential results?`,
+        confirmText: 'Search (use 1 credit)',
+        cancelText: 'Skip DeHashed'
+      })
+    }
+
     setLoading(true)
     setEmail(null)
     const domain = e.split('@')[1]
     try {
-      const [mxData, gravatar, hibp, verify, leak, hudson] = await Promise.all([
+      const [mxData, gravatar, hibp, verify, leak, hudson, dehashed] = await Promise.all([
         api.net
           .fetchJson(`https://dns.google/resolve?name=${enc(domain)}&type=MX`)
           .catch(() => ({}) as unknown) as Promise<{ Answer?: { data?: string }[] }>,
@@ -80,10 +97,13 @@ export function Intel(): JSX.Element {
         settings.apiKeys?.hibp ? api.intel.hibp(e, settings.apiKeys.hibp) : Promise.resolve(null),
         settings.apiKeys?.emailhippo ? api.intel.verifyEmail(e, settings.apiKeys.emailhippo) : Promise.resolve(null),
         api.intel.leakcheck(e).catch(() => null),
-        api.intel.hudsonrock(e).catch(() => null)
+        api.intel.hudsonrock(e).catch(() => null),
+        runDehashed && settings.apiKeys?.dehashed
+          ? api.intel.dehashed(e, settings.apiKeys.dehashed).catch((err) => ({ ok: false, error: String(err) } as DehashedResult))
+          : Promise.resolve(null)
       ])
       const mx = (mxData.Answer ?? []).map((a) => String(a.data ?? '').replace(/\s+\d+\s*$/, '').trim()).filter(Boolean)
-      setEmail({ email: e, domain, mx, gravatar, hibp, verify, leak, hudson })
+      setEmail({ email: e, domain, mx, gravatar, hibp, verify, leak, hudson, dehashed })
     } finally {
       setLoading(false)
     }
@@ -247,7 +267,7 @@ export function Intel(): JSX.Element {
                 {email.mx.length ? (
                   <span className="text-ok">accepts mail ({email.mx.length} MX)</span>
                 ) : (
-                  <span className="text-warn">no MX records (won’t receive mail)</span>
+                  <span className="text-warn">no MX records (won't receive mail)</span>
                 )}
               </div>
             </div>
@@ -407,6 +427,54 @@ export function Intel(): JSX.Element {
               )}
             </div>
 
+            {/* DeHashed credential search */}
+            {settings.apiKeys?.dehashed && (
+              <div className="card p-4">
+                <div className="text-[10px] uppercase tracking-widest text-slate-500 mb-2 flex items-center gap-1.5">
+                  <KeyRound size={12} /> Credential search (DeHashed)
+                </div>
+                {!email.dehashed ? (
+                  <div className="text-sm text-slate-500">DeHashed was skipped. Re-run the analysis to include it.</div>
+                ) : !email.dehashed.ok ? (
+                  <div className="text-sm text-warn">{email.dehashed.error || 'DeHashed search failed.'}</div>
+                ) : (email.dehashed.total ?? 0) === 0 ? (
+                  <div className="text-sm text-ok flex items-center gap-1.5"><Check size={14} /> No records found in DeHashed.</div>
+                ) : (
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="text-sm text-danger flex items-center gap-1.5">
+                        <X size={14} /> {email.dehashed.total?.toLocaleString()} record{email.dehashed.total === 1 ? '' : 's'} found
+                      </div>
+                      {email.dehashed.balance != null && (
+                        <span className="text-[10px] text-slate-500">{email.dehashed.balance} credits remaining</span>
+                      )}
+                    </div>
+                    <div className="max-h-64 overflow-y-auto divide-y divide-ink-800 border border-ink-800 rounded-lg">
+                      {(email.dehashed.entries ?? []).map((entry, i) => (
+                        <div key={entry.id || i} className="px-3 py-2 text-xs">
+                          {entry.database_name && (
+                            <div className="font-medium text-slate-300 mb-0.5">{entry.database_name}</div>
+                          )}
+                          <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-slate-400">
+                            {entry.username && <span>user: <span className="text-slate-200">{entry.username}</span></span>}
+                            {entry.password && <span>password: <span className="text-danger font-mono">{entry.password}</span></span>}
+                            {entry.hashed_password && !entry.password && <span>hash: <span className="font-mono text-slate-400">{entry.hashed_password.slice(0, 40)}…</span></span>}
+                            {entry.name && <span>name: <span className="text-slate-200">{entry.name}</span></span>}
+                            {entry.ip_address && <span>IP: <span className="text-slate-200">{entry.ip_address}</span></span>}
+                            {entry.phone && <span>phone: <span className="text-slate-200">{entry.phone}</span></span>}
+                            {entry.address && <span>address: <span className="text-slate-200">{entry.address}</span></span>}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    {(email.dehashed.total ?? 0) > (email.dehashed.entries?.length ?? 0) && (
+                      <p className="text-[10px] text-slate-600">Showing first {email.dehashed.entries?.length} of {email.dehashed.total?.toLocaleString()} records.</p>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
             <div className="flex flex-wrap gap-2">
               <button className="btn-ghost border border-ink-600 text-xs" onClick={() => openInBrowser([`https://epieos.com/?q=${enc(email.email)}`])}>
                 <ExternalLink size={13} /> Epieos
@@ -436,7 +504,7 @@ export function Intel(): JSX.Element {
                   <Field label="National" value={phone.national ?? '—'} />
                 </div>
               ) : (
-                <div className="text-sm text-warn mt-2">Couldn’t parse this as a valid number. Include the country code (e.g. +1 …).</div>
+                <div className="text-sm text-warn mt-2">Couldn't parse this as a valid number. Include the country code (e.g. +1 …).</div>
               )}
             </div>
             <div className="flex flex-wrap gap-2">
